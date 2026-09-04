@@ -53,7 +53,7 @@ jobs:
         uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380
         with:
           maturin-version: v1.14.1
-          args: --sdist --out dist --no-archivelint
+          args: --sdist --out dist
       - uses: actions/upload-artifact@v6
         with:
           name: sdist
@@ -67,7 +67,6 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       id-token: write
-      attestations: false
     steps:
       - uses: actions/download-artifact@v6
         with:
@@ -75,3 +74,5 @@ jobs:
           merge-multiple: true
       - name: Publish
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: false
