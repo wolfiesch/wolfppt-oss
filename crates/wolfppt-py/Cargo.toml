@@ -1,0 +1,18 @@
+[package]
+name = "wolfppt-py"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "PyO3 Python native bindings for the WolfPPT Rust core."
+repository = "https://github.com/wolfiesch/wolfppt"
+keywords = ["pptx", "powerpoint", "openxml", "pyo3", "python"]
+categories = ["api-bindings", "development-tools"]
+
+[lib]
+name = "wolfppt_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.29", features = ["extension-module"] }
+serde_json = "1.0"
+wolfppt-core = { path = "../wolfppt-core", version = "0.1.0" }

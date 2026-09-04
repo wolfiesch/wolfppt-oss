@@ -1,0 +1,163 @@
+"""Table drop-in benchmark adapter specifications."""
+
+from __future__ import annotations
+
+from .benchmark_adapter_spec import BenchmarkAdapterSpec
+
+
+TABLE_BENCHMARK_ADAPTER_SPECS: tuple[BenchmarkAdapterSpec, ...] = (
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-text-frame-edit",
+        "dropin-table-cell-text-frame-edit",
+        "popular Python API table-cell text-frame baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_text_frame_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-text-frame-edit",
+        "dropin-table-cell-text-frame-edit",
+        "WolfPPT public Python-compatible table-cell text-frame facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_text_frame_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-text-frame-flow-edit",
+        "dropin-table-cell-text-frame-flow-edit",
+        "popular Python API table-cell paragraph/wrap/autosize baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_text_frame_flow_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-text-frame-flow-edit",
+        "dropin-table-cell-text-frame-flow-edit",
+        "WolfPPT public Python-compatible table-cell paragraph/wrap/autosize facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_text_frame_flow_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-paragraph-runs-edit",
+        "dropin-table-cell-paragraph-runs-edit",
+        "popular Python API table-cell paragraph runs baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_paragraph_runs_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-paragraph-runs-edit",
+        "dropin-table-cell-paragraph-runs-edit",
+        "WolfPPT public Python-compatible table-cell paragraph runs facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_paragraph_runs_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-paragraph-line-break-edit",
+        "dropin-table-cell-paragraph-line-break-edit",
+        "popular Python API table-cell paragraph line-break baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_paragraph_line_break_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-paragraph-line-break-edit",
+        "dropin-table-cell-paragraph-line-break-edit",
+        "WolfPPT public Python-compatible table-cell paragraph line-break facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_paragraph_line_break_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-run-font-edit",
+        "dropin-table-cell-run-font-edit",
+        "popular Python API table-cell run font baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_run_font_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-run-font-edit",
+        "dropin-table-cell-run-font-edit",
+        "WolfPPT public Python-compatible table-cell run font facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_run_font_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-run-hyperlink-edit",
+        "dropin-table-cell-run-hyperlink-edit",
+        "popular Python API table-cell run hyperlink baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_run_hyperlink_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-run-hyperlink-edit",
+        "dropin-table-cell-run-hyperlink-edit",
+        "WolfPPT public Python-compatible table-cell run hyperlink facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_run_hyperlink_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-paragraph-font-edit",
+        "dropin-table-cell-paragraph-font-edit",
+        "popular Python API table-cell paragraph font baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_paragraph_font_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-paragraph-font-edit",
+        "dropin-table-cell-paragraph-font-edit",
+        "WolfPPT public Python-compatible table-cell paragraph font facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_paragraph_font_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-fill-edit",
+        "dropin-table-cell-fill-edit",
+        "popular Python API table-cell fill baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_fill_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-fill-edit",
+        "dropin-table-cell-fill-edit",
+        "WolfPPT public Python-compatible table-cell fill facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_fill_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-cell-merge-edit",
+        "dropin-table-cell-merge-edit",
+        "popular Python API table-cell merge baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_cell_merge_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-cell-merge-edit",
+        "dropin-table-cell-merge-edit",
+        "WolfPPT public Python-compatible table-cell merge facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_cell_merge_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-dimensions-edit",
+        "dropin-table-dimensions-edit",
+        "popular Python API table row/column dimension baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_dimensions_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-dimensions-edit",
+        "dropin-table-dimensions-edit",
+        "WolfPPT public Python-compatible table row/column dimension facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_dimensions_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "python-pptx-dropin-table-style-flags-edit",
+        "dropin-table-style-flags-edit",
+        "popular Python API table-style flags baseline",
+        "_python_pptx_available",
+        "_bench_python_pptx_dropin_table_style_flags_edit",
+    ),
+    BenchmarkAdapterSpec(
+        "wolfppt-facade-dropin-table-style-flags-edit",
+        "dropin-table-style-flags-edit",
+        "WolfPPT public Python-compatible table-style flags facade",
+        "native_available",
+        "_bench_wolfppt_facade_dropin_table_style_flags_edit",
+    ),
+)

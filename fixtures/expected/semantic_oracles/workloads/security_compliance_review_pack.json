@@ -1,0 +1,1319 @@
+{
+  "format": "wolfppt.semantic.v1",
+  "has_vba": false,
+  "part_count": 68,
+  "parts": [
+    "[Content_Types].xml",
+    "_rels/.rels",
+    "docProps/app.xml",
+    "docProps/core.xml",
+    "docProps/thumbnail.jpeg",
+    "ppt/_rels/presentation.xml.rels",
+    "ppt/charts/_rels/chart1.xml.rels",
+    "ppt/charts/chart1.xml",
+    "ppt/commentAuthors.xml",
+    "ppt/comments/comment1.xml",
+    "ppt/embeddings/Microsoft_Excel_Sheet1.xlsx",
+    "ppt/embeddings/oleObject1.bin",
+    "ppt/media/image1.png",
+    "ppt/notesMasters/_rels/notesMaster1.xml.rels",
+    "ppt/notesMasters/notesMaster1.xml",
+    "ppt/notesSlides/_rels/notesSlide1.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide2.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide3.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide4.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide5.xml.rels",
+    "ppt/notesSlides/notesSlide1.xml",
+    "ppt/notesSlides/notesSlide2.xml",
+    "ppt/notesSlides/notesSlide3.xml",
+    "ppt/notesSlides/notesSlide4.xml",
+    "ppt/notesSlides/notesSlide5.xml",
+    "ppt/presProps.xml",
+    "ppt/presentation.xml",
+    "ppt/printerSettings/printerSettings1.bin",
+    "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout10.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout11.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout2.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout3.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout4.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout5.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout6.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout7.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout8.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout9.xml.rels",
+    "ppt/slideLayouts/slideLayout1.xml",
+    "ppt/slideLayouts/slideLayout10.xml",
+    "ppt/slideLayouts/slideLayout11.xml",
+    "ppt/slideLayouts/slideLayout2.xml",
+    "ppt/slideLayouts/slideLayout3.xml",
+    "ppt/slideLayouts/slideLayout4.xml",
+    "ppt/slideLayouts/slideLayout5.xml",
+    "ppt/slideLayouts/slideLayout6.xml",
+    "ppt/slideLayouts/slideLayout7.xml",
+    "ppt/slideLayouts/slideLayout8.xml",
+    "ppt/slideLayouts/slideLayout9.xml",
+    "ppt/slideMasters/_rels/slideMaster1.xml.rels",
+    "ppt/slideMasters/slideMaster1.xml",
+    "ppt/slides/_rels/slide1.xml.rels",
+    "ppt/slides/_rels/slide2.xml.rels",
+    "ppt/slides/_rels/slide3.xml.rels",
+    "ppt/slides/_rels/slide4.xml.rels",
+    "ppt/slides/_rels/slide5.xml.rels",
+    "ppt/slides/_rels/slide6.xml.rels",
+    "ppt/slides/slide1.xml",
+    "ppt/slides/slide2.xml",
+    "ppt/slides/slide3.xml",
+    "ppt/slides/slide4.xml",
+    "ppt/slides/slide5.xml",
+    "ppt/slides/slide6.xml",
+    "ppt/tableStyles.xml",
+    "ppt/theme/theme1.xml",
+    "ppt/theme/theme2.xml",
+    "ppt/viewProps.xml"
+  ],
+  "path": "fixtures/pptx/workloads/security_compliance_review_pack.pptx",
+  "relationships": [
+    {
+      "id": "rId1",
+      "source": "/",
+      "target": "ppt/presentation.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+    },
+    {
+      "id": "rId2",
+      "source": "/",
+      "target": "docProps/thumbnail.jpeg",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"
+    },
+    {
+      "id": "rId3",
+      "source": "/",
+      "target": "docProps/core.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
+    },
+    {
+      "id": "rId4",
+      "source": "/",
+      "target": "docProps/app.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/charts/chart1.xml",
+      "target": "../embeddings/Microsoft_Excel_Sheet1.xlsx",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/package"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesMasters/notesMaster1.xml",
+      "target": "../theme/theme2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide1.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide1.xml",
+      "target": "../slides/slide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide2.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide2.xml",
+      "target": "../slides/slide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide3.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide3.xml",
+      "target": "../slides/slide3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide4.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide4.xml",
+      "target": "../slides/slide4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide5.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide5.xml",
+      "target": "../slides/slide5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/presentation.xml",
+      "target": "slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/presentation.xml",
+      "target": "printerSettings/printerSettings1.bin",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/presentation.xml",
+      "target": "presProps.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/presentation.xml",
+      "target": "viewProps.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/presentation.xml",
+      "target": "theme/theme1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId6",
+      "source": "ppt/presentation.xml",
+      "target": "tableStyles.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles"
+    },
+    {
+      "id": "rId7",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId8",
+      "source": "ppt/presentation.xml",
+      "target": "notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId9",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId10",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId11",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId12",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId13",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide6.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId14",
+      "source": "ppt/presentation.xml",
+      "target": "commentAuthors.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/commentAuthors"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout1.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout10.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout11.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout2.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout3.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout4.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout5.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout6.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout7.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout8.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout9.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId6",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout6.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId7",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId8",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout8.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId9",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout9.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId10",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout10.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId11",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout11.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId12",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../theme/theme1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../media/image1.png",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../notesSlides/notesSlide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../comments/comment1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../embeddings/oleObject1.bin",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide2.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide2.xml",
+      "target": "../notesSlides/notesSlide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide3.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide3.xml",
+      "target": "../charts/chart1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slides/slide3.xml",
+      "target": "../notesSlides/notesSlide3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide4.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide4.xml",
+      "target": "../notesSlides/notesSlide4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide5.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide5.xml",
+      "target": "../notesSlides/notesSlide5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide6.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    }
+  ],
+  "slides": [
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Synthetic security review pack for real-corpus preservation evidence."
+      ],
+      "part": "ppt/slides/slide1.xml",
+      "shape_count": 3,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Security and Compliance Review"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Security and Compliance Review",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7498079,
+            "cy": 731520,
+            "x": 640080,
+            "y": 960120
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "shape",
+          "name": "TextBox 2",
+          "paragraphs": [
+            "SOC 2 readiness, vendor-risk posture, incident drills, and control owners."
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "SOC 2 readiness, vendor-risk posture, incident drills, and control owners.",
+          "transform": {
+            "cx": 7498079,
+            "cy": 731520,
+            "x": 640080,
+            "y": 960120
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 365760,
+            "cy": 365760,
+            "x": 8092440,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": true,
+          "id": "4",
+          "kind": "picture",
+          "name": "Picture 3",
+          "paragraphs": [],
+          "relationship_ids": [
+            "rId2"
+          ],
+          "tables": [],
+          "text": "",
+          "transform": {
+            "cx": 365760,
+            "cy": 365760,
+            "x": 8092440,
+            "y": 320040
+          }
+        }
+      ],
+      "texts": [
+        "Security and Compliance Review",
+        "SOC 2 readiness, vendor-risk posture, incident drills, and control owners."
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Control table should preserve evidence filenames and owner status."
+      ],
+      "part": "ppt/slides/slide2.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Control Readiness Register"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Control Readiness Register",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 8321040,
+            "cy": 2743200,
+            "x": 411480,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Control",
+            "Owner",
+            "Evidence",
+            "Status",
+            "Next step",
+            "Access review",
+            "IT",
+            "access_review.xlsx",
+            "Green",
+            "Archive",
+            "Vendor SOC reports",
+            "GRC",
+            "vendor_soc.zip",
+            "Yellow",
+            "Chase",
+            "Incident tabletop",
+            "SecOps",
+            "tabletop_notes.docx",
+            "Green",
+            "Retest",
+            "Backup restore",
+            "Infra",
+            "restore_log.csv",
+            "Yellow",
+            "Run drill",
+            "Change approvals",
+            "Eng",
+            "change_tickets.csv",
+            "Green",
+            "Sample"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 5,
+              "row_count": 6,
+              "rows": [
+                [
+                  "Control",
+                  "Owner",
+                  "Evidence",
+                  "Status",
+                  "Next step"
+                ],
+                [
+                  "Access review",
+                  "IT",
+                  "access_review.xlsx",
+                  "Green",
+                  "Archive"
+                ],
+                [
+                  "Vendor SOC reports",
+                  "GRC",
+                  "vendor_soc.zip",
+                  "Yellow",
+                  "Chase"
+                ],
+                [
+                  "Incident tabletop",
+                  "SecOps",
+                  "tabletop_notes.docx",
+                  "Green",
+                  "Retest"
+                ],
+                [
+                  "Backup restore",
+                  "Infra",
+                  "restore_log.csv",
+                  "Yellow",
+                  "Run drill"
+                ],
+                [
+                  "Change approvals",
+                  "Eng",
+                  "change_tickets.csv",
+                  "Green",
+                  "Sample"
+                ]
+              ]
+            }
+          ],
+          "text": "Control\nOwner\nEvidence\nStatus\nNext step\nAccess review\nIT\naccess_review.xlsx\nGreen\nArchive\nVendor SOC reports\nGRC\nvendor_soc.zip\nYellow\nChase\nIncident tabletop\nSecOps\ntabletop_notes.docx\nGreen\nRetest\nBackup restore\nInfra\nrestore_log.csv\nYellow\nRun drill\nChange approvals\nEng\nchange_tickets.csv\nGreen\nSample",
+          "transform": {
+            "cx": 8321040,
+            "cy": 2743200,
+            "x": 411480,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Control Readiness Register",
+        "Control\nOwner\nEvidence\nStatus\nNext step\nAccess review\nIT\naccess_review.xlsx\nGreen\nArchive\nVendor SOC reports\nGRC\nvendor_soc.zip\nYellow\nChase\nIncident tabletop\nSecOps\ntabletop_notes.docx\nGreen\nRetest\nBackup restore\nInfra\nrestore_log.csv\nYellow\nRun drill\nChange approvals\nEng\nchange_tickets.csv\nGreen\nSample"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Line chart workbook and security-risk notes must survive round-trip."
+      ],
+      "part": "ppt/slides/slide3.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Risk Posture Trend"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Risk Posture Trend",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7680960,
+            "cy": 3657600,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": true,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Chart 2",
+          "paragraphs": [],
+          "relationship_ids": [
+            "rId2"
+          ],
+          "tables": [],
+          "text": "",
+          "transform": {
+            "cx": 7680960,
+            "cy": 3657600,
+            "x": 640080,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Risk Posture Trend"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Vendor-risk table and connector line should be preserved."
+      ],
+      "part": "ppt/slides/slide4.xml",
+      "shape_count": 3,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Vendor Risk Heatmap"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Vendor Risk Heatmap",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7498079,
+            "cy": 2240280,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Vendor",
+            "Data",
+            "Criticality",
+            "Review",
+            "PayrollCo",
+            "PII",
+            "High",
+            "SOC report pending",
+            "EmailOps",
+            "Email",
+            "High",
+            "DPA refreshed",
+            "DataRoom",
+            "Confidential",
+            "Medium",
+            "Pen test due",
+            "SupportDesk",
+            "Tickets",
+            "Medium",
+            "Subprocessors reviewed"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 4,
+              "row_count": 5,
+              "rows": [
+                [
+                  "Vendor",
+                  "Data",
+                  "Criticality",
+                  "Review"
+                ],
+                [
+                  "PayrollCo",
+                  "PII",
+                  "High",
+                  "SOC report pending"
+                ],
+                [
+                  "EmailOps",
+                  "Email",
+                  "High",
+                  "DPA refreshed"
+                ],
+                [
+                  "DataRoom",
+                  "Confidential",
+                  "Medium",
+                  "Pen test due"
+                ],
+                [
+                  "SupportDesk",
+                  "Tickets",
+                  "Medium",
+                  "Subprocessors reviewed"
+                ]
+              ]
+            }
+          ],
+          "text": "Vendor\nData\nCriticality\nReview\nPayrollCo\nPII\nHigh\nSOC report pending\nEmailOps\nEmail\nHigh\nDPA refreshed\nDataRoom\nConfidential\nMedium\nPen test due\nSupportDesk\nTickets\nMedium\nSubprocessors reviewed",
+          "transform": {
+            "cx": 7498079,
+            "cy": 2240280,
+            "x": 640080,
+            "y": 914400
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 6766560,
+            "cy": 0,
+            "x": 914400,
+            "y": 3429000
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "4",
+          "kind": "connector",
+          "name": "Connector 3",
+          "paragraphs": [],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "",
+          "transform": {
+            "cx": 6766560,
+            "cy": 0,
+            "x": 914400,
+            "y": 3429000
+          }
+        }
+      ],
+      "texts": [
+        "Vendor Risk Heatmap",
+        "Vendor\nData\nCriticality\nReview\nPayrollCo\nPII\nHigh\nSOC report pending\nEmailOps\nEmail\nHigh\nDPA refreshed\nDataRoom\nConfidential\nMedium\nPen test due\nSupportDesk\nTickets\nMedium\nSubprocessors reviewed"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Grouped remediation action tiles should keep child text and transforms."
+      ],
+      "part": "ppt/slides/slide5.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Remediation Actions"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Remediation Actions",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "effective_transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 228600,
+                "y": 228600
+              },
+              "has_chart": false,
+              "has_group": false,
+              "has_picture": false,
+              "id": "4",
+              "kind": "shape",
+              "name": "Rounded Rectangle 3",
+              "paragraphs": [
+                "Evidence lockbox",
+                "GRC"
+              ],
+              "relationship_ids": [],
+              "tables": [],
+              "text": "Evidence lockbox\nGRC",
+              "transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 228600,
+                "y": 228600
+              }
+            },
+            {
+              "children": [],
+              "effective_transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 2834640,
+                "y": 228600
+              },
+              "has_chart": false,
+              "has_group": false,
+              "has_picture": false,
+              "id": "5",
+              "kind": "shape",
+              "name": "Rounded Rectangle 4",
+              "paragraphs": [
+                "Restore drill",
+                "Infra"
+              ],
+              "relationship_ids": [],
+              "tables": [],
+              "text": "Restore drill\nInfra",
+              "transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 2834640,
+                "y": 228600
+              }
+            },
+            {
+              "children": [],
+              "effective_transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 228600,
+                "y": 1188720
+              },
+              "has_chart": false,
+              "has_group": false,
+              "has_picture": false,
+              "id": "6",
+              "kind": "shape",
+              "name": "Rounded Rectangle 5",
+              "paragraphs": [
+                "Vendor chase",
+                "Legal"
+              ],
+              "relationship_ids": [],
+              "tables": [],
+              "text": "Vendor chase\nLegal",
+              "transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 228600,
+                "y": 1188720
+              }
+            },
+            {
+              "children": [],
+              "effective_transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 2834640,
+                "y": 1188720
+              },
+              "has_chart": false,
+              "has_group": false,
+              "has_picture": false,
+              "id": "7",
+              "kind": "shape",
+              "name": "Rounded Rectangle 6",
+              "paragraphs": [
+                "Access sign-off",
+                "IT"
+              ],
+              "relationship_ids": [],
+              "tables": [],
+              "text": "Access sign-off\nIT",
+              "transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 2834640,
+                "y": 1188720
+              }
+            }
+          ],
+          "effective_transform": {
+            "cx": 4892040,
+            "cy": 1673352,
+            "x": 228600,
+            "y": 228600
+          },
+          "has_chart": false,
+          "has_group": true,
+          "has_picture": false,
+          "id": "3",
+          "kind": "group",
+          "name": "Group 2",
+          "paragraphs": [
+            "Evidence lockbox",
+            "GRC",
+            "Restore drill",
+            "Infra",
+            "Vendor chase",
+            "Legal",
+            "Access sign-off",
+            "IT"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Evidence lockbox\nGRC\nRestore drill\nInfra\nVendor chase\nLegal\nAccess sign-off\nIT",
+          "transform": {
+            "cx": 4892040,
+            "cy": 1673352,
+            "x": 228600,
+            "y": 228600
+          }
+        }
+      ],
+      "texts": [
+        "Remediation Actions",
+        "Evidence lockbox\nGRC\nRestore drill\nInfra\nVendor chase\nLegal\nAccess sign-off\nIT"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [],
+      "part": "ppt/slides/slide6.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Appendix: Audit Evidence Index"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Appendix: Audit Evidence Index",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7498079,
+            "cy": 2377440,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Artifact",
+            "Source",
+            "Owner",
+            "Risk register",
+            "security_risks.xlsx",
+            "GRC",
+            "Vendor packet",
+            "vendor_reviews.zip",
+            "Legal",
+            "Incident drill",
+            "tabletop_minutes.docx",
+            "SecOps",
+            "Access sample",
+            "user_access_sample.csv",
+            "IT"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 3,
+              "row_count": 5,
+              "rows": [
+                [
+                  "Artifact",
+                  "Source",
+                  "Owner"
+                ],
+                [
+                  "Risk register",
+                  "security_risks.xlsx",
+                  "GRC"
+                ],
+                [
+                  "Vendor packet",
+                  "vendor_reviews.zip",
+                  "Legal"
+                ],
+                [
+                  "Incident drill",
+                  "tabletop_minutes.docx",
+                  "SecOps"
+                ],
+                [
+                  "Access sample",
+                  "user_access_sample.csv",
+                  "IT"
+                ]
+              ]
+            }
+          ],
+          "text": "Artifact\nSource\nOwner\nRisk register\nsecurity_risks.xlsx\nGRC\nVendor packet\nvendor_reviews.zip\nLegal\nIncident drill\ntabletop_minutes.docx\nSecOps\nAccess sample\nuser_access_sample.csv\nIT",
+          "transform": {
+            "cx": 7498079,
+            "cy": 2377440,
+            "x": 640080,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Appendix: Audit Evidence Index",
+        "Artifact\nSource\nOwner\nRisk register\nsecurity_risks.xlsx\nGRC\nVendor packet\nvendor_reviews.zip\nLegal\nIncident drill\ntabletop_minutes.docx\nSecOps\nAccess sample\nuser_access_sample.csv\nIT"
+      ]
+    }
+  ]
+}

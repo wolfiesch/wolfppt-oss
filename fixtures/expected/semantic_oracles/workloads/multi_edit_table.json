@@ -1,0 +1,424 @@
+{
+  "format": "wolfppt.semantic.v1",
+  "has_vba": false,
+  "part_count": 38,
+  "parts": [
+    "[Content_Types].xml",
+    "_rels/.rels",
+    "docProps/app.xml",
+    "docProps/core.xml",
+    "docProps/thumbnail.jpeg",
+    "ppt/_rels/presentation.xml.rels",
+    "ppt/presProps.xml",
+    "ppt/presentation.xml",
+    "ppt/printerSettings/printerSettings1.bin",
+    "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout10.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout11.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout2.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout3.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout4.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout5.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout6.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout7.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout8.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout9.xml.rels",
+    "ppt/slideLayouts/slideLayout1.xml",
+    "ppt/slideLayouts/slideLayout10.xml",
+    "ppt/slideLayouts/slideLayout11.xml",
+    "ppt/slideLayouts/slideLayout2.xml",
+    "ppt/slideLayouts/slideLayout3.xml",
+    "ppt/slideLayouts/slideLayout4.xml",
+    "ppt/slideLayouts/slideLayout5.xml",
+    "ppt/slideLayouts/slideLayout6.xml",
+    "ppt/slideLayouts/slideLayout7.xml",
+    "ppt/slideLayouts/slideLayout8.xml",
+    "ppt/slideLayouts/slideLayout9.xml",
+    "ppt/slideMasters/_rels/slideMaster1.xml.rels",
+    "ppt/slideMasters/slideMaster1.xml",
+    "ppt/slides/_rels/slide1.xml.rels",
+    "ppt/slides/slide1.xml",
+    "ppt/tableStyles.xml",
+    "ppt/theme/theme1.xml",
+    "ppt/viewProps.xml"
+  ],
+  "path": "fixtures/pptx/workloads/multi_edit_table.pptx",
+  "relationships": [
+    {
+      "id": "rId1",
+      "source": "/",
+      "target": "ppt/presentation.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+    },
+    {
+      "id": "rId2",
+      "source": "/",
+      "target": "docProps/thumbnail.jpeg",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"
+    },
+    {
+      "id": "rId3",
+      "source": "/",
+      "target": "docProps/core.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
+    },
+    {
+      "id": "rId4",
+      "source": "/",
+      "target": "docProps/app.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/presentation.xml",
+      "target": "slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/presentation.xml",
+      "target": "printerSettings/printerSettings1.bin",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/presentation.xml",
+      "target": "presProps.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/presentation.xml",
+      "target": "viewProps.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/presentation.xml",
+      "target": "theme/theme1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId6",
+      "source": "ppt/presentation.xml",
+      "target": "tableStyles.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles"
+    },
+    {
+      "id": "rId7",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout1.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout10.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout11.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout2.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout3.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout4.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout5.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout6.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout7.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout8.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout9.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId6",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout6.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId7",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId8",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout8.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId9",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout9.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId10",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout10.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId11",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout11.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId12",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../theme/theme1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    }
+  ],
+  "slides": [
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [],
+      "part": "ppt/slides/slide1.xml",
+      "shape_count": 1,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 8229600,
+            "cy": 3657600,
+            "x": 457200,
+            "y": 457200
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "graphic_frame",
+          "name": "Table 1",
+          "paragraphs": [
+            "R0C0",
+            "R0C1",
+            "R0C2",
+            "R0C3",
+            "R0C4",
+            "R0C5",
+            "R1C0",
+            "R1C1",
+            "R1C2",
+            "R1C3",
+            "R1C4",
+            "R1C5",
+            "R2C0",
+            "R2C1",
+            "R2C2",
+            "R2C3",
+            "R2C4",
+            "R2C5",
+            "R3C0",
+            "R3C1",
+            "R3C2",
+            "R3C3",
+            "R3C4",
+            "R3C5",
+            "R4C0",
+            "R4C1",
+            "R4C2",
+            "R4C3",
+            "R4C4",
+            "R4C5",
+            "R5C0",
+            "R5C1",
+            "R5C2",
+            "R5C3",
+            "R5C4",
+            "R5C5"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 6,
+              "row_count": 6,
+              "rows": [
+                [
+                  "R0C0",
+                  "R0C1",
+                  "R0C2",
+                  "R0C3",
+                  "R0C4",
+                  "R0C5"
+                ],
+                [
+                  "R1C0",
+                  "R1C1",
+                  "R1C2",
+                  "R1C3",
+                  "R1C4",
+                  "R1C5"
+                ],
+                [
+                  "R2C0",
+                  "R2C1",
+                  "R2C2",
+                  "R2C3",
+                  "R2C4",
+                  "R2C5"
+                ],
+                [
+                  "R3C0",
+                  "R3C1",
+                  "R3C2",
+                  "R3C3",
+                  "R3C4",
+                  "R3C5"
+                ],
+                [
+                  "R4C0",
+                  "R4C1",
+                  "R4C2",
+                  "R4C3",
+                  "R4C4",
+                  "R4C5"
+                ],
+                [
+                  "R5C0",
+                  "R5C1",
+                  "R5C2",
+                  "R5C3",
+                  "R5C4",
+                  "R5C5"
+                ]
+              ]
+            }
+          ],
+          "text": "R0C0\nR0C1\nR0C2\nR0C3\nR0C4\nR0C5\nR1C0\nR1C1\nR1C2\nR1C3\nR1C4\nR1C5\nR2C0\nR2C1\nR2C2\nR2C3\nR2C4\nR2C5\nR3C0\nR3C1\nR3C2\nR3C3\nR3C4\nR3C5\nR4C0\nR4C1\nR4C2\nR4C3\nR4C4\nR4C5\nR5C0\nR5C1\nR5C2\nR5C3\nR5C4\nR5C5",
+          "transform": {
+            "cx": 8229600,
+            "cy": 3657600,
+            "x": 457200,
+            "y": 457200
+          }
+        }
+      ],
+      "texts": [
+        "R0C0\nR0C1\nR0C2\nR0C3\nR0C4\nR0C5\nR1C0\nR1C1\nR1C2\nR1C3\nR1C4\nR1C5\nR2C0\nR2C1\nR2C2\nR2C3\nR2C4\nR2C5\nR3C0\nR3C1\nR3C2\nR3C3\nR3C4\nR3C5\nR4C0\nR4C1\nR4C2\nR4C3\nR4C4\nR4C5\nR5C0\nR5C1\nR5C2\nR5C3\nR5C4\nR5C5"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+[project]
+name = "wolfppt"
+version = "0.1.0"
+description = "Loss-aware PowerPoint editing runtime with package preservation and verification."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  { name = "Wolfgang Schoenberger" },
+]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Rust",
+  "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/wolfiesch/wolfppt"
+Repository = "https://github.com/wolfiesch/wolfppt"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "python-pptx>=1.0.2",
+]
+baseline = [
+  "python-pptx>=1.0.2",
+]
+render = [
+  "Pillow>=10.0",
+]
+
+[project.scripts]
+wolfppt = "wolfppt.demo:main"
+wolfppt-harness = "wolfppt.cli:main"
+
+[build-system]
+requires = ["maturin>=1.13,<2"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "pyo3"
+manifest-path = "crates/wolfppt-py/Cargo.toml"
+python-source = "src"
+module-name = "wolfppt.wolfppt_native"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

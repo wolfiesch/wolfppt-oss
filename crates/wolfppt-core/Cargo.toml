@@ -1,0 +1,19 @@
+[package]
+name = "wolfppt-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Rust core for WolfPPT package inspection and mutation."
+repository = "https://github.com/wolfiesch/wolfppt"
+keywords = ["pptx", "powerpoint", "openxml", "presentation"]
+categories = ["development-tools", "parser-implementations"]
+
+[dependencies]
+quick-xml = "0.38"
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
+thiserror = "2.0"
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+tempfile = "3.14"
