@@ -1,0 +1,1319 @@
+{
+  "format": "wolfppt.semantic.v1",
+  "has_vba": false,
+  "part_count": 68,
+  "parts": [
+    "[Content_Types].xml",
+    "_rels/.rels",
+    "docProps/app.xml",
+    "docProps/core.xml",
+    "docProps/thumbnail.jpeg",
+    "ppt/_rels/presentation.xml.rels",
+    "ppt/charts/_rels/chart1.xml.rels",
+    "ppt/charts/chart1.xml",
+    "ppt/commentAuthors.xml",
+    "ppt/comments/comment1.xml",
+    "ppt/embeddings/Microsoft_Excel_Sheet1.xlsx",
+    "ppt/embeddings/oleObject1.bin",
+    "ppt/media/image1.png",
+    "ppt/notesMasters/_rels/notesMaster1.xml.rels",
+    "ppt/notesMasters/notesMaster1.xml",
+    "ppt/notesSlides/_rels/notesSlide1.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide2.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide3.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide4.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide5.xml.rels",
+    "ppt/notesSlides/notesSlide1.xml",
+    "ppt/notesSlides/notesSlide2.xml",
+    "ppt/notesSlides/notesSlide3.xml",
+    "ppt/notesSlides/notesSlide4.xml",
+    "ppt/notesSlides/notesSlide5.xml",
+    "ppt/presProps.xml",
+    "ppt/presentation.xml",
+    "ppt/printerSettings/printerSettings1.bin",
+    "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout10.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout11.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout2.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout3.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout4.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout5.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout6.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout7.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout8.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout9.xml.rels",
+    "ppt/slideLayouts/slideLayout1.xml",
+    "ppt/slideLayouts/slideLayout10.xml",
+    "ppt/slideLayouts/slideLayout11.xml",
+    "ppt/slideLayouts/slideLayout2.xml",
+    "ppt/slideLayouts/slideLayout3.xml",
+    "ppt/slideLayouts/slideLayout4.xml",
+    "ppt/slideLayouts/slideLayout5.xml",
+    "ppt/slideLayouts/slideLayout6.xml",
+    "ppt/slideLayouts/slideLayout7.xml",
+    "ppt/slideLayouts/slideLayout8.xml",
+    "ppt/slideLayouts/slideLayout9.xml",
+    "ppt/slideMasters/_rels/slideMaster1.xml.rels",
+    "ppt/slideMasters/slideMaster1.xml",
+    "ppt/slides/_rels/slide1.xml.rels",
+    "ppt/slides/_rels/slide2.xml.rels",
+    "ppt/slides/_rels/slide3.xml.rels",
+    "ppt/slides/_rels/slide4.xml.rels",
+    "ppt/slides/_rels/slide5.xml.rels",
+    "ppt/slides/_rels/slide6.xml.rels",
+    "ppt/slides/slide1.xml",
+    "ppt/slides/slide2.xml",
+    "ppt/slides/slide3.xml",
+    "ppt/slides/slide4.xml",
+    "ppt/slides/slide5.xml",
+    "ppt/slides/slide6.xml",
+    "ppt/tableStyles.xml",
+    "ppt/theme/theme1.xml",
+    "ppt/theme/theme2.xml",
+    "ppt/viewProps.xml"
+  ],
+  "path": "fixtures/pptx/workloads/customer_success_review_pack.pptx",
+  "relationships": [
+    {
+      "id": "rId1",
+      "source": "/",
+      "target": "ppt/presentation.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+    },
+    {
+      "id": "rId2",
+      "source": "/",
+      "target": "docProps/thumbnail.jpeg",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"
+    },
+    {
+      "id": "rId3",
+      "source": "/",
+      "target": "docProps/core.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
+    },
+    {
+      "id": "rId4",
+      "source": "/",
+      "target": "docProps/app.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/charts/chart1.xml",
+      "target": "../embeddings/Microsoft_Excel_Sheet1.xlsx",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/package"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesMasters/notesMaster1.xml",
+      "target": "../theme/theme2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide1.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide1.xml",
+      "target": "../slides/slide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide2.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide2.xml",
+      "target": "../slides/slide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide3.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide3.xml",
+      "target": "../slides/slide3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide4.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide4.xml",
+      "target": "../slides/slide4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide5.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide5.xml",
+      "target": "../slides/slide5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/presentation.xml",
+      "target": "slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/presentation.xml",
+      "target": "printerSettings/printerSettings1.bin",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/presentation.xml",
+      "target": "presProps.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/presentation.xml",
+      "target": "viewProps.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/presentation.xml",
+      "target": "theme/theme1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId6",
+      "source": "ppt/presentation.xml",
+      "target": "tableStyles.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles"
+    },
+    {
+      "id": "rId7",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId8",
+      "source": "ppt/presentation.xml",
+      "target": "notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId9",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId10",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId11",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId12",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId13",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide6.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId14",
+      "source": "ppt/presentation.xml",
+      "target": "commentAuthors.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/commentAuthors"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout1.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout10.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout11.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout2.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout3.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout4.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout5.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout6.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout7.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout8.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout9.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId6",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout6.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId7",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId8",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout8.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId9",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout9.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId10",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout10.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId11",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout11.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId12",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../theme/theme1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../media/image1.png",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../notesSlides/notesSlide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../comments/comment1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../embeddings/oleObject1.bin",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide2.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide2.xml",
+      "target": "../notesSlides/notesSlide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide3.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide3.xml",
+      "target": "../charts/chart1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slides/slide3.xml",
+      "target": "../notesSlides/notesSlide3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide4.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide4.xml",
+      "target": "../notesSlides/notesSlide4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide5.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide5.xml",
+      "target": "../notesSlides/notesSlide5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide6.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    }
+  ],
+  "slides": [
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Synthetic customer success review pack for real-corpus preservation evidence."
+      ],
+      "part": "ppt/slides/slide1.xml",
+      "shape_count": 3,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Customer Success Quarterly Review"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Customer Success Quarterly Review",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7498079,
+            "cy": 731520,
+            "x": 640080,
+            "y": 960120
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "shape",
+          "name": "TextBox 2",
+          "paragraphs": [
+            "Renewal forecast, adoption trends, account risks, and executive actions."
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Renewal forecast, adoption trends, account risks, and executive actions.",
+          "transform": {
+            "cx": 7498079,
+            "cy": 731520,
+            "x": 640080,
+            "y": 960120
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 365760,
+            "cy": 365760,
+            "x": 8092440,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": true,
+          "id": "4",
+          "kind": "picture",
+          "name": "Picture 3",
+          "paragraphs": [],
+          "relationship_ids": [
+            "rId2"
+          ],
+          "tables": [],
+          "text": "",
+          "transform": {
+            "cx": 365760,
+            "cy": 365760,
+            "x": 8092440,
+            "y": 320040
+          }
+        }
+      ],
+      "texts": [
+        "Customer Success Quarterly Review",
+        "Renewal forecast, adoption trends, account risks, and executive actions."
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Renewal table should preserve exact ARR, owner, and next-step text."
+      ],
+      "part": "ppt/slides/slide2.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Renewal Forecast and At-Risk ARR"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Renewal Forecast and At-Risk ARR",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 8321040,
+            "cy": 2743200,
+            "x": 411480,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Segment",
+            "Renewing ARR",
+            "At risk",
+            "Champion",
+            "Next step",
+            "Enterprise",
+            "$18.6m",
+            "$1.4m",
+            "VP Ops",
+            "Exec sponsor call",
+            "Mid-market",
+            "$9.8m",
+            "$0.9m",
+            "Director CS",
+            "Usage review",
+            "Strategic",
+            "$12.2m",
+            "$2.1m",
+            "CRO",
+            "Pricing exception",
+            "SMB",
+            "$4.6m",
+            "$0.4m",
+            "CSM pool",
+            "Automation campaign",
+            "Total",
+            "$45.2m",
+            "$4.8m",
+            "CS Leadership",
+            "Weekly risk standup"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 5,
+              "row_count": 6,
+              "rows": [
+                [
+                  "Segment",
+                  "Renewing ARR",
+                  "At risk",
+                  "Champion",
+                  "Next step"
+                ],
+                [
+                  "Enterprise",
+                  "$18.6m",
+                  "$1.4m",
+                  "VP Ops",
+                  "Exec sponsor call"
+                ],
+                [
+                  "Mid-market",
+                  "$9.8m",
+                  "$0.9m",
+                  "Director CS",
+                  "Usage review"
+                ],
+                [
+                  "Strategic",
+                  "$12.2m",
+                  "$2.1m",
+                  "CRO",
+                  "Pricing exception"
+                ],
+                [
+                  "SMB",
+                  "$4.6m",
+                  "$0.4m",
+                  "CSM pool",
+                  "Automation campaign"
+                ],
+                [
+                  "Total",
+                  "$45.2m",
+                  "$4.8m",
+                  "CS Leadership",
+                  "Weekly risk standup"
+                ]
+              ]
+            }
+          ],
+          "text": "Segment\nRenewing ARR\nAt risk\nChampion\nNext step\nEnterprise\n$18.6m\n$1.4m\nVP Ops\nExec sponsor call\nMid-market\n$9.8m\n$0.9m\nDirector CS\nUsage review\nStrategic\n$12.2m\n$2.1m\nCRO\nPricing exception\nSMB\n$4.6m\n$0.4m\nCSM pool\nAutomation campaign\nTotal\n$45.2m\n$4.8m\nCS Leadership\nWeekly risk standup",
+          "transform": {
+            "cx": 8321040,
+            "cy": 2743200,
+            "x": 411480,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Renewal Forecast and At-Risk ARR",
+        "Segment\nRenewing ARR\nAt risk\nChampion\nNext step\nEnterprise\n$18.6m\n$1.4m\nVP Ops\nExec sponsor call\nMid-market\n$9.8m\n$0.9m\nDirector CS\nUsage review\nStrategic\n$12.2m\n$2.1m\nCRO\nPricing exception\nSMB\n$4.6m\n$0.4m\nCSM pool\nAutomation campaign\nTotal\n$45.2m\n$4.8m\nCS Leadership\nWeekly risk standup"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Line chart workbook and customer-health notes must survive round-trip."
+      ],
+      "part": "ppt/slides/slide3.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Adoption and Health Score Trends"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Adoption and Health Score Trends",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7680960,
+            "cy": 3657600,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": true,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Chart 2",
+          "paragraphs": [],
+          "relationship_ids": [
+            "rId2"
+          ],
+          "tables": [],
+          "text": "",
+          "transform": {
+            "cx": 7680960,
+            "cy": 3657600,
+            "x": 640080,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Adoption and Health Score Trends"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Risk-register table and connector line should be preserved."
+      ],
+      "part": "ppt/slides/slide4.xml",
+      "shape_count": 3,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Account Risk Register"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Account Risk Register",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7498079,
+            "cy": 2240280,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Account",
+            "Risk",
+            "ARR",
+            "Mitigation",
+            "Northwind",
+            "Sponsor left",
+            "$1.2m",
+            "Map new buyer",
+            "Fabrikam",
+            "Low usage",
+            "$0.8m",
+            "Admin enablement",
+            "Adventure",
+            "Pricing pushback",
+            "$1.6m",
+            "Bundle proposal",
+            "Contoso",
+            "Implementation delay",
+            "$1.1m",
+            "Exec escalation"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 4,
+              "row_count": 5,
+              "rows": [
+                [
+                  "Account",
+                  "Risk",
+                  "ARR",
+                  "Mitigation"
+                ],
+                [
+                  "Northwind",
+                  "Sponsor left",
+                  "$1.2m",
+                  "Map new buyer"
+                ],
+                [
+                  "Fabrikam",
+                  "Low usage",
+                  "$0.8m",
+                  "Admin enablement"
+                ],
+                [
+                  "Adventure",
+                  "Pricing pushback",
+                  "$1.6m",
+                  "Bundle proposal"
+                ],
+                [
+                  "Contoso",
+                  "Implementation delay",
+                  "$1.1m",
+                  "Exec escalation"
+                ]
+              ]
+            }
+          ],
+          "text": "Account\nRisk\nARR\nMitigation\nNorthwind\nSponsor left\n$1.2m\nMap new buyer\nFabrikam\nLow usage\n$0.8m\nAdmin enablement\nAdventure\nPricing pushback\n$1.6m\nBundle proposal\nContoso\nImplementation delay\n$1.1m\nExec escalation",
+          "transform": {
+            "cx": 7498079,
+            "cy": 2240280,
+            "x": 640080,
+            "y": 914400
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 6766560,
+            "cy": 0,
+            "x": 914400,
+            "y": 3429000
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "4",
+          "kind": "connector",
+          "name": "Connector 3",
+          "paragraphs": [],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "",
+          "transform": {
+            "cx": 6766560,
+            "cy": 0,
+            "x": 914400,
+            "y": 3429000
+          }
+        }
+      ],
+      "texts": [
+        "Account Risk Register",
+        "Account\nRisk\nARR\nMitigation\nNorthwind\nSponsor left\n$1.2m\nMap new buyer\nFabrikam\nLow usage\n$0.8m\nAdmin enablement\nAdventure\nPricing pushback\n$1.6m\nBundle proposal\nContoso\nImplementation delay\n$1.1m\nExec escalation"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Grouped customer-success action tiles should keep child text and transforms."
+      ],
+      "part": "ppt/slides/slide5.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Executive Actions"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Executive Actions",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "effective_transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 228600,
+                "y": 228600
+              },
+              "has_chart": false,
+              "has_group": false,
+              "has_picture": false,
+              "id": "4",
+              "kind": "shape",
+              "name": "Rounded Rectangle 3",
+              "paragraphs": [
+                "Renewal war room",
+                "CS Ops"
+              ],
+              "relationship_ids": [],
+              "tables": [],
+              "text": "Renewal war room\nCS Ops",
+              "transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 228600,
+                "y": 228600
+              }
+            },
+            {
+              "children": [],
+              "effective_transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 2834640,
+                "y": 228600
+              },
+              "has_chart": false,
+              "has_group": false,
+              "has_picture": false,
+              "id": "5",
+              "kind": "shape",
+              "name": "Rounded Rectangle 4",
+              "paragraphs": [
+                "Usage recovery",
+                "Product"
+              ],
+              "relationship_ids": [],
+              "tables": [],
+              "text": "Usage recovery\nProduct",
+              "transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 2834640,
+                "y": 228600
+              }
+            },
+            {
+              "children": [],
+              "effective_transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 228600,
+                "y": 1188720
+              },
+              "has_chart": false,
+              "has_group": false,
+              "has_picture": false,
+              "id": "6",
+              "kind": "shape",
+              "name": "Rounded Rectangle 5",
+              "paragraphs": [
+                "Champion mapping",
+                "Sales"
+              ],
+              "relationship_ids": [],
+              "tables": [],
+              "text": "Champion mapping\nSales",
+              "transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 228600,
+                "y": 1188720
+              }
+            },
+            {
+              "children": [],
+              "effective_transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 2834640,
+                "y": 1188720
+              },
+              "has_chart": false,
+              "has_group": false,
+              "has_picture": false,
+              "id": "7",
+              "kind": "shape",
+              "name": "Rounded Rectangle 6",
+              "paragraphs": [
+                "QBR content refresh",
+                "Marketing"
+              ],
+              "relationship_ids": [],
+              "tables": [],
+              "text": "QBR content refresh\nMarketing",
+              "transform": {
+                "cx": 2286000,
+                "cy": 713232,
+                "x": 2834640,
+                "y": 1188720
+              }
+            }
+          ],
+          "effective_transform": {
+            "cx": 4892040,
+            "cy": 1673352,
+            "x": 228600,
+            "y": 228600
+          },
+          "has_chart": false,
+          "has_group": true,
+          "has_picture": false,
+          "id": "3",
+          "kind": "group",
+          "name": "Group 2",
+          "paragraphs": [
+            "Renewal war room",
+            "CS Ops",
+            "Usage recovery",
+            "Product",
+            "Champion mapping",
+            "Sales",
+            "QBR content refresh",
+            "Marketing"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Renewal war room\nCS Ops\nUsage recovery\nProduct\nChampion mapping\nSales\nQBR content refresh\nMarketing",
+          "transform": {
+            "cx": 4892040,
+            "cy": 1673352,
+            "x": 228600,
+            "y": 228600
+          }
+        }
+      ],
+      "texts": [
+        "Executive Actions",
+        "Renewal war room\nCS Ops\nUsage recovery\nProduct\nChampion mapping\nSales\nQBR content refresh\nMarketing"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [],
+      "part": "ppt/slides/slide6.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Appendix: CS Evidence Index"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Appendix: CS Evidence Index",
+          "transform": {
+            "cx": 7955279,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7498079,
+            "cy": 2377440,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Artifact",
+            "Source",
+            "Owner",
+            "Renewal forecast",
+            "renewal_forecast.xlsx",
+            "CS Ops",
+            "Usage export",
+            "product_usage.csv",
+            "Data",
+            "Risk register",
+            "account_risks.xlsx",
+            "CS Leadership",
+            "QBR plan",
+            "qbr_playbook.docx",
+            "Marketing"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 3,
+              "row_count": 5,
+              "rows": [
+                [
+                  "Artifact",
+                  "Source",
+                  "Owner"
+                ],
+                [
+                  "Renewal forecast",
+                  "renewal_forecast.xlsx",
+                  "CS Ops"
+                ],
+                [
+                  "Usage export",
+                  "product_usage.csv",
+                  "Data"
+                ],
+                [
+                  "Risk register",
+                  "account_risks.xlsx",
+                  "CS Leadership"
+                ],
+                [
+                  "QBR plan",
+                  "qbr_playbook.docx",
+                  "Marketing"
+                ]
+              ]
+            }
+          ],
+          "text": "Artifact\nSource\nOwner\nRenewal forecast\nrenewal_forecast.xlsx\nCS Ops\nUsage export\nproduct_usage.csv\nData\nRisk register\naccount_risks.xlsx\nCS Leadership\nQBR plan\nqbr_playbook.docx\nMarketing",
+          "transform": {
+            "cx": 7498079,
+            "cy": 2377440,
+            "x": 640080,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Appendix: CS Evidence Index",
+        "Artifact\nSource\nOwner\nRenewal forecast\nrenewal_forecast.xlsx\nCS Ops\nUsage export\nproduct_usage.csv\nData\nRisk register\naccount_risks.xlsx\nCS Leadership\nQBR plan\nqbr_playbook.docx\nMarketing"
+      ]
+    }
+  ]
+}

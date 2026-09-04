@@ -1,0 +1,13 @@
+[package]
+name = "wolfppt-cli"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "CLI bridge and tools for the WolfPPT Rust core."
+repository = "https://github.com/wolfiesch/wolfppt"
+keywords = ["pptx", "powerpoint", "openxml", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+serde_json = "1.0"
+wolfppt-core = { path = "../wolfppt-core", version = "0.1.0" }

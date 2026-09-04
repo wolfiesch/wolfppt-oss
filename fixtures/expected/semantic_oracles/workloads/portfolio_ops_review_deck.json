@@ -1,0 +1,1297 @@
+{
+  "format": "wolfppt.semantic.v1",
+  "has_vba": false,
+  "part_count": 66,
+  "parts": [
+    "[Content_Types].xml",
+    "_rels/.rels",
+    "docProps/app.xml",
+    "docProps/core.xml",
+    "docProps/thumbnail.jpeg",
+    "ppt/_rels/presentation.xml.rels",
+    "ppt/charts/_rels/chart1.xml.rels",
+    "ppt/charts/chart1.xml",
+    "ppt/commentAuthors.xml",
+    "ppt/comments/comment1.xml",
+    "ppt/embeddings/Microsoft_Excel_Sheet1.xlsx",
+    "ppt/embeddings/oleObject1.bin",
+    "ppt/media/image1.png",
+    "ppt/notesMasters/_rels/notesMaster1.xml.rels",
+    "ppt/notesMasters/notesMaster1.xml",
+    "ppt/notesSlides/_rels/notesSlide1.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide2.xml.rels",
+    "ppt/notesSlides/_rels/notesSlide3.xml.rels",
+    "ppt/notesSlides/notesSlide1.xml",
+    "ppt/notesSlides/notesSlide2.xml",
+    "ppt/notesSlides/notesSlide3.xml",
+    "ppt/presProps.xml",
+    "ppt/presentation.xml",
+    "ppt/printerSettings/printerSettings1.bin",
+    "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout10.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout11.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout2.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout3.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout4.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout5.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout6.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout7.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout8.xml.rels",
+    "ppt/slideLayouts/_rels/slideLayout9.xml.rels",
+    "ppt/slideLayouts/slideLayout1.xml",
+    "ppt/slideLayouts/slideLayout10.xml",
+    "ppt/slideLayouts/slideLayout11.xml",
+    "ppt/slideLayouts/slideLayout2.xml",
+    "ppt/slideLayouts/slideLayout3.xml",
+    "ppt/slideLayouts/slideLayout4.xml",
+    "ppt/slideLayouts/slideLayout5.xml",
+    "ppt/slideLayouts/slideLayout6.xml",
+    "ppt/slideLayouts/slideLayout7.xml",
+    "ppt/slideLayouts/slideLayout8.xml",
+    "ppt/slideLayouts/slideLayout9.xml",
+    "ppt/slideMasters/_rels/slideMaster1.xml.rels",
+    "ppt/slideMasters/slideMaster1.xml",
+    "ppt/slides/_rels/slide1.xml.rels",
+    "ppt/slides/_rels/slide2.xml.rels",
+    "ppt/slides/_rels/slide3.xml.rels",
+    "ppt/slides/_rels/slide4.xml.rels",
+    "ppt/slides/_rels/slide5.xml.rels",
+    "ppt/slides/_rels/slide6.xml.rels",
+    "ppt/slides/_rels/slide7.xml.rels",
+    "ppt/slides/slide1.xml",
+    "ppt/slides/slide2.xml",
+    "ppt/slides/slide3.xml",
+    "ppt/slides/slide4.xml",
+    "ppt/slides/slide5.xml",
+    "ppt/slides/slide6.xml",
+    "ppt/slides/slide7.xml",
+    "ppt/tableStyles.xml",
+    "ppt/theme/theme1.xml",
+    "ppt/theme/theme2.xml",
+    "ppt/viewProps.xml"
+  ],
+  "path": "fixtures/pptx/workloads/portfolio_ops_review_deck.pptx",
+  "relationships": [
+    {
+      "id": "rId1",
+      "source": "/",
+      "target": "ppt/presentation.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+    },
+    {
+      "id": "rId2",
+      "source": "/",
+      "target": "docProps/thumbnail.jpeg",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"
+    },
+    {
+      "id": "rId3",
+      "source": "/",
+      "target": "docProps/core.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
+    },
+    {
+      "id": "rId4",
+      "source": "/",
+      "target": "docProps/app.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/charts/chart1.xml",
+      "target": "../embeddings/Microsoft_Excel_Sheet1.xlsx",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/package"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesMasters/notesMaster1.xml",
+      "target": "../theme/theme2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide1.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide1.xml",
+      "target": "../slides/slide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide2.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide2.xml",
+      "target": "../slides/slide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/notesSlides/notesSlide3.xml",
+      "target": "../notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/notesSlides/notesSlide3.xml",
+      "target": "../slides/slide6.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/presentation.xml",
+      "target": "slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/presentation.xml",
+      "target": "printerSettings/printerSettings1.bin",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/presentation.xml",
+      "target": "presProps.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/presentation.xml",
+      "target": "viewProps.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/presentation.xml",
+      "target": "theme/theme1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId6",
+      "source": "ppt/presentation.xml",
+      "target": "tableStyles.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles"
+    },
+    {
+      "id": "rId7",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId8",
+      "source": "ppt/presentation.xml",
+      "target": "notesMasters/notesMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster"
+    },
+    {
+      "id": "rId9",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId10",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId11",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId12",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId13",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide6.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId14",
+      "source": "ppt/presentation.xml",
+      "target": "slides/slide7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"
+    },
+    {
+      "id": "rId15",
+      "source": "ppt/presentation.xml",
+      "target": "commentAuthors.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/commentAuthors"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout1.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout10.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout11.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout2.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout3.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout4.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout5.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout6.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout7.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout8.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideLayouts/slideLayout9.xml",
+      "target": "../slideMasters/slideMaster1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout4.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout5.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId6",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout6.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId7",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId8",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout8.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId9",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout9.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId10",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout10.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId11",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../slideLayouts/slideLayout11.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId12",
+      "source": "ppt/slideMasters/slideMaster1.xml",
+      "target": "../theme/theme1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../media/image1.png",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+    },
+    {
+      "id": "rId3",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../notesSlides/notesSlide1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId4",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../comments/comment1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments"
+    },
+    {
+      "id": "rId5",
+      "source": "ppt/slides/slide1.xml",
+      "target": "../embeddings/oleObject1.bin",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide2.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide2.xml",
+      "target": "../notesSlides/notesSlide2.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide3.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide3.xml",
+      "target": "../charts/chart1.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide4.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide5.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide6.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    },
+    {
+      "id": "rId2",
+      "source": "ppt/slides/slide6.xml",
+      "target": "../notesSlides/notesSlide3.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide"
+    },
+    {
+      "id": "rId1",
+      "source": "ppt/slides/slide7.xml",
+      "target": "../slideLayouts/slideLayout7.xml",
+      "target_mode": null,
+      "type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"
+    }
+  ],
+  "slides": [
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Use this deck to pressure-test portfolio review preservation."
+      ],
+      "part": "ppt/slides/slide1.xml",
+      "shape_count": 3,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Portfolio Operations Review"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Portfolio Operations Review",
+          "transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7680960,
+            "cy": 731520,
+            "x": 640080,
+            "y": 960120
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "shape",
+          "name": "TextBox 2",
+          "paragraphs": [
+            "KPI roll-forward, concentration, initiatives, risks, and appendix evidence."
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "KPI roll-forward, concentration, initiatives, risks, and appendix evidence.",
+          "transform": {
+            "cx": 7680960,
+            "cy": 731520,
+            "x": 640080,
+            "y": 960120
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 365760,
+            "cy": 365760,
+            "x": 8092440,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": true,
+          "id": "4",
+          "kind": "picture",
+          "name": "Picture 3",
+          "paragraphs": [],
+          "relationship_ids": [
+            "rId2"
+          ],
+          "tables": [],
+          "text": "",
+          "transform": {
+            "cx": 365760,
+            "cy": 365760,
+            "x": 8092440,
+            "y": 320040
+          }
+        }
+      ],
+      "texts": [
+        "Portfolio Operations Review",
+        "KPI roll-forward, concentration, initiatives, risks, and appendix evidence."
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Confirm each KPI ties to the latest portfolio workbook."
+      ],
+      "part": "ppt/slides/slide2.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Portfolio KPI Roll-forward"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Portfolio KPI Roll-forward",
+          "transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 8229600,
+            "cy": 3108960,
+            "x": 457200,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Company",
+            "Revenue",
+            "EBITDA",
+            "Rule of 40",
+            "Status",
+            "Northwind",
+            "$24.2m",
+            "$5.1m",
+            "42%",
+            "Green",
+            "Contoso",
+            "$18.6m",
+            "$3.2m",
+            "36%",
+            "Yellow",
+            "Fabrikam",
+            "$31.4m",
+            "$6.8m",
+            "48%",
+            "Green",
+            "Adventure",
+            "$12.8m",
+            "$1.1m",
+            "25%",
+            "Red",
+            "Tailwind",
+            "$9.7m",
+            "$2.0m",
+            "39%",
+            "Yellow",
+            "Total",
+            "$96.7m",
+            "$18.2m",
+            "40%",
+            "Review"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 5,
+              "row_count": 7,
+              "rows": [
+                [
+                  "Company",
+                  "Revenue",
+                  "EBITDA",
+                  "Rule of 40",
+                  "Status"
+                ],
+                [
+                  "Northwind",
+                  "$24.2m",
+                  "$5.1m",
+                  "42%",
+                  "Green"
+                ],
+                [
+                  "Contoso",
+                  "$18.6m",
+                  "$3.2m",
+                  "36%",
+                  "Yellow"
+                ],
+                [
+                  "Fabrikam",
+                  "$31.4m",
+                  "$6.8m",
+                  "48%",
+                  "Green"
+                ],
+                [
+                  "Adventure",
+                  "$12.8m",
+                  "$1.1m",
+                  "25%",
+                  "Red"
+                ],
+                [
+                  "Tailwind",
+                  "$9.7m",
+                  "$2.0m",
+                  "39%",
+                  "Yellow"
+                ],
+                [
+                  "Total",
+                  "$96.7m",
+                  "$18.2m",
+                  "40%",
+                  "Review"
+                ]
+              ]
+            }
+          ],
+          "text": "Company\nRevenue\nEBITDA\nRule of 40\nStatus\nNorthwind\n$24.2m\n$5.1m\n42%\nGreen\nContoso\n$18.6m\n$3.2m\n36%\nYellow\nFabrikam\n$31.4m\n$6.8m\n48%\nGreen\nAdventure\n$12.8m\n$1.1m\n25%\nRed\nTailwind\n$9.7m\n$2.0m\n39%\nYellow\nTotal\n$96.7m\n$18.2m\n40%\nReview",
+          "transform": {
+            "cx": 8229600,
+            "cy": 3108960,
+            "x": 457200,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Portfolio KPI Roll-forward",
+        "Company\nRevenue\nEBITDA\nRule of 40\nStatus\nNorthwind\n$24.2m\n$5.1m\n42%\nGreen\nContoso\n$18.6m\n$3.2m\n36%\nYellow\nFabrikam\n$31.4m\n$6.8m\n48%\nGreen\nAdventure\n$12.8m\n$1.1m\n25%\nRed\nTailwind\n$9.7m\n$2.0m\n39%\nYellow\nTotal\n$96.7m\n$18.2m\n40%\nReview"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [],
+      "part": "ppt/slides/slide3.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Revenue by Portfolio Company"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Revenue by Portfolio Company",
+          "transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7680960,
+            "cy": 3657600,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": true,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Chart 2",
+          "paragraphs": [],
+          "relationship_ids": [
+            "rId2"
+          ],
+          "tables": [],
+          "text": "",
+          "transform": {
+            "cx": 7680960,
+            "cy": 3657600,
+            "x": 640080,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Revenue by Portfolio Company"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [],
+      "part": "ppt/slides/slide4.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Customer Concentration"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Customer Concentration",
+          "transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7680960,
+            "cy": 2377440,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Customer",
+            "Portfolio Co.",
+            "ARR",
+            "% Revenue",
+            "Acme",
+            "Northwind",
+            "$4.4m",
+            "18%",
+            "Globex",
+            "Fabrikam",
+            "$3.8m",
+            "12%",
+            "Initech",
+            "Contoso",
+            "$2.1m",
+            "11%",
+            "Umbrella",
+            "Adventure",
+            "$1.6m",
+            "13%"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 4,
+              "row_count": 5,
+              "rows": [
+                [
+                  "Customer",
+                  "Portfolio Co.",
+                  "ARR",
+                  "% Revenue"
+                ],
+                [
+                  "Acme",
+                  "Northwind",
+                  "$4.4m",
+                  "18%"
+                ],
+                [
+                  "Globex",
+                  "Fabrikam",
+                  "$3.8m",
+                  "12%"
+                ],
+                [
+                  "Initech",
+                  "Contoso",
+                  "$2.1m",
+                  "11%"
+                ],
+                [
+                  "Umbrella",
+                  "Adventure",
+                  "$1.6m",
+                  "13%"
+                ]
+              ]
+            }
+          ],
+          "text": "Customer\nPortfolio Co.\nARR\n% Revenue\nAcme\nNorthwind\n$4.4m\n18%\nGlobex\nFabrikam\n$3.8m\n12%\nInitech\nContoso\n$2.1m\n11%\nUmbrella\nAdventure\n$1.6m\n13%",
+          "transform": {
+            "cx": 7680960,
+            "cy": 2377440,
+            "x": 640080,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Customer Concentration",
+        "Customer\nPortfolio Co.\nARR\n% Revenue\nAcme\nNorthwind\n$4.4m\n18%\nGlobex\nFabrikam\n$3.8m\n12%\nInitech\nContoso\n$2.1m\n11%\nUmbrella\nAdventure\n$1.6m\n13%"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [],
+      "part": "ppt/slides/slide5.xml",
+      "shape_count": 5,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Value Creation Roadmap"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Value Creation Roadmap",
+          "transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 3291840,
+            "cy": 685800,
+            "x": 731520,
+            "y": 1005840
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "shape",
+          "name": "Rounded Rectangle 2",
+          "paragraphs": [
+            "Pricing cleanup"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Pricing cleanup",
+          "transform": {
+            "cx": 3291840,
+            "cy": 685800,
+            "x": 731520,
+            "y": 1005840
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 3291840,
+            "cy": 685800,
+            "x": 4754880,
+            "y": 1005840
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "4",
+          "kind": "shape",
+          "name": "Rounded Rectangle 3",
+          "paragraphs": [
+            "Sales capacity"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Sales capacity",
+          "transform": {
+            "cx": 3291840,
+            "cy": 685800,
+            "x": 4754880,
+            "y": 1005840
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 3291840,
+            "cy": 685800,
+            "x": 731520,
+            "y": 2194560
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "5",
+          "kind": "shape",
+          "name": "Rounded Rectangle 4",
+          "paragraphs": [
+            "Working capital"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Working capital",
+          "transform": {
+            "cx": 3291840,
+            "cy": 685800,
+            "x": 731520,
+            "y": 2194560
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 3291840,
+            "cy": 685800,
+            "x": 4754880,
+            "y": 2194560
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "6",
+          "kind": "shape",
+          "name": "Rounded Rectangle 5",
+          "paragraphs": [
+            "Data room refresh"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Data room refresh",
+          "transform": {
+            "cx": 3291840,
+            "cy": 685800,
+            "x": 4754880,
+            "y": 2194560
+          }
+        }
+      ],
+      "texts": [
+        "Value Creation Roadmap",
+        "Pricing cleanup",
+        "Sales capacity",
+        "Working capital",
+        "Data room refresh"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [
+        "Do not drop the risk notes or decision text during round-trip."
+      ],
+      "part": "ppt/slides/slide6.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Risk Register and Required Decisions"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Risk Register and Required Decisions",
+          "transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7498079,
+            "cy": 1097280,
+            "x": 685800,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "shape",
+          "name": "TextBox 2",
+          "paragraphs": [
+            "Red: Adventure retention; Yellow: Contoso expansion slippage",
+            "Decision: approve incremental sales hiring for Q3",
+            "Decision: require weekly cash bridge"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Red: Adventure retention; Yellow: Contoso expansion slippage\nDecision: approve incremental sales hiring for Q3\nDecision: require weekly cash bridge",
+          "transform": {
+            "cx": 7498079,
+            "cy": 1097280,
+            "x": 685800,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Risk Register and Required Decisions",
+        "Red: Adventure retention; Yellow: Contoso expansion slippage\nDecision: approve incremental sales hiring for Q3\nDecision: require weekly cash bridge"
+      ]
+    },
+    {
+      "has_timing": false,
+      "has_transition": false,
+      "notes": [],
+      "part": "ppt/slides/slide7.xml",
+      "shape_count": 2,
+      "shapes": [
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "2",
+          "kind": "shape",
+          "name": "TextBox 1",
+          "paragraphs": [
+            "Appendix: Evidence Index"
+          ],
+          "relationship_ids": [],
+          "tables": [],
+          "text": "Appendix: Evidence Index",
+          "transform": {
+            "cx": 7772400,
+            "cy": 548640,
+            "x": 457200,
+            "y": 320040
+          }
+        },
+        {
+          "children": [],
+          "effective_transform": {
+            "cx": 7498079,
+            "cy": 2011680,
+            "x": 640080,
+            "y": 914400
+          },
+          "has_chart": false,
+          "has_group": false,
+          "has_picture": false,
+          "id": "3",
+          "kind": "graphic_frame",
+          "name": "Table 2",
+          "paragraphs": [
+            "Evidence",
+            "Source",
+            "Owner",
+            "KPI workbook",
+            "portfolio_kpi.xlsx",
+            "Finance",
+            "Revenue bridge",
+            "qbr_export.xlsx",
+            "Ops",
+            "Customer list",
+            "crm_snapshot.csv",
+            "RevOps"
+          ],
+          "relationship_ids": [],
+          "tables": [
+            {
+              "col_count": 3,
+              "row_count": 4,
+              "rows": [
+                [
+                  "Evidence",
+                  "Source",
+                  "Owner"
+                ],
+                [
+                  "KPI workbook",
+                  "portfolio_kpi.xlsx",
+                  "Finance"
+                ],
+                [
+                  "Revenue bridge",
+                  "qbr_export.xlsx",
+                  "Ops"
+                ],
+                [
+                  "Customer list",
+                  "crm_snapshot.csv",
+                  "RevOps"
+                ]
+              ]
+            }
+          ],
+          "text": "Evidence\nSource\nOwner\nKPI workbook\nportfolio_kpi.xlsx\nFinance\nRevenue bridge\nqbr_export.xlsx\nOps\nCustomer list\ncrm_snapshot.csv\nRevOps",
+          "transform": {
+            "cx": 7498079,
+            "cy": 2011680,
+            "x": 640080,
+            "y": 914400
+          }
+        }
+      ],
+      "texts": [
+        "Appendix: Evidence Index",
+        "Evidence\nSource\nOwner\nKPI workbook\nportfolio_kpi.xlsx\nFinance\nRevenue bridge\nqbr_export.xlsx\nOps\nCustomer list\ncrm_snapshot.csv\nRevOps"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+[project]
+name = "wolfppt-native"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Native Python bindings for the WolfPPT Rust core."
+license = "MIT"
+
+[build-system]
+requires = ["maturin>=1.13,<2"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "pyo3"
+module-name = "wolfppt_native"
+manifest-path = "Cargo.toml"
+
