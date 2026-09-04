@@ -29,7 +29,7 @@ jobs:
           maturin-version: v1.14.1
           sccache: true
           manylinux: "2_28"
-          args: --release --locked --out dist
+          args: --release --locked --out dist --interpreter python
       - name: Smoke test wheel
         run: |
           python -m pip install dist/*.whl
