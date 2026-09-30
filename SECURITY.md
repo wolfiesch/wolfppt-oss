@@ -33,7 +33,7 @@ commercial SDK comparisons) invoke locally installed binaries only.
 ## Reporting a vulnerability
 
 Report privately via GitHub security advisories
-(`https://github.com/wolfiesch/wolfppt/security/advisories/new`) or email
+(`https://github.com/wolfiesch/wolfppt-oss/security/advisories/new`) or email
 `security@wolfie.gg`. Include a minimal reproducing package where possible.
 Please do not open public issues for suspected corrupt-output or
 security-sensitive behavior. Reports are acknowledged within 7 days.

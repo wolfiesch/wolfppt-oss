@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "CLI bridge and tools for the WolfPPT Rust core."
-repository = "https://github.com/wolfiesch/wolfppt"
+repository = "https://github.com/wolfiesch/wolfppt-oss"
 keywords = ["pptx", "powerpoint", "openxml", "cli"]
 categories = ["command-line-utilities", "development-tools"]
 
