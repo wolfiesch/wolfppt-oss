@@ -1,8 +1,20 @@
 [project]
 name = "wolfppt"
 version = "0.1.0"
-description = "Loss-aware PowerPoint editing runtime with package preservation and verification."
+description = "Edit existing PowerPoint .pptx decks from Python with a python-pptx-style API, keeping themes, layouts, and every untouched part byte-for-byte identical. MIT licensed."
 readme = "README.md"
+keywords = [
+  "powerpoint",
+  "pptx",
+  "pptm",
+  "python-pptx",
+  "python-pptx-alternative",
+  "edit-pptx",
+  "presentation",
+  "slides",
+  "office-automation",
+  "reporting",
+]
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -23,8 +35,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/wolfiesch/wolfppt"
-Repository = "https://github.com/wolfiesch/wolfppt"
+Homepage = "https://wolfppt.com"
+Repository = "https://github.com/wolfiesch/wolfppt-oss"
 
 [project.optional-dependencies]
 dev = [
