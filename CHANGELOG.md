@@ -4,7 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.1] - 2026-09-30
+
+### Changed
+- Lead the README and PyPI description with editing existing decks, a verified example, and a python-pptx comparison.
+- Point the PyPI Homepage and Repository links at wolfppt.com and the public repository.
+
+### Fixed
+- Include LICENSE in the source distribution, so the sdist publishes alongside the wheels.
+
+## [0.1.0] - 2026-09-04
 
 ### Added
 - Support slide duplication with configurable copy policies for media, comments, charts, notes, OLE objects, and external relationships.

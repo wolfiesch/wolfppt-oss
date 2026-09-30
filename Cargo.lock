@@ -690,7 +690,7 @@ dependencies = [
 
 [[package]]
 name = "wolfppt-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_json",
  "wolfppt-core",
@@ -698,7 +698,7 @@ dependencies = [
 
 [[package]]
 name = "wolfppt-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "quick-xml",
  "serde",
@@ -710,7 +710,7 @@ dependencies = [
 
 [[package]]
 name = "wolfppt-py"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "pyo3",
  "serde_json",
