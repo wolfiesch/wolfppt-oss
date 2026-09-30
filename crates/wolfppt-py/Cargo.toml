@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "PyO3 Python native bindings for the WolfPPT Rust core."
-repository = "https://github.com/wolfiesch/wolfppt"
+repository = "https://github.com/wolfiesch/wolfppt-oss"
 keywords = ["pptx", "powerpoint", "openxml", "pyo3", "python"]
 categories = ["api-bindings", "development-tools"]
 

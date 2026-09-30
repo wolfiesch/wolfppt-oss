@@ -2,13 +2,41 @@
 
 [![CI](https://github.com/wolfiesch/wolfppt-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/wolfiesch/wolfppt-oss/actions/workflows/ci.yml)
 
-WolfPPT is a Rust-native PowerPoint editing runtime for surgical, verified
-edits to existing decks.
+Edit existing PowerPoint `.pptx` decks from Python with a python-pptx-style API
+and keep every part you did not touch, including themes, layouts, masters,
+charts, media, and notes, byte-for-byte identical. WolfPPT is MIT licensed and
+also creates new decks.
 
-Generating a new deck from scratch is easy. Safely editing the 90-slide deck
-a company already uses — without corrupting its charts, media, notes, links,
-or unknown internals — is a different problem, and it is the problem WolfPPT
-is built for.
+```bash
+pip install wolfppt
+```
+
+Replace a placeholder in a deck your team already maintains, keeping that
+run's formatting, then update a table cell:
+
+```python
+from wolfppt import Presentation
+
+prs = Presentation("monthly_review.pptx")
+for slide in prs.slides:
+    for shape in slide.shapes:
+        if not shape.has_text_frame:
+            continue
+        for paragraph in shape.text_frame.paragraphs:
+            for run in paragraph.runs:
+                if "{{month}}" in run.text:
+                    run.text = run.text.replace("{{month}}", "September")
+
+table = next(s for s in prs.slides[1].shapes if s.has_table).table
+table.cell(1, 1).text = "$4.2M"
+prs.save("monthly_review_updated.pptx")
+```
+
+The saved copy rewrites only the two edited slide parts. Task guides for
+[text](https://wolfppt.com/update-pptx-python),
+[tables](https://wolfppt.com/update-pptx-table-python), and
+[chart data](https://wolfppt.com/update-pptx-chart-python) are on
+[wolfppt.com](https://wolfppt.com/).
 
 - Lossless `.pptx` / `.pptm` package preservation: parts you did not edit,
   including parts WolfPPT has no schema for, stay byte-for-byte identical.
@@ -16,22 +44,35 @@ is built for.
   delete, reorder) with mutation guards that refuse unsafe edits instead of
   writing them.
 - Verification receipts, semantic diffs, and optional Open XML validation
-  and render smoke, so every claimed edit is checked against the saved
-  package, not assumed.
+  and render smoke check every claimed edit against the saved package.
 
-Those claims are not asserted; they are measured. The benchmark harness in
-this repository is the evidence system that proves them, and it stays a
+The benchmark harness in this repository measures these claims and stays a
 first-class part of the project.
+
+## Compared with python-pptx
+
+- **API shape:** the facade mirrors python-pptx names (`Presentation`,
+  `slides`, `shapes`, `text_frame`, `runs`, `table.cell(...)`) for the
+  operations it covers and runs without python-pptx installed.
+- **Preservation:** python-pptx saves the slide, layout, master, notes, and
+  chart parts it models by serializing their XML again. On the checked-in
+  fixtures, a python-pptx 1.0.2 open-and-save round trip rewrote the chart
+  parts and `[Content_Types].xml` of decks with charts; the same round trip
+  through WolfPPT left every part byte-identical.
+- **Speed:** `sdk-preservation` run `20260519T034127Z` (see
+  [Benchmark Suite](#benchmark-suite)) measured WolfPPT round trips 2.006x to
+  561.911x faster than the open-source baselines, python-pptx among them.
+- **Coverage:** python-pptx has the broader API, and WolfPPT wheels cover
+  CPython 3.11-3.14 on Linux x86_64/aarch64 and macOS arm64. Check the
+  [compatibility matrix](docs/compatibility/compatibility-matrix.md) for each
+  call a script relies on, and keep python-pptx for APIs it does not list.
 
 ## Quickstart
 
-Install from source:
-
-```bash
-pip install wolfppt
-```
-
-PyPI wheels cover CPython 3.11-3.14 on Linux x86_64/aarch64 and macOS arm64. Add the `baseline` extra (`pip install wolfppt[baseline]`) for the `wolfppt-harness` command, which needs `python-pptx` for adapter comparison lanes.
+Install the latest release from PyPI with `pip install wolfppt`, or install a
+source checkout with `pip install .`. Add the `baseline` extra
+(`pip install wolfppt[baseline]`) for the `wolfppt-harness` command, which
+needs `python-pptx` for adapter comparison lanes.
 
 Then run the built-in demo:
 
@@ -50,7 +91,7 @@ reopen: passed
 open xml validation: skipped (Open XML validation is optional and is not run by the demo.)
 ```
 
-Basic usage:
+Create a new deck:
 
 ```python
 from wolfppt import Presentation
