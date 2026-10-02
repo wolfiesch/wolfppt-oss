@@ -78,6 +78,7 @@ fn summarize_shape_block(block: &str, parent_frame: Option<CoordinateFrame>) -> 
     let (is_placeholder, placeholder_type, placeholder_idx) = placeholder_properties(block);
     let paragraph_runs = extract_paragraph_runs(block.as_bytes());
     let paragraph_line_breaks = extract_paragraph_line_breaks(block.as_bytes());
+    let paragraph_fields = extract_paragraph_fields(block.as_bytes());
     let paragraph_run_bold = extract_paragraph_run_bold(block.as_bytes());
     let paragraph_run_italic = extract_paragraph_run_italic(block.as_bytes());
     let paragraph_run_underline = extract_paragraph_run_underline(block.as_bytes());
@@ -104,6 +105,7 @@ fn summarize_shape_block(block: &str, parent_frame: Option<CoordinateFrame>) -> 
         paragraphs,
         paragraph_runs,
         paragraph_line_breaks,
+        paragraph_fields,
         paragraph_run_bold,
         paragraph_run_italic,
         paragraph_run_underline,

@@ -523,6 +523,7 @@ def _top_level_text_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
         non_visual_properties = child.find(f".//{{{P_NS}}}cNvPr")
         paragraphs = _text_blocks(child) or [""]
         paragraph_runs = _text_paragraph_runs(child) or [[] for _ in paragraphs]
+        line_breaks, fields = paragraph_breaks_and_fields(child)
         transform = _shape_transform_payload(child)
         hint = {
             "id": None
@@ -535,7 +536,8 @@ def _top_level_text_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
             "text": "\n".join(paragraphs),
             "paragraphs": paragraphs,
             "paragraph_runs": _fit_text_run_blocks(paragraph_runs, paragraphs),
-            "paragraph_line_breaks": [[] for _ in paragraphs],
+            "paragraph_line_breaks": line_breaks,
+            "paragraph_fields": fields,
             "relationship_ids": [],
             "has_chart": False,
             "has_picture": False,
@@ -624,6 +626,7 @@ def _child_shape_hint(element: ET.Element, shape_index: int) -> dict[str, Any]:
     relationship_ids = _shape_relationship_ids(element)
     paragraphs = _text_blocks(element) or [""]
     paragraph_runs = _text_paragraph_runs(element) or [[] for _ in paragraphs]
+    line_breaks, fields = paragraph_breaks_and_fields(element)
     kind = {
         "grpSp": "group",
         "pic": "picture",
@@ -644,6 +647,8 @@ def _child_shape_hint(element: ET.Element, shape_index: int) -> dict[str, Any]:
         "paragraph_runs": _fit_text_run_blocks(paragraph_runs, paragraphs)
         if local_name == "sp"
         else [],
+        "paragraph_line_breaks": line_breaks if local_name == "sp" else [],
+        "paragraph_fields": fields if local_name == "sp" else [],
         "relationship_ids": relationship_ids,
         "has_chart": any(rel_id for rel_id in relationship_ids if rel_id),
         "has_picture": local_name == "pic",
@@ -723,16 +728,51 @@ def _text_blocks(root: ET.Element) -> list[str]:
 
 
 def _text_paragraph_runs(root: ET.Element) -> list[list[str]]:
+    """Text of each `a:r` per paragraph, as python-pptx `paragraph.runs`."""
     paragraphs: list[list[str]] = []
     for paragraph in root.findall(f".//{{{A_NS}}}p"):
         runs: list[str] = []
         for child in list(paragraph):
-            if _xml_local_name(child.tag) not in {"r", "fld"}:
+            if _xml_local_name(child.tag) != "r":
                 continue
             text = child.find(f"{{{A_NS}}}t")
             runs.append("" if text is None else text.text or "")
         paragraphs.append(runs)
     return paragraphs
+
+
+def paragraph_breaks_and_fields(
+    root: ET.Element,
+) -> tuple[list[list[int]], list[list[dict[str, Any]]]]:
+    """Line break run slots and `a:fld` text fields for each paragraph.
+
+    Fields are not runs. Each field records how many runs and line breaks of
+    its paragraph precede it, so paragraph text can be rebuilt in order.
+    """
+    line_breaks: list[list[int]] = []
+    fields: list[list[dict[str, Any]]] = []
+    for paragraph in root.findall(f".//{{{A_NS}}}p"):
+        run_count = 0
+        paragraph_breaks: list[int] = []
+        paragraph_fields: list[dict[str, Any]] = []
+        for child in paragraph:
+            local_name = _xml_local_name(child.tag)
+            if local_name == "r":
+                run_count += 1
+            elif local_name == "br":
+                paragraph_breaks.append(run_count)
+            elif local_name == "fld":
+                text = child.find(f"{{{A_NS}}}t")
+                paragraph_fields.append(
+                    {
+                        "run_slot": run_count,
+                        "line_breaks_before": len(paragraph_breaks),
+                        "text": "" if text is None else text.text or "",
+                    }
+                )
+        line_breaks.append(paragraph_breaks)
+        fields.append(paragraph_fields)
+    return line_breaks, fields
 
 
 def _fit_text_run_blocks(

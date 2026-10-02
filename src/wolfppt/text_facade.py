@@ -28,6 +28,7 @@ from .facade_values import (
 from .package_parts import PackagePart
 from .shape_payloads import (
     _shape_paragraph_alignments,
+    _shape_paragraph_fields,
     _shape_paragraph_line_breaks,
     _shape_paragraph_levels,
     _shape_paragraph_run_bold,
@@ -397,6 +398,7 @@ class TextParagraph:
         paragraph_runs = _shape_paragraph_runs(self._shape)
         paragraph_runs[self._index] = [text]
         _shape_paragraph_line_breaks(self._shape)[self._index] = []
+        _shape_paragraph_fields(self._shape)[self._index] = []
         _sync_shape_text_from_paragraph_runs(self._shape, paragraph_runs)
         _queue_paragraph_state(self._shape, self._index)
 
@@ -404,6 +406,7 @@ class TextParagraph:
         paragraph_runs = _shape_paragraph_runs(self._shape)
         paragraph_runs[self._index] = []
         _shape_paragraph_line_breaks(self._shape)[self._index] = []
+        _shape_paragraph_fields(self._shape)[self._index] = []
         _sync_shape_text_from_paragraph_runs(self._shape, paragraph_runs)
         _queue_paragraph_clear_state(self._shape, self._index)
         return self
