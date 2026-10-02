@@ -1,6 +1,6 @@
 [project]
 name = "wolfppt"
-version = "0.1.1"
+version = "0.1.2"
 description = "Edit existing PowerPoint .pptx decks from Python with a python-pptx-style API, keeping themes, layouts, and every untouched part byte-for-byte identical. MIT licensed."
 readme = "README.md"
 keywords = [
