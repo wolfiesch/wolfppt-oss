@@ -12,6 +12,7 @@ from .extractor import PresentationSemantics, extract_semantics
 from .facade_values import centipoints_to_emu
 from .package_parts import natural_key, normalize_package_partname
 from .slide_metadata import (
+    paragraph_breaks_and_fields,
     part_common_slide_name,
     presentation_slide_master_partnames,
     read_presentation_slide_metadata,
@@ -187,6 +188,7 @@ def _shape_payload_from_xml(element: ET.Element) -> dict[str, Any] | None:
     non_visual_properties = element.find(f".//{{{P_NS}}}cNvPr")
     placeholder = element.find(f".//{{{P_NS}}}ph")
     paragraphs = _shape_element_paragraphs(element)
+    line_breaks, fields = paragraph_breaks_and_fields(element)
     payload: dict[str, Any] = {
         "id": None
         if non_visual_properties is None
@@ -198,6 +200,8 @@ def _shape_payload_from_xml(element: ET.Element) -> dict[str, Any] | None:
         "text": "\n".join(paragraphs),
         "paragraphs": paragraphs,
         "paragraph_runs": _shape_element_paragraph_runs(element),
+        "paragraph_line_breaks": line_breaks,
+        "paragraph_fields": fields,
         "paragraph_run_bold": _shape_element_paragraph_run_bools(element, "b"),
         "paragraph_run_italic": _shape_element_paragraph_run_bools(element, "i"),
         "paragraph_run_underline": _shape_element_paragraph_run_underline(element),
@@ -230,11 +234,12 @@ def _shape_element_paragraphs(element: ET.Element) -> list[str]:
 
 
 def _shape_element_paragraph_runs(element: ET.Element) -> list[list[str]]:
+    """Text of each `a:r` per paragraph, as python-pptx `paragraph.runs`."""
     paragraphs: list[list[str]] = []
     for paragraph in element.findall(f".//{{{A_NS}}}p"):
         runs: list[str] = []
         for run in paragraph:
-            if _xml_local_name(run.tag) not in {"r", "fld"}:
+            if _xml_local_name(run.tag) != "r":
                 continue
             text = run.find(f"{{{A_NS}}}t")
             runs.append("" if text is None else text.text or "")
@@ -339,7 +344,7 @@ def _shape_element_paragraph_run_properties(
     for paragraph in element.findall(f".//{{{A_NS}}}p"):
         values: list[Any] = []
         for run in paragraph:
-            if _xml_local_name(run.tag) not in {"r", "fld"}:
+            if _xml_local_name(run.tag) != "r":
                 continue
             values.append(reader(run.find(f"{{{A_NS}}}rPr")))
         paragraphs.append(values)

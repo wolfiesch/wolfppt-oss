@@ -75,10 +75,15 @@ fn extract_text_runs(xml: &[u8]) -> Vec<String> {
     texts
 }
 
+/// Text of every `a:r` run per paragraph, matching python-pptx `paragraph.runs`.
+///
+/// Each run element is one entry, including runs whose `a:t` is empty. Text in
+/// `a:fld` fields is not a run; see `extract_paragraph_fields`.
 fn extract_paragraph_runs(xml: &[u8]) -> Vec<Vec<String>> {
     let mut reader = Reader::from_reader(xml);
     reader.config_mut().trim_text(false);
     let mut in_paragraph = false;
+    let mut in_run = false;
     let mut in_text = false;
     let mut current_text = String::new();
     let mut current_runs = Vec::new();
@@ -91,21 +96,23 @@ fn extract_paragraph_runs(xml: &[u8]) -> Vec<Vec<String>> {
                     in_paragraph = true;
                     current_runs.clear();
                 }
-                b"t" if in_paragraph => {
-                    in_text = true;
+                b"r" if in_paragraph => {
+                    in_run = true;
                     current_text.clear();
                 }
+                b"t" if in_run => in_text = true,
                 _ => {}
             },
-            Ok(Event::Empty(event)) if local_name(event.name().as_ref()) == b"p" => {
-                paragraphs.push(Vec::new());
-            }
+            Ok(Event::Empty(event)) => match local_name(event.name().as_ref()) {
+                b"p" => paragraphs.push(Vec::new()),
+                b"r" if in_paragraph => current_runs.push(String::new()),
+                _ => {}
+            },
             Ok(Event::End(event)) => match local_name(event.name().as_ref()) {
-                b"t" => {
-                    if !current_text.is_empty() {
-                        current_runs.push(std::mem::take(&mut current_text));
-                    }
-                    in_text = false;
+                b"t" => in_text = false,
+                b"r" if in_run => {
+                    current_runs.push(std::mem::take(&mut current_text));
+                    in_run = false;
                 }
                 b"p" if in_paragraph => {
                     paragraphs.push(std::mem::take(&mut current_runs));
@@ -113,12 +120,90 @@ fn extract_paragraph_runs(xml: &[u8]) -> Vec<Vec<String>> {
                 }
                 _ => {}
             },
-            Ok(Event::Text(event)) if in_paragraph && in_text => {
+            Ok(Event::Text(event)) if in_run && in_text => {
                 if let Some(text) = xml_text_content(&event) {
                     current_text.push_str(&text);
                 }
             }
-            Ok(Event::GeneralRef(event)) if in_paragraph && in_text => {
+            Ok(Event::GeneralRef(event)) if in_run && in_text => {
+                if let Some(text) = xml_reference_content(&event) {
+                    current_text.push_str(&text);
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(_) => break,
+            _ => {}
+        }
+    }
+
+    paragraphs
+}
+
+/// Text fields (`a:fld`) per paragraph, positioned by the run slot and line
+/// break count that precede them so paragraph text can be rebuilt in order.
+fn extract_paragraph_fields(xml: &[u8]) -> Vec<Vec<ParagraphFieldSummary>> {
+    let mut reader = Reader::from_reader(xml);
+    reader.config_mut().trim_text(false);
+    let mut in_paragraph = false;
+    let mut in_field = false;
+    let mut in_text = false;
+    let mut run_count = 0usize;
+    let mut line_break_count = 0usize;
+    let mut current_text = String::new();
+    let mut current_fields = Vec::new();
+    let mut paragraphs = Vec::new();
+
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(event)) => match local_name(event.name().as_ref()) {
+                b"p" => {
+                    in_paragraph = true;
+                    run_count = 0;
+                    line_break_count = 0;
+                    current_fields.clear();
+                }
+                b"r" if in_paragraph => run_count += 1,
+                b"br" if in_paragraph => line_break_count += 1,
+                b"fld" if in_paragraph => {
+                    in_field = true;
+                    current_text.clear();
+                }
+                b"t" if in_field => in_text = true,
+                _ => {}
+            },
+            Ok(Event::Empty(event)) => match local_name(event.name().as_ref()) {
+                b"p" => paragraphs.push(Vec::new()),
+                b"r" if in_paragraph => run_count += 1,
+                b"br" if in_paragraph => line_break_count += 1,
+                b"fld" if in_paragraph => current_fields.push(ParagraphFieldSummary {
+                    run_slot: run_count,
+                    line_breaks_before: line_break_count,
+                    text: String::new(),
+                }),
+                _ => {}
+            },
+            Ok(Event::End(event)) => match local_name(event.name().as_ref()) {
+                b"t" => in_text = false,
+                b"fld" if in_field => {
+                    current_fields.push(ParagraphFieldSummary {
+                        run_slot: run_count,
+                        line_breaks_before: line_break_count,
+                        text: std::mem::take(&mut current_text),
+                    });
+                    in_field = false;
+                }
+                b"p" if in_paragraph => {
+                    paragraphs.push(std::mem::take(&mut current_fields));
+                    in_paragraph = false;
+                }
+                _ => {}
+            },
+            Ok(Event::Text(event)) if in_field && in_text => {
+                if let Some(text) = xml_text_content(&event) {
+                    current_text.push_str(&text);
+                }
+            }
+            Ok(Event::GeneralRef(event)) if in_field && in_text => {
                 if let Some(text) = xml_reference_content(&event) {
                     current_text.push_str(&text);
                 }
@@ -189,13 +274,11 @@ fn extract_paragraph_texts(xml: &[u8]) -> Vec<String> {
     paragraphs
 }
 
+/// Line break positions per paragraph, as the number of `a:r` runs before each `a:br`.
 fn extract_paragraph_line_breaks(xml: &[u8]) -> Vec<Vec<usize>> {
     let mut reader = Reader::from_reader(xml);
     reader.config_mut().trim_text(false);
     let mut in_paragraph = false;
-    let mut in_run = false;
-    let mut in_text = false;
-    let mut current_run_has_text = false;
     let mut current_run_count = 0usize;
     let mut current_breaks = Vec::new();
     let mut paragraphs = Vec::new();
@@ -208,43 +291,19 @@ fn extract_paragraph_line_breaks(xml: &[u8]) -> Vec<Vec<usize>> {
                     current_run_count = 0;
                     current_breaks.clear();
                 }
-                b"r" if in_paragraph => {
-                    in_run = true;
-                    current_run_has_text = false;
-                }
+                b"r" if in_paragraph => current_run_count += 1,
                 b"br" if in_paragraph => current_breaks.push(current_run_count),
-                b"t" if in_run => in_text = true,
                 _ => {}
             },
             Ok(Event::Empty(event)) => match local_name(event.name().as_ref()) {
                 b"p" => paragraphs.push(Vec::new()),
+                b"r" if in_paragraph => current_run_count += 1,
                 b"br" if in_paragraph => current_breaks.push(current_run_count),
                 _ => {}
             },
-            Ok(Event::End(event)) => match local_name(event.name().as_ref()) {
-                b"t" => in_text = false,
-                b"r" if in_run => {
-                    if current_run_has_text {
-                        current_run_count += 1;
-                    }
-                    in_run = false;
-                    current_run_has_text = false;
-                }
-                b"p" if in_paragraph => {
-                    paragraphs.push(std::mem::take(&mut current_breaks));
-                    in_paragraph = false;
-                }
-                _ => {}
-            },
-            Ok(Event::Text(event)) if in_run && in_text => {
-                if xml_text_content(&event).is_some() {
-                    current_run_has_text = true;
-                }
-            }
-            Ok(Event::GeneralRef(event)) if in_run && in_text => {
-                if xml_reference_content(&event).is_some() {
-                    current_run_has_text = true;
-                }
+            Ok(Event::End(event)) if local_name(event.name().as_ref()) == b"p" && in_paragraph => {
+                paragraphs.push(std::mem::take(&mut current_breaks));
+                in_paragraph = false;
             }
             Ok(Event::Eof) => break,
             Err(_) => break,
@@ -296,77 +355,7 @@ fn extract_paragraph_run_font_size(xml: &[u8]) -> Vec<Vec<Option<i64>>> {
 }
 
 fn extract_paragraph_run_font_name(xml: &[u8]) -> Vec<Vec<Option<String>>> {
-    let mut reader = Reader::from_reader(xml);
-    reader.config_mut().trim_text(false);
-    let mut in_paragraph = false;
-    let mut in_run = false;
-    let mut in_text = false;
-    let mut current_text_has_content = false;
-    let mut current_run_typeface = None;
-    let mut current_runs = Vec::new();
-    let mut paragraphs = Vec::new();
-
-    loop {
-        match reader.read_event() {
-            Ok(Event::Start(event)) => match local_name(event.name().as_ref()) {
-                b"p" => {
-                    in_paragraph = true;
-                    current_runs.clear();
-                }
-                b"r" if in_paragraph => {
-                    in_run = true;
-                    current_run_typeface = None;
-                }
-                b"latin" if in_run => {
-                    current_run_typeface = drawingml_attribute(&event, b"typeface");
-                }
-                b"t" if in_run => {
-                    in_text = true;
-                    current_text_has_content = false;
-                }
-                _ => {}
-            },
-            Ok(Event::Empty(event)) => match local_name(event.name().as_ref()) {
-                b"p" => paragraphs.push(Vec::new()),
-                b"latin" if in_run => {
-                    current_run_typeface = drawingml_attribute(&event, b"typeface");
-                }
-                _ => {}
-            },
-            Ok(Event::End(event)) => match local_name(event.name().as_ref()) {
-                b"t" => {
-                    if current_text_has_content {
-                        current_runs.push(current_run_typeface.clone());
-                    }
-                    in_text = false;
-                }
-                b"r" if in_run => {
-                    in_run = false;
-                    current_run_typeface = None;
-                }
-                b"p" if in_paragraph => {
-                    paragraphs.push(std::mem::take(&mut current_runs));
-                    in_paragraph = false;
-                }
-                _ => {}
-            },
-            Ok(Event::Text(event)) if in_run && in_text => {
-                if xml_text_content(&event).is_some() {
-                    current_text_has_content = true;
-                }
-            }
-            Ok(Event::GeneralRef(event)) if in_run && in_text => {
-                if xml_reference_content(&event).is_some() {
-                    current_text_has_content = true;
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(_) => break,
-            _ => {}
-        }
-    }
-
-    paragraphs
+    extract_paragraph_run_property(xml, b"latin", b"typeface")
 }
 
 fn extract_paragraph_run_bool_attribute(xml: &[u8], attr_name: &[u8]) -> Vec<Vec<Option<bool>>> {
@@ -386,13 +375,21 @@ fn extract_paragraph_run_bool_attribute(xml: &[u8], attr_name: &[u8]) -> Vec<Vec
 }
 
 fn extract_paragraph_run_text_attribute(xml: &[u8], attr_name: &[u8]) -> Vec<Vec<Option<String>>> {
+    extract_paragraph_run_property(xml, b"rPr", attr_name)
+}
+
+/// One value per `a:r` run per paragraph: `attr_name` of the run's `element`
+/// descendant (for example `rPr@b` or `latin@typeface`), or `None`.
+fn extract_paragraph_run_property(
+    xml: &[u8],
+    element: &[u8],
+    attr_name: &[u8],
+) -> Vec<Vec<Option<String>>> {
     let mut reader = Reader::from_reader(xml);
     reader.config_mut().trim_text(false);
     let mut in_paragraph = false;
     let mut in_run = false;
-    let mut in_text = false;
-    let mut current_text_has_content = false;
-    let mut current_run_attribute = None;
+    let mut current_value = None;
     let mut current_runs = Vec::new();
     let mut paragraphs = Vec::new();
 
@@ -405,34 +402,25 @@ fn extract_paragraph_run_text_attribute(xml: &[u8], attr_name: &[u8]) -> Vec<Vec
                 }
                 b"r" if in_paragraph => {
                     in_run = true;
-                    current_run_attribute = None;
+                    current_value = None;
                 }
-                b"rPr" if in_run => {
-                    current_run_attribute = drawingml_attribute(&event, attr_name);
-                }
-                b"t" if in_run => {
-                    in_text = true;
-                    current_text_has_content = false;
+                name if in_run && name == element => {
+                    current_value = drawingml_attribute(&event, attr_name);
                 }
                 _ => {}
             },
             Ok(Event::Empty(event)) => match local_name(event.name().as_ref()) {
                 b"p" => paragraphs.push(Vec::new()),
-                b"rPr" if in_run => {
-                    current_run_attribute = drawingml_attribute(&event, attr_name);
+                b"r" if in_paragraph => current_runs.push(None),
+                name if in_run && name == element => {
+                    current_value = drawingml_attribute(&event, attr_name);
                 }
                 _ => {}
             },
             Ok(Event::End(event)) => match local_name(event.name().as_ref()) {
-                b"t" => {
-                    if current_text_has_content {
-                        current_runs.push(current_run_attribute.clone());
-                    }
-                    in_text = false;
-                }
                 b"r" if in_run => {
+                    current_runs.push(current_value.take());
                     in_run = false;
-                    current_run_attribute = None;
                 }
                 b"p" if in_paragraph => {
                     paragraphs.push(std::mem::take(&mut current_runs));
@@ -440,16 +428,6 @@ fn extract_paragraph_run_text_attribute(xml: &[u8], attr_name: &[u8]) -> Vec<Vec
                 }
                 _ => {}
             },
-            Ok(Event::Text(event)) if in_run && in_text => {
-                if xml_text_content(&event).is_some() {
-                    current_text_has_content = true;
-                }
-            }
-            Ok(Event::GeneralRef(event)) if in_run && in_text => {
-                if xml_reference_content(&event).is_some() {
-                    current_text_has_content = true;
-                }
-            }
             Ok(Event::Eof) => break,
             Err(_) => break,
             _ => {}

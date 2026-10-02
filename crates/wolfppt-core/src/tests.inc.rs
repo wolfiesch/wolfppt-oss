@@ -31,4 +31,5 @@ mod tests {
     include!("tests_slide_delete.inc.rs");
     include!("tests_package.inc.rs");
     include!("tests_table_row_column_mutation.inc.rs");
+    include!("tests_workbook_cell_update.inc.rs");
 }

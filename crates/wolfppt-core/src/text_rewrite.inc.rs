@@ -44,6 +44,11 @@ fn replace_text_nodes(
 
     Ok((writer.into_inner(), replacements))
 }
+/// Replace the text of the `target_run_index`-th `a:r` run in a slide.
+///
+/// Runs are counted the same way as `extract_paragraph_runs` and the run
+/// formatting writers: every run element, including runs with empty text,
+/// and never `a:fld` fields.
 fn replace_text_run_at_index_in_slide(
     xml: &[u8],
     target_run_index: usize,
@@ -52,30 +57,26 @@ fn replace_text_run_at_index_in_slide(
     let mut reader = Reader::from_reader(xml);
     reader.config_mut().trim_text(false);
     let mut writer = Writer::new(Vec::with_capacity(xml.len()));
-    let mut in_text = false;
     let mut run_index = 0;
     let mut replacements = 0;
 
     loop {
         match reader.read_event()? {
-            Event::Start(event) => {
-                if local_name(event.name().as_ref()) == b"t" {
-                    in_text = true;
+            Event::Start(event) if local_name(event.name().as_ref()) == b"r" => {
+                let is_target = run_index == target_run_index;
+                run_index += 1;
+                writer.write_event(Event::Start(event.borrow()))?;
+                if is_target {
+                    write_replaced_run_body(&mut reader, &mut writer, &event, replacement)?;
+                    replacements += 1;
                 }
-                writer.write_event(Event::Start(event))?;
             }
-            Event::End(event) => {
-                if local_name(event.name().as_ref()) == b"t" {
-                    in_text = false;
-                }
-                writer.write_event(Event::End(event))?;
-            }
-            Event::Text(event) if in_text => {
+            Event::Empty(event) if local_name(event.name().as_ref()) == b"r" => {
                 if run_index == target_run_index {
-                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
+                    write_text_only_run(&mut writer, &event, replacement)?;
                     replacements += 1;
                 } else {
-                    writer.write_event(Event::Text(event))?;
+                    writer.write_event(Event::Empty(event))?;
                 }
                 run_index += 1;
             }
@@ -85,6 +86,89 @@ fn replace_text_run_at_index_in_slide(
     }
 
     Ok((writer.into_inner(), replacements))
+}
+
+/// Stream the body of a run whose start tag was already written, replacing
+/// the content of its `a:t` with `replacement` and keeping everything else.
+/// Consumes events through the run's end tag. A run without `a:t` gets one.
+fn write_replaced_run_body(
+    reader: &mut Reader<&[u8]>,
+    writer: &mut Writer<Vec<u8>>,
+    run: &BytesStart<'_>,
+    replacement: &str,
+) -> Result<(), WolfPptError> {
+    let mut depth = 0usize;
+    let mut in_text = false;
+    let mut wrote_text = false;
+
+    loop {
+        match reader.read_event()? {
+            Event::Start(event) => {
+                if depth == 0 && !wrote_text && local_name(event.name().as_ref()) == b"t" {
+                    in_text = true;
+                }
+                depth += 1;
+                writer.write_event(Event::Start(event))?;
+            }
+            Event::Empty(event) => {
+                if depth == 0 && !wrote_text && local_name(event.name().as_ref()) == b"t" {
+                    writer.write_event(Event::Start(event.borrow()))?;
+                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
+                    writer.write_event(Event::End(event.to_end()))?;
+                    wrote_text = true;
+                } else {
+                    writer.write_event(Event::Empty(event))?;
+                }
+            }
+            Event::End(event) => {
+                if depth == 0 {
+                    if !wrote_text {
+                        write_run_text_element(writer, run, replacement)?;
+                    }
+                    writer.write_event(Event::End(event))?;
+                    return Ok(());
+                }
+                depth -= 1;
+                if in_text && depth == 0 {
+                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
+                    in_text = false;
+                    wrote_text = true;
+                }
+                writer.write_event(Event::End(event))?;
+            }
+            Event::Text(_) | Event::GeneralRef(_) | Event::CData(_) if in_text => {}
+            Event::Eof => return Ok(()),
+            event => writer.write_event(event)?,
+        }
+    }
+}
+
+/// Expand a self-closing `<a:r/>` into a run holding only `replacement`.
+fn write_text_only_run(
+    writer: &mut Writer<Vec<u8>>,
+    run: &BytesStart<'_>,
+    replacement: &str,
+) -> Result<(), WolfPptError> {
+    writer.write_event(Event::Start(run.borrow()))?;
+    write_run_text_element(writer, run, replacement)?;
+    writer.write_event(Event::End(run.to_end()))?;
+    Ok(())
+}
+
+/// Write `<prefix:t>replacement</prefix:t>` using the run element's prefix.
+fn write_run_text_element(
+    writer: &mut Writer<Vec<u8>>,
+    run: &BytesStart<'_>,
+    replacement: &str,
+) -> Result<(), WolfPptError> {
+    let tag = match run.name().prefix() {
+        Some(prefix) => format!("{}:t", String::from_utf8_lossy(prefix.as_ref())),
+        None => "t".to_string(),
+    };
+    writer.write_event(Event::Start(BytesStart::new(tag.as_str())))?;
+    writer.write_event(Event::Text(BytesText::new(replacement)))?;
+    writer.write_event(Event::End(BytesEnd::new(tag.as_str())))?;
+    Ok(())
 }
 
 fn set_text_run_bold_at_index_in_slide(

@@ -387,6 +387,7 @@ class Shape:
             [paragraph] if paragraph else [] for paragraph in paragraphs
         ]
         self._payload["paragraph_line_breaks"] = [[] for _ in paragraphs]
+        self._payload["paragraph_fields"] = [[] for _ in paragraphs]
         if _queue_pending_group_child_text(self, text):
             return
         self._slide._presentation._queue_shape_text_for_shape(self, text)

@@ -2,13 +2,22 @@
 
 from __future__ import annotations
 
+import json
+import re
 from io import BytesIO
 from typing import Any
+from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
+from .native_binding import NATIVE_INSTALL_HINT as _NATIVE_INSTALL_HINT
+
 _FIXED_ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 _SS_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+_CHART_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+_SHEET1_RANGE = re.compile(
+    r"^(?:Sheet1|'Sheet1')!\$?([A-Z]+)\$?(\d+)(?::\$?([A-Z]+)\$?(\d+))?$"
+)
 _REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 _DOC_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 _CORE_PROPS_REL_TYPE = (
@@ -261,6 +270,7 @@ def bubble_chart_workbook_blob(series: list[dict[str, Any]]) -> bytes:
         rows.append(
             f'<row r="{current_row}">'
             f'{_shared_string_cell(f"B{current_row}", intern(item["name"]))}'
+            f'{_shared_string_cell(f"C{current_row}", intern("Size"))}'
             "</row>"
         )
         for offset, (x_value, y_value, bubble_size) in enumerate(
@@ -300,6 +310,87 @@ def bubble_chart_workbook_blob(series: list[dict[str, Any]]) -> bytes:
         _write_part(package, "xl/styles.xml", styles)
         _write_part(package, "xl/sharedStrings.xml", shared)
     return buffer.getvalue()
+
+
+def update_chart_workbook_blob(
+    existing: bytes, generated: bytes, previous_chart_xml: bytes
+) -> bytes:
+    """Write the data cells of a generated chart workbook into ``existing``.
+
+    ``generated`` is the workbook built from replacement chart data; its
+    ``Sheet1`` cells are what the rewritten chart formulas reference. They are
+    written into the matching cells of the chart's existing embedded workbook,
+    which keeps its styles, column widths, theme, other sheets and any cells
+    outside the chart data. Cells the chart read before the replacement
+    (``previous_chart_xml`` formulas) that the new data no longer uses are
+    cleared, so stale values do not linger. When the existing workbook cannot
+    take the cells in place (no ``Sheet1``, a formula in a data cell, or an
+    unreadable package), the generated workbook replaces it, as python-pptx
+    does.
+    """
+    try:
+        import wolfppt_native
+    except ImportError as exc:  # pragma: no cover - environment dependent
+        raise RuntimeError(_NATIVE_INSTALL_HINT) from exc
+
+    cells = _generated_sheet_cells(generated)
+    written = {reference for reference, _, _ in cells}
+    for reference in _chart_formula_cells(previous_chart_xml):
+        if reference not in written:
+            cells.append([reference, "e", ""])
+    try:
+        return bytes(
+            wolfppt_native.update_workbook_cells(existing, "Sheet1", json.dumps(cells))
+        )
+    except RuntimeError:
+        return generated
+
+
+def _generated_sheet_cells(workbook: bytes) -> list[list[str]]:
+    """Return ``[reference, kind, value]`` for each cell of a generated workbook."""
+    with ZipFile(BytesIO(workbook)) as package:
+        sheet = ET.fromstring(package.read("xl/worksheets/sheet1.xml"))
+        shared = ET.fromstring(package.read("xl/sharedStrings.xml"))
+    strings = [
+        "".join(text.text or "" for text in item.iter(f"{{{_SS_NS}}}t"))
+        for item in shared.iter(f"{{{_SS_NS}}}si")
+    ]
+    cells: list[list[str]] = []
+    for cell in sheet.iter(f"{{{_SS_NS}}}c"):
+        value = cell.findtext(f"{{{_SS_NS}}}v") or ""
+        if cell.get("t") == "s":
+            cells.append([cell.get("r", ""), "s", strings[int(value)]])
+        else:
+            cells.append([cell.get("r", ""), "n", value])
+    return cells
+
+
+def _chart_formula_cells(chart_xml: bytes) -> list[str]:
+    """Return the ``Sheet1`` cell references read by a chart's formulas."""
+    try:
+        root = ET.fromstring(chart_xml)
+    except ET.ParseError:
+        return []
+    references: list[str] = []
+    for formula in root.iter(f"{{{_CHART_NS}}}f"):
+        match = _SHEET1_RANGE.match((formula.text or "").strip())
+        if match is None:
+            continue
+        first_column, first_row, last_column, last_row = match.groups()
+        columns = range(
+            _column_number(first_column),
+            _column_number(last_column or first_column) + 1,
+        )
+        for row in range(int(first_row), int(last_row or first_row) + 1):
+            references.extend(_cell_ref(column, row) for column in columns)
+    return references
+
+
+def _column_number(name: str) -> int:
+    number = 0
+    for letter in name:
+        number = number * 26 + ord(letter) - ord("A") + 1
+    return number
 
 
 def _write_part(package: ZipFile, name: str, payload: str) -> None:
