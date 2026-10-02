@@ -25,6 +25,7 @@ from .chart_xml import (
     replace_chart_xml_style as _replace_chart_xml_style,
     replace_chart_xml_title as _replace_chart_xml_title,
 )
+from .chart_workbook import update_chart_workbook_blob as _update_chart_workbook_blob
 from .package_parts import (
     copy_package_with_replacements as _copy_package_with_replacements,
     rels_part_for_package_part as _rels_part_for_package_part,
@@ -91,13 +92,17 @@ def _chart_data_replacements_from_package(
         package,
         chart_part,
     )
+    chart_xml = package.read(chart_part)
     replacement_chart_xml = chart_data.get("_chart_xml")
     if not isinstance(replacement_chart_xml, bytes):
-        chart_xml = package.read(chart_part)
         replacement_chart_xml = _replace_chart_xml_data(chart_xml, chart_data)
     replacements = {
         chart_part: replacement_chart_xml,
-        embedded_workbook_part: chart_data["xlsx_blob"],
+        embedded_workbook_part: _update_chart_workbook_blob(
+            package.read(embedded_workbook_part),
+            chart_data["xlsx_blob"],
+            chart_xml,
+        ),
     }
     return _drop_unchanged_replacements(package, replacements)
 

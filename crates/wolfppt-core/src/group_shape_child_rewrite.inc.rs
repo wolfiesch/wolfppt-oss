@@ -166,10 +166,7 @@ fn set_group_shape_child_run_text_in_slide(
     let mut run_index = 0;
     let mut in_target_child = false;
     let mut in_target_paragraph = false;
-    let mut in_target_run = false;
     let mut target_run_seen = false;
-    let mut in_text = false;
-    let mut wrote_replacement = false;
     let mut replacements = 0;
 
     loop {
@@ -196,27 +193,32 @@ fn set_group_shape_child_run_text_in_slide(
                     run_index = 0;
                     target_run_seen = false;
                 } else if in_target_paragraph && name == b"r" {
-                    in_target_run = run_index == target_run_index;
-                    if in_target_run {
-                        target_run_seen = true;
-                    }
+                    let is_target = run_index == target_run_index;
                     run_index += 1;
-                    wrote_replacement = false;
-                } else if in_target_run && name == b"t" {
-                    in_text = true;
+                    if is_target {
+                        target_run_seen = true;
+                        writer.write_event(Event::Start(event.borrow()))?;
+                        write_replaced_run_body(&mut reader, &mut writer, &event, replacement)?;
+                        replacements += 1;
+                        continue;
+                    }
                 }
                 writer.write_event(Event::Start(event))?;
             }
+            Event::Empty(event)
+                if in_target_paragraph && local_name(event.name().as_ref()) == b"r" =>
+            {
+                if run_index == target_run_index {
+                    target_run_seen = true;
+                    write_text_only_run(&mut writer, &event, replacement)?;
+                    replacements += 1;
+                } else {
+                    writer.write_event(Event::Empty(event))?;
+                }
+                run_index += 1;
+            }
             Event::End(event) => {
                 let name = local_name(event.name().as_ref()).to_vec();
-                if in_target_run && name == b"t" {
-                    if !wrote_replacement {
-                        writer.write_event(Event::Text(BytesText::new(replacement)))?;
-                        wrote_replacement = true;
-                        replacements += 1;
-                    }
-                    in_text = false;
-                }
                 if in_target_paragraph
                     && name == b"p"
                     && !target_run_seen
@@ -226,10 +228,6 @@ fn set_group_shape_child_run_text_in_slide(
                     replacements += 1;
                 }
                 writer.write_event(Event::End(event))?;
-                if in_target_run && name == b"r" {
-                    in_target_run = false;
-                    wrote_replacement = false;
-                }
                 if in_target_paragraph && name == b"p" {
                     in_target_paragraph = false;
                 }
@@ -239,15 +237,6 @@ fn set_group_shape_child_run_text_in_slide(
                 if group_depth > 0 && name == b"grpSp" {
                     group_depth -= 1;
                 }
-            }
-            Event::Text(_event) if in_target_run && in_text => {
-                if wrote_replacement {
-                    writer.write_event(Event::Text(BytesText::new("")))?;
-                } else {
-                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
-                    wrote_replacement = true;
-                }
-                replacements += 1;
             }
             Event::Eof => break,
             event => writer.write_event(event)?,

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+- Index `paragraph.runs` like python-pptx: every `a:r` is a run, including runs with empty text, and `a:fld` fields are not runs. Run text edits on paragraphs that start with an empty run or contain fields now land on the run python-pptx edits, and field text is kept.
+- `chart.replace_data(...)` writes the new values into the chart's existing embedded workbook instead of swapping in a generated one, so the workbook keeps its parts, theme, styles, column widths and sheet view, its cells agree with the chart caches, and cells the chart no longer reads are cleared.
+
 ## [0.1.1] - 2026-09-30
 
 ### Changed

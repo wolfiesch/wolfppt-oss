@@ -88,6 +88,10 @@ def _shape_paragraph_line_breaks(shape: Shape) -> list[list[int]]:
         normalized.append([int(slot) for slot in raw_paragraph])
     shape._payload["paragraph_line_breaks"] = normalized
     return normalized
+def _shape_paragraph_fields(shape: Shape) -> list[list[dict[str, Any]]]:
+    """Return the shape's `a:fld` text fields per paragraph; fields are not runs."""
+    _shape_paragraph_runs(shape)
+    return shape._payload["paragraph_fields"]
 def _normalize_property_matrix(
     shape: Shape,
     payload_key: str,
@@ -264,12 +268,19 @@ def _sync_shape_text_from_paragraph_runs(
         shape._payload.get("paragraph_line_breaks"),
         len(paragraph_runs),
     )
+    fields = _normalize_paragraph_fields(
+        shape._payload.get("paragraph_fields"),
+        len(paragraph_runs),
+    )
     paragraphs = [
-        _paragraph_text_from_runs_and_line_breaks(runs, line_breaks[index])
+        _paragraph_text_from_runs_and_line_breaks(
+            runs, line_breaks[index], fields[index]
+        )
         for index, runs in enumerate(paragraph_runs)
     ]
     shape._payload["paragraph_runs"] = paragraph_runs
     shape._payload["paragraph_line_breaks"] = line_breaks
+    shape._payload["paragraph_fields"] = fields
     shape._payload["paragraphs"] = paragraphs
     shape._payload["text"] = "\n".join(paragraphs)
     _invalidate_shape_text_cache(shape)
@@ -297,6 +308,32 @@ def _normalize_paragraph_line_breaks(
         normalized.append([int(slot) for slot in raw_paragraph])
     return normalized
 
+def _normalize_paragraph_fields(
+    raw_fields: Any,
+    paragraph_count: int,
+) -> list[list[dict[str, Any]]]:
+    if not isinstance(raw_fields, list):
+        raw_fields = []
+    normalized: list[list[dict[str, Any]]] = []
+    for paragraph_index in range(paragraph_count):
+        raw_paragraph = (
+            raw_fields[paragraph_index] if paragraph_index < len(raw_fields) else []
+        )
+        if not isinstance(raw_paragraph, list):
+            raw_paragraph = []
+        normalized.append(
+            [
+                {
+                    "run_slot": int(field.get("run_slot", 0)),
+                    "line_breaks_before": int(field.get("line_breaks_before", 0)),
+                    "text": str(field.get("text", "")),
+                }
+                for field in raw_paragraph
+                if isinstance(field, dict)
+            ]
+        )
+    return normalized
+
 def _paragraph_runs_and_line_breaks(text: str) -> tuple[list[str], list[int]]:
     parts = text.split("\v")
     runs = [part for part in parts if part]
@@ -311,12 +348,47 @@ def _paragraph_runs_and_line_breaks(text: str) -> tuple[list[str], list[int]]:
 def _paragraph_text_from_runs_and_line_breaks(
     runs: list[str],
     line_breaks: list[int],
+    fields: list[dict[str, Any]] | None = None,
 ) -> str:
+    """Rebuild paragraph text from runs, `a:br` run slots and `a:fld` fields.
+
+    A field sits at its run slot after `line_breaks_before` line breaks of the
+    paragraph, which keeps document order when a break and a field share a slot.
+    """
+    pending = sorted(
+        fields or [],
+        key=lambda field: (field["run_slot"], field["line_breaks_before"]),
+    )
+    next_field = 0
+    breaks_written = 0
     parts: list[str] = []
+
+    def write_fields(run_slot: int, max_breaks_before: int | None) -> None:
+        nonlocal next_field
+        while next_field < len(pending):
+            field = pending[next_field]
+            if field["run_slot"] > run_slot:
+                return
+            if (
+                max_breaks_before is not None
+                and field["run_slot"] == run_slot
+                and field["line_breaks_before"] > max_breaks_before
+            ):
+                return
+            parts.append(field["text"])
+            next_field += 1
+
     for run_slot in range(len(runs) + 1):
-        parts.extend("\v" for slot in line_breaks if slot == run_slot)
+        for slot in line_breaks:
+            if slot != run_slot:
+                continue
+            write_fields(run_slot, breaks_written)
+            parts.append("\v")
+            breaks_written += 1
+        write_fields(run_slot, None)
         if run_slot < len(runs):
             parts.append(runs[run_slot])
+    parts.extend(field["text"] for field in pending[next_field:])
     return "".join(parts)
 
 def _shape_paragraphs(shape: Shape) -> list[str]:

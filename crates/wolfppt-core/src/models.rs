@@ -577,6 +577,7 @@ pub struct ShapeSummary {
     pub paragraphs: Vec<String>,
     pub paragraph_runs: Vec<Vec<String>>,
     pub paragraph_line_breaks: Vec<Vec<usize>>,
+    pub paragraph_fields: Vec<Vec<ParagraphFieldSummary>>,
     pub paragraph_run_bold: Vec<Vec<Option<bool>>>,
     pub paragraph_run_italic: Vec<Vec<Option<bool>>>,
     pub paragraph_run_underline: Vec<Vec<Option<bool>>>,
@@ -590,6 +591,16 @@ pub struct ShapeSummary {
     pub transform: Option<TransformSummary>,
     pub effective_transform: Option<TransformSummary>,
     pub children: Vec<ShapeSummary>,
+}
+
+/// An `a:fld` text field. It is not a run; `run_slot` and
+/// `line_breaks_before` count the runs and line breaks that precede it in its
+/// paragraph.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ParagraphFieldSummary {
+    pub run_slot: usize,
+    pub line_breaks_before: usize,
+    pub text: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -625,6 +636,27 @@ pub struct RelationshipSummary {
     pub relationship_type: String,
     pub target: String,
     pub target_mode: Option<String>,
+}
+
+/// A value to store in a worksheet cell of an embedded workbook.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WorkbookCellValue {
+    /// A numeric cell. The text is written verbatim as the cell's `v`
+    /// value, so it must be a finite number in XML Schema double form.
+    Number(String),
+    /// A string cell, stored in the shared string table when the workbook
+    /// has one and as an inline string otherwise.
+    Text(String),
+    /// Clear the value of an existing cell, keeping the cell and its style.
+    /// A cell that does not exist is left missing.
+    Empty,
+}
+
+/// One cell to write, addressed by an A1 reference such as `B2`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkbookCellUpdate {
+    pub reference: String,
+    pub value: WorkbookCellValue,
 }
 
 impl PackageManifest {
