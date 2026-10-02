@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.2] - 2026-10-02
 
 ### Fixed
 - Index `paragraph.runs` like python-pptx: every `a:r` is a run, including runs with empty text, and `a:fld` fields are not runs. Run text edits on paragraphs that start with an empty run or contain fields now land on the run python-pptx edits, and field text is kept.
