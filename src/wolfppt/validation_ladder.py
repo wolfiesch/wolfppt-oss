@@ -60,7 +60,7 @@ REAL_CORPUS_GATE = (
 )
 
 SDK_COMPARISON_GATE = (
-    "uv run --with aspose.slides --with Spire.Presentation "
+    "uv run --with Spire.Presentation "
     "wolfppt-harness benchmark-profile sdk-comparison --iterations 5 "
     "--warmup 1 --validate-openxml --progress --fail-fast "
     "--min-distinct-fixtures 16 "
@@ -71,7 +71,6 @@ SDK_COMPARISON_GATE = (
     "--min-fixtures-with-media 15 --min-fixtures-with-embedded-objects 16 "
     "--min-sdk-preservation-rows 48 --min-openxml-samples 480 "
     "--require-adapter apache-poi-roundtrip "
-    "--require-adapter aspose-docker-roundtrip "
     "--require-adapter spire-presentation-roundtrip --write-report"
 )
 
@@ -139,11 +138,10 @@ RELEASE_TOOL_GATE = (
 )
 
 SDK_COMPARISON_TOOL_GATE = (
-    "uv run --with aspose.slides --with Spire.Presentation "
+    "uv run --with Spire.Presentation "
     "wolfppt-harness tools --json --unavailable-only "
     "--require-tool wolfppt-native --require-tool dotnet "
     "--require-tool openxml-sdk-roundtrip --require-tool apache-poi-roundtrip "
-    "--require-tool aspose-docker-roundtrip "
     "--require-tool spire-presentation-roundtrip"
 )
 
@@ -383,13 +381,6 @@ def validation_ladder(
                     "Build the native binding in release mode for fair timing.",
                 ),
                 _cmd(
-                    "aspose-docker-image",
-                    sdk_remote_prefix
-                    + "docker build -t wolfppt-aspose-slides:python3.11-bullseye "
-                    + "examples/external-roundtrip/aspose-docker'",
-                    "Prepare the Docker-backed Aspose lane on hosts where direct Aspose cannot run.",
-                ),
-                _cmd(
                     "tool-gate",
                     sdk_remote_prefix + SDK_COMPARISON_TOOL_GATE + "'",
                     "Fail fast if required open-source or commercial SDK lanes are unavailable.",
@@ -403,7 +394,6 @@ def validation_ladder(
             "notes": [
                 "Prefer the detached launcher for normal use; the following SSH commands show the exact gate it runs.",
                 "Use this before updating commercial SDK comparison claims.",
-                "Direct Aspose may still report a host runtime blocker; the required Aspose lane is the pinned Docker adapter.",
                 "Treat third-party failures as comparison evidence, not as a blanket best-in-class claim.",
             ],
         }
@@ -432,13 +422,6 @@ def validation_ladder(
                     "Build the native binding in release mode for fair timing.",
                 ),
                 _cmd(
-                    "aspose-docker-image",
-                    sdk_remote_prefix
-                    + "docker build -t wolfppt-aspose-slides:python3.11-bullseye "
-                    + "examples/external-roundtrip/aspose-docker'",
-                    "Prepare the Docker-backed Aspose lane on hosts where direct Aspose cannot run.",
-                ),
-                _cmd(
                     "strict-tool-gate",
                     strict_sdk_remote_prefix
                     + SDK_COMPARISON_STRICT_TOOL_GATE
@@ -460,7 +443,6 @@ def validation_ladder(
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME, and "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION configured."
                 ),
-                "Direct Aspose may still report a host runtime blocker; the required Aspose lane is the pinned Docker adapter.",
             ],
         }
     if tier == "sdk-comparison-claim":
@@ -486,13 +468,6 @@ def validation_ladder(
                     + "uv tool run maturin develop --release "
                     + "--manifest-path crates/wolfppt-py/Cargo.toml'",
                     "Build the native binding in release mode for fair timing.",
-                ),
-                _cmd(
-                    "aspose-docker-image",
-                    sdk_remote_prefix
-                    + "docker build -t wolfppt-aspose-slides:python3.11-bullseye "
-                    + "examples/external-roundtrip/aspose-docker'",
-                    "Prepare the Docker-backed Aspose lane on hosts where direct Aspose cannot run.",
                 ),
                 _cmd(
                     "tool-gate",
@@ -537,13 +512,6 @@ def validation_ladder(
                     "Build the native binding in release mode for fair timing.",
                 ),
                 _cmd(
-                    "aspose-docker-image",
-                    sdk_remote_prefix
-                    + "docker build -t wolfppt-aspose-slides:python3.11-bullseye "
-                    + "examples/external-roundtrip/aspose-docker'",
-                    "Prepare the Docker-backed Aspose lane on hosts where direct Aspose cannot run.",
-                ),
-                _cmd(
                     "strict-tool-gate",
                     strict_sdk_remote_prefix
                     + SDK_COMPARISON_STRICT_TOOL_GATE
@@ -567,7 +535,6 @@ def validation_ladder(
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME, and "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION configured."
                 ),
-                "Direct Aspose may still report a host runtime blocker; the required Aspose lane is the pinned Docker adapter.",
             ],
         }
     if tier == "real-corpus":

@@ -29,8 +29,6 @@ from . import benchmark_dropin_table_operations as _benchmark_dropin_table_opera
 from . import benchmark_dropin_text_operations as _benchmark_dropin_text_operations
 from .adapters import available_tools
 from .adapters import apache_poi as _apache_poi_adapter
-from .adapters import aspose_docker as _aspose_docker_adapter
-from .adapters import aspose_slides as _aspose_slides_adapter
 from .adapters import external_command as _external_command_adapter
 from .adapters import openxml_sdk as _openxml_sdk_adapter
 from .adapters import pptxgenjs as _pptxgenjs_adapter
@@ -453,18 +451,6 @@ def _benchmark_adapter_namespace() -> dict[str, Any]:
             ),
             "apache_poi_roundtrip_unavailable_reason": (
                 _apache_poi_adapter.apache_poi_roundtrip_unavailable_reason
-            ),
-            "aspose_docker_roundtrip_available": (
-                _aspose_docker_adapter.aspose_docker_roundtrip_available
-            ),
-            "aspose_docker_roundtrip_unavailable_reason": (
-                _aspose_docker_adapter.aspose_docker_roundtrip_unavailable_reason
-            ),
-            "aspose_slides_roundtrip_available": (
-                _aspose_slides_adapter.aspose_slides_roundtrip_available
-            ),
-            "aspose_slides_roundtrip_unavailable_reason": (
-                _aspose_slides_adapter.aspose_slides_roundtrip_unavailable_reason
             ),
             "external_command_roundtrip_available": (
                 _external_command_adapter.external_command_roundtrip_available

@@ -60,8 +60,6 @@ SDK_COMPARISON_ADAPTERS = (
     "python-pptx-roundtrip",
     "openxml-sdk-roundtrip",
     "apache-poi-roundtrip",
-    "aspose-slides-roundtrip",
-    "aspose-docker-roundtrip",
     "spire-presentation-roundtrip",
     "syncfusion-roundtrip",
     "external-command-roundtrip",

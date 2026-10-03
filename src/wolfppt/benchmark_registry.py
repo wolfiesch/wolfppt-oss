@@ -729,22 +729,6 @@ BENCHMARK_ADAPTER_SPECS: tuple[BenchmarkAdapterSpec, ...] = (
         "apache_poi_roundtrip_unavailable_reason",
     ),
     BenchmarkAdapterSpec(
-        "aspose-slides-roundtrip",
-        "roundtrip",
-        "commercial Aspose.Slides baseline",
-        "aspose_slides_roundtrip_available",
-        "_bench_aspose_slides_roundtrip",
-        "aspose_slides_roundtrip_unavailable_reason",
-    ),
-    BenchmarkAdapterSpec(
-        "aspose-docker-roundtrip",
-        "roundtrip",
-        "commercial Aspose.Slides Docker baseline",
-        "aspose_docker_roundtrip_available",
-        "_bench_aspose_docker_roundtrip",
-        "aspose_docker_roundtrip_unavailable_reason",
-    ),
-    BenchmarkAdapterSpec(
         "spire-presentation-roundtrip",
         "roundtrip",
         "commercial Spire.Presentation baseline",
