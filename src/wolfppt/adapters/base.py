@@ -11,14 +11,6 @@ from .apache_poi import (
     apache_poi_roundtrip_available,
     apache_poi_roundtrip_unavailable_reason,
 )
-from .aspose_slides import (
-    aspose_slides_roundtrip_available,
-    aspose_slides_roundtrip_unavailable_reason,
-)
-from .aspose_docker import (
-    aspose_docker_roundtrip_available,
-    aspose_docker_roundtrip_unavailable_reason,
-)
 from .external_command import (
     EXTERNAL_ROUNDTRIP_ENV,
     external_command_roundtrip_available,
@@ -90,23 +82,6 @@ def available_tools() -> list[ToolInfo]:
             role="Java Apache POI baseline",
             detail="Opens and writes existing PPTX files through Apache POI XSLF when Maven is installed.",
             unavailable_reason=apache_poi_roundtrip_unavailable_reason(),
-        ),
-        ToolInfo(
-            name="aspose-slides-roundtrip",
-            available=aspose_slides_roundtrip_available(),
-            role="commercial Aspose.Slides baseline",
-            detail="Opens and writes existing PPTX/PPTM files through Aspose.Slides for Python when installed.",
-            unavailable_reason=aspose_slides_roundtrip_unavailable_reason(),
-        ),
-        ToolInfo(
-            name="aspose-docker-roundtrip",
-            available=aspose_docker_roundtrip_available(),
-            role="commercial Aspose.Slides Docker baseline",
-            detail=(
-                "Opens and writes existing PPTX/PPTM files through "
-                "Aspose.Slides inside a pinned Docker runtime."
-            ),
-            unavailable_reason=aspose_docker_roundtrip_unavailable_reason(),
         ),
         ToolInfo(
             name="spire-presentation-roundtrip",

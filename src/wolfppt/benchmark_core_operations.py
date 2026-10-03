@@ -8,8 +8,6 @@ from time import perf_counter
 from typing import Any
 
 from .adapters.apache_poi import roundtrip as apache_poi_roundtrip
-from .adapters.aspose_docker import roundtrip as aspose_docker_roundtrip
-from .adapters.aspose_slides import roundtrip as aspose_slides_roundtrip
 from .adapters.external_command import roundtrip as external_command_roundtrip
 from .adapters.openxml_sdk import roundtrip as openxml_sdk_roundtrip
 from .adapters.pptxgenjs import generate as pptxgenjs_generate
@@ -170,51 +168,6 @@ def _bench_apache_poi_roundtrip(
         {
             "part_count": result.part_count,
             "has_vba": result.has_vba,
-            "sdk_versions": result.sdk_versions,
-        }
-    )
-    return elapsed_ms, details
-
-
-def _bench_aspose_slides_roundtrip(
-    fixture_id: str,
-    fixture_path: Path,
-    expected_path: Path,
-    tmp_path: Path,
-    validate_openxml: bool,
-) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"aspose-slides-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
-    start = perf_counter()
-    result = aspose_slides_roundtrip(fixture_path, out)
-    elapsed_ms = _elapsed_ms(start)
-    details = _roundtrip_details(fixture_id, fixture_path, out, validate_openxml)
-    details.update(
-        {
-            "part_count": result.part_count,
-            "has_vba": result.has_vba,
-        }
-    )
-    return elapsed_ms, details
-
-
-def _bench_aspose_docker_roundtrip(
-    fixture_id: str,
-    fixture_path: Path,
-    expected_path: Path,
-    tmp_path: Path,
-    validate_openxml: bool,
-) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"aspose-docker-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
-    start = perf_counter()
-    result = aspose_docker_roundtrip(fixture_path, out)
-    elapsed_ms = _elapsed_ms(start)
-    details = _roundtrip_details(fixture_id, fixture_path, out, validate_openxml)
-    details.update(
-        {
-            "part_count": result.part_count,
-            "has_vba": result.has_vba,
-            "command": result.command,
-            "image": result.image,
             "sdk_versions": result.sdk_versions,
         }
     )

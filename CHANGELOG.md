@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Removed
+- The `aspose-slides-roundtrip` and `aspose-docker-roundtrip` benchmark adapters, their tool-discovery entries, and their benchmark-profile, validation-ladder, and README instructions.
+
 ## [0.1.2] - 2026-10-02
 
 ### Fixed
