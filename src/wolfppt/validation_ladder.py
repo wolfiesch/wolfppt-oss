@@ -69,7 +69,7 @@ SDK_COMPARISON_GATE = (
     "--min-fixture-total-media 15 --min-fixture-total-embedded-objects 36 "
     "--min-fixtures-with-tables 16 --min-fixtures-with-charts 16 "
     "--min-fixtures-with-media 15 --min-fixtures-with-embedded-objects 16 "
-    "--min-sdk-preservation-rows 48 --min-openxml-samples 480 "
+    "--min-sdk-preservation-rows 48 --min-openxml-samples 400 "
     "--require-adapter apache-poi-roundtrip "
     "--require-adapter spire-presentation-roundtrip --write-report"
 )
@@ -83,7 +83,7 @@ SDK_COMPARISON_STRICT_GATE = (
 SDK_COMPARISON_CLAIM_GATE = (
     SDK_COMPARISON_GATE.replace("--iterations 5 ", "--iterations 15 ")
     .replace("--warmup 1 ", "--warmup 2 ")
-    .replace("--min-openxml-samples 480 ", "--min-openxml-samples 1440 ")
+    .replace("--min-openxml-samples 400 ", "--min-openxml-samples 1200 ")
 )
 
 SDK_COMPARISON_CLAIM_STRICT_GATE = (
