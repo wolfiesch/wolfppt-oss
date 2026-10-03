@@ -174,10 +174,6 @@ def _bench_apache_poi_roundtrip(
     return elapsed_ms, details
 
 
-
-
-
-
 def _bench_spire_presentation_roundtrip(
     fixture_id: str,
     fixture_path: Path,

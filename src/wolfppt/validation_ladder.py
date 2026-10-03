@@ -71,7 +71,6 @@ SDK_COMPARISON_GATE = (
     "--min-fixtures-with-media 15 --min-fixtures-with-embedded-objects 16 "
     "--min-sdk-preservation-rows 48 --min-openxml-samples 480 "
     "--require-adapter apache-poi-roundtrip "
-    ""
     "--require-adapter spire-presentation-roundtrip --write-report"
 )
 
@@ -143,7 +142,6 @@ SDK_COMPARISON_TOOL_GATE = (
     "wolfppt-harness tools --json --unavailable-only "
     "--require-tool wolfppt-native --require-tool dotnet "
     "--require-tool openxml-sdk-roundtrip --require-tool apache-poi-roundtrip "
-    ""
     "--require-tool spire-presentation-roundtrip"
 )
 

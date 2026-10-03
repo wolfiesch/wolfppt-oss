@@ -130,7 +130,7 @@ fixture manifest. It records latency separately from correctness checks, so
 semantic diffs, package diffs, and optional Open XML validation do not inflate
 the measured adapter time. The default suite compares the stdlib semantic
 extractor, `python-pptx` summary/round-trip baselines, the official .NET Open XML
-SDK, a PptxGenJS generation-only lane, Apache POI, and
+SDK, a PptxGenJS generation-only lane, Apache POI and
 Spire.Presentation round-trip lanes when their toolchains are installed, a
 licensed Syncfusion .NET round-trip lane, an opt-in external command round-trip
 lane for other SDKs, the Rust CLI bridge, and the native Rust Python binding
@@ -354,7 +354,6 @@ WOLFPPT_PRIVATE_DECKS_DIR=/path/to/private/decks uv run wolfppt-harness private-
 WOLFPPT_PRIVATE_DECKS_DIR=/path/to/private/decks uv run wolfppt-harness benchmark-profile private-real-decks --iterations 15 --warmup 2 --min-private-decks 5 --min-distinct-private-decks 5 --min-private-total-slides 50 --min-private-total-shapes 100 --min-private-total-tables 1 --min-private-total-charts 1 --min-private-total-media 1 --min-private-total-embedded-objects 1 --min-private-decks-with-tables 1 --min-private-decks-with-charts 1 --min-private-decks-with-media 1 --min-private-decks-with-embedded-objects 1 --min-private-distinct-decks-with-tables 1 --min-private-distinct-decks-with-charts 1 --min-private-distinct-decks-with-media 1 --min-private-distinct-decks-with-embedded-objects 1 --min-private-slides-per-deck 3 --min-private-shapes-per-deck 10 --validate-openxml --progress --fail-fast --min-native-roundtrip-speedup 1.0 --min-distinct-fixtures 5 --min-openxml-samples 100 --write-report
 WOLFPPT_PRIVATE_DECKS_DIR=/path/to/private/decks uv run wolfppt-harness private-report-check results/benchmarks/latest
 SYNCFUSION_LICENSE_KEY='...' uv run wolfppt-harness benchmark --adapter syncfusion-roundtrip --fixture text_basic/title_body_bullets --validate-openxml --json
-uv run wolfppt-harness benchmark --fixture text_basic/title_body_bullets --validate-openxml --json
 uv run --with Spire.Presentation wolfppt-harness benchmark-profile sdk-spire-reproducer --iterations 3 --warmup 1 --validate-openxml --progress --write-report
 uv run --with Spire.Presentation wolfppt-harness benchmark --adapter spire-presentation-roundtrip,native-rust-roundtrip --fixture workloads/mixed_real_world_deck --iterations 3 --warmup 1 --validate-openxml --write-report --json
 WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME='Vendor Slides' WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION='1.2.3' WOLFPPT_EXTERNAL_ROUNDTRIP_CMD='vendor-tool --input {input} --output {output}' uv run wolfppt-harness benchmark --adapter external-command-roundtrip --fixture text_basic/title_body_bullets --validate-openxml --json
