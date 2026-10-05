@@ -28,7 +28,7 @@ Out of scope:
 
 WolfPPT makes no network requests and collects no telemetry. Optional
 external tool lanes (Open XML SDK validation, LibreOffice rendering,
-commercial SDK comparisons) invoke locally installed binaries only.
+external command SDK comparisons) invoke locally installed binaries only.
 
 ## Reporting a vulnerability
 

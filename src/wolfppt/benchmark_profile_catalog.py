@@ -60,8 +60,6 @@ SDK_COMPARISON_ADAPTERS = (
     "python-pptx-roundtrip",
     "openxml-sdk-roundtrip",
     "apache-poi-roundtrip",
-    "spire-presentation-roundtrip",
-    "syncfusion-roundtrip",
     "external-command-roundtrip",
     "native-rust-roundtrip",
 )
@@ -72,11 +70,6 @@ SDK_PRESERVATION_ADAPTERS = (
     "python-pptx-roundtrip",
     "openxml-sdk-roundtrip",
     "apache-poi-roundtrip",
-    "native-rust-roundtrip",
-)
-
-SDK_SPIRE_REPRODUCER_ADAPTERS = (
-    "spire-presentation-roundtrip",
     "native-rust-roundtrip",
 )
 
@@ -245,7 +238,7 @@ BENCHMARK_PROFILES = (
         name="sdk-comparison",
         description=(
             "Explicit third-party SDK comparison lane across real-world corpus fixtures. "
-            "Commercial and external adapters may fail or skip; use this profile for "
+            "External command adapters may fail or skip; use this profile for "
             "claim-boundary evidence, not the default release gate."
         ),
         batches=(
@@ -253,7 +246,7 @@ BENCHMARK_PROFILES = (
                 name="sdk-comparison",
                 description=(
                     "Round-trip comparison across python-pptx, Open XML SDK, "
-                    "Apache POI, commercial SDKs, external commands, and WolfPPT native."
+                    "Apache POI, external commands, and WolfPPT native."
                 ),
                 adapter_names=SDK_COMPARISON_ADAPTERS,
                 fixture_ids=REAL_CORPUS_FIXTURES,
@@ -265,7 +258,7 @@ BENCHMARK_PROFILES = (
         description=(
             "Small third-party SDK setup and correctness smoke on one mixed "
             "real-world-style deck. Use for adapter triage before sdk-comparison; "
-            "it is not broad commercial-SDK claim evidence."
+            "it is not broad third-party SDK claim evidence."
         ),
         batches=(
             BenchmarkProfileBatch(
@@ -284,7 +277,7 @@ BENCHMARK_PROFILES = (
         description=(
             "Claim-grade passing preservation comparison against popular open-source "
             "round-trip baselines that currently produce valid real-corpus outputs. "
-            "Commercial SDK failure evidence stays in sdk-comparison."
+            "External SDK failure evidence stays in sdk-comparison."
         ),
         batches=(
             BenchmarkProfileBatch(
@@ -295,25 +288,6 @@ BENCHMARK_PROFILES = (
                 ),
                 adapter_names=SDK_PRESERVATION_ADAPTERS,
                 fixture_ids=REAL_CORPUS_FIXTURES,
-            ),
-        ),
-    ),
-    BenchmarkProfile(
-        name="sdk-spire-reproducer",
-        description=(
-            "Narrow Spire.Presentation versus WolfPPT native reproducer on a "
-            "chart-bearing real-world-style deck. Use for SDK setup and correctness "
-            "triage, not broad speed claims."
-        ),
-        batches=(
-            BenchmarkProfileBatch(
-                name="sdk-spire-reproducer",
-                description=(
-                    "Spire.Presentation and WolfPPT native round-trip comparison on "
-                    "the mixed real-world workload fixture."
-                ),
-                adapter_names=SDK_SPIRE_REPRODUCER_ADAPTERS,
-                fixture_ids=("workloads/mixed_real_world_deck",),
             ),
         ),
     ),

@@ -21,14 +21,6 @@ from .openxml_sdk import openxml_sdk_roundtrip_available
 from .powerpoint import powerpoint_available
 from .pptxgenjs import pptxgenjs_available
 from .rust_core import rust_cli_available
-from .spire_presentation import (
-    spire_presentation_roundtrip_available,
-    spire_presentation_roundtrip_unavailable_reason,
-)
-from .syncfusion import (
-    syncfusion_roundtrip_available,
-    syncfusion_roundtrip_unavailable_reason,
-)
 from .toolchain import dotnet_command
 
 
@@ -82,26 +74,6 @@ def available_tools() -> list[ToolInfo]:
             role="Java Apache POI baseline",
             detail="Opens and writes existing PPTX files through Apache POI XSLF when Maven is installed.",
             unavailable_reason=apache_poi_roundtrip_unavailable_reason(),
-        ),
-        ToolInfo(
-            name="spire-presentation-roundtrip",
-            available=spire_presentation_roundtrip_available(),
-            role="commercial Spire.Presentation baseline",
-            detail=(
-                "Opens and writes existing PPTX/PPTM files through "
-                "Spire.Presentation for Python after a blank-save runtime probe."
-            ),
-            unavailable_reason=spire_presentation_roundtrip_unavailable_reason(),
-        ),
-        ToolInfo(
-            name="syncfusion-roundtrip",
-            available=syncfusion_roundtrip_available(),
-            role="commercial Syncfusion baseline",
-            detail=(
-                "Opens and writes existing PPTX/PPTM files through the "
-                "bundled Syncfusion .NET example when licensed."
-            ),
-            unavailable_reason=syncfusion_roundtrip_unavailable_reason(),
         ),
         ToolInfo(
             name="external-command-roundtrip",
