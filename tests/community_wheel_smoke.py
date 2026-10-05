@@ -16,7 +16,7 @@ from tempfile import TemporaryDirectory
 
 from wolfppt.demo import run_demo
 
-assert version("wolfppt") == "0.1.2"
+assert version("wolfppt") == "0.1.4"
 assert find_spec("wolfppt.wolfppt_native") is not None, "native module missing from wheel"
 
 with TemporaryDirectory() as directory:

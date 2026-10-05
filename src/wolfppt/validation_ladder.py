@@ -60,8 +60,7 @@ REAL_CORPUS_GATE = (
 )
 
 SDK_COMPARISON_GATE = (
-    "uv run --with Spire.Presentation "
-    "wolfppt-harness benchmark-profile sdk-comparison --iterations 5 "
+    "uv run wolfppt-harness benchmark-profile sdk-comparison --iterations 5 "
     "--warmup 1 --validate-openxml --progress --fail-fast "
     "--min-distinct-fixtures 16 "
     "--min-fixture-total-slides 106 --min-fixture-total-shapes 297 "
@@ -69,27 +68,24 @@ SDK_COMPARISON_GATE = (
     "--min-fixture-total-media 15 --min-fixture-total-embedded-objects 36 "
     "--min-fixtures-with-tables 16 --min-fixtures-with-charts 16 "
     "--min-fixtures-with-media 15 --min-fixtures-with-embedded-objects 16 "
-    "--min-sdk-preservation-rows 48 --min-openxml-samples 400 "
-    "--require-adapter apache-poi-roundtrip "
-    "--require-adapter spire-presentation-roundtrip --write-report"
+    "--min-sdk-preservation-rows 48 --min-openxml-samples 320 "
+    "--require-adapter apache-poi-roundtrip --write-report"
 )
 
 SDK_COMPARISON_STRICT_GATE = (
     SDK_COMPARISON_GATE.removesuffix(" --write-report")
-    + " --require-adapter syncfusion-roundtrip "
-    "--require-adapter external-command-roundtrip --write-report"
+    + " --require-adapter external-command-roundtrip --write-report"
 )
 
 SDK_COMPARISON_CLAIM_GATE = (
     SDK_COMPARISON_GATE.replace("--iterations 5 ", "--iterations 15 ")
     .replace("--warmup 1 ", "--warmup 2 ")
-    .replace("--min-openxml-samples 400 ", "--min-openxml-samples 1200 ")
+    .replace("--min-openxml-samples 320 ", "--min-openxml-samples 960 ")
 )
 
 SDK_COMPARISON_CLAIM_STRICT_GATE = (
     SDK_COMPARISON_CLAIM_GATE.removesuffix(" --write-report")
-    + " --require-adapter syncfusion-roundtrip "
-    "--require-adapter external-command-roundtrip --write-report"
+    + " --require-adapter external-command-roundtrip --write-report"
 )
 
 PRIVATE_DECKS_INVENTORY_GATE = (
@@ -138,17 +134,14 @@ RELEASE_TOOL_GATE = (
 )
 
 SDK_COMPARISON_TOOL_GATE = (
-    "uv run --with Spire.Presentation "
-    "wolfppt-harness tools --json --unavailable-only "
+    "uv run wolfppt-harness tools --json --unavailable-only "
     "--require-tool wolfppt-native --require-tool dotnet "
-    "--require-tool openxml-sdk-roundtrip --require-tool apache-poi-roundtrip "
-    "--require-tool spire-presentation-roundtrip"
+    "--require-tool openxml-sdk-roundtrip --require-tool apache-poi-roundtrip"
 )
 
 SDK_COMPARISON_STRICT_TOOL_GATE = (
     SDK_COMPARISON_TOOL_GATE
-    + " --require-tool syncfusion-roundtrip "
-    "--require-tool external-command-roundtrip"
+    + " --require-tool external-command-roundtrip"
 )
 
 
@@ -362,7 +355,7 @@ def validation_ladder(
             "tier": tier,
             "location": "remote validation host",
             "purpose": (
-                "commercial and external SDK comparison evidence without making "
+                "third-party and external SDK comparison evidence without making "
                 "vendor tools part of the normal release gate"
             ),
             "commands": [
@@ -383,7 +376,7 @@ def validation_ladder(
                 _cmd(
                     "tool-gate",
                     sdk_remote_prefix + SDK_COMPARISON_TOOL_GATE + "'",
-                    "Fail fast if required open-source or commercial SDK lanes are unavailable.",
+                    "Fail fast if required open-source SDK lanes are unavailable.",
                 ),
                 _cmd(
                     "sdk-comparison",
@@ -393,7 +386,7 @@ def validation_ladder(
             ],
             "notes": [
                 "Prefer the detached launcher for normal use; the following SSH commands show the exact gate it runs.",
-                "Use this before updating commercial SDK comparison claims.",
+                "Use this before updating third-party SDK comparison claims.",
                 "Treat third-party failures as comparison evidence, not as a blanket best-in-class claim.",
             ],
         }
@@ -403,8 +396,8 @@ def validation_ladder(
             "tier": tier,
             "location": "remote validation host",
             "purpose": (
-                "strict commercial SDK comparison evidence that fails unless "
-                "Syncfusion and the configured external SDK command are present"
+                "strict SDK comparison evidence that fails unless "
+                "the configured external SDK command is present"
             ),
             "commands": [
                 _cmd(
@@ -426,19 +419,19 @@ def validation_ladder(
                     strict_sdk_remote_prefix
                     + SDK_COMPARISON_STRICT_TOOL_GATE
                     + "'",
-                    "Fail fast if any required commercial or external SDK lane is unavailable.",
+                    "Fail fast if any required open-source or external SDK lane is unavailable.",
                 ),
                 _cmd(
                     "sdk-comparison-strict",
                     strict_sdk_remote_prefix + SDK_COMPARISON_STRICT_GATE + "'",
-                    "Run the 16-fixture SDK comparison with all strict commercial lanes required.",
+                    "Run the 16-fixture SDK comparison with the external SDK lane required.",
                 ),
             ],
             "notes": [
                 "Prefer the detached launcher for normal use; the following SSH commands show the exact gate it runs.",
-                "Use this only for a broader commercial-SDK claim, after the normal SDK comparison is healthy.",
+                "Use this only for a broader third-party SDK claim, after the normal SDK comparison is healthy.",
                 (
-                    "The remote shell must already have Syncfusion licensing, "
+                    "The remote shell must already have "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_CMD, "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME, and "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION configured."
@@ -451,7 +444,7 @@ def validation_ladder(
             "tier": tier,
             "location": "remote validation host",
             "purpose": (
-                "claim-grade commercial and external SDK comparison evidence "
+                "claim-grade third-party and external SDK comparison evidence "
                 "using 15 measured iterations"
             ),
             "commands": [
@@ -472,7 +465,7 @@ def validation_ladder(
                 _cmd(
                     "tool-gate",
                     sdk_remote_prefix + SDK_COMPARISON_TOOL_GATE + "'",
-                    "Fail fast if required open-source or commercial SDK lanes are unavailable.",
+                    "Fail fast if required open-source SDK lanes are unavailable.",
                 ),
                 _cmd(
                     "sdk-comparison-claim",
@@ -493,8 +486,8 @@ def validation_ladder(
             "tier": tier,
             "location": "remote validation host",
             "purpose": (
-                "strict claim-grade commercial SDK comparison evidence with "
-                "Syncfusion and the configured external SDK command required"
+                "strict claim-grade SDK comparison evidence with "
+                "the configured external SDK command required"
             ),
             "commands": [
                 _cmd(
@@ -516,21 +509,21 @@ def validation_ladder(
                     strict_sdk_remote_prefix
                     + SDK_COMPARISON_STRICT_TOOL_GATE
                     + "'",
-                    "Fail fast if any required commercial or external SDK lane is unavailable.",
+                    "Fail fast if any required open-source or external SDK lane is unavailable.",
                 ),
                 _cmd(
                     "sdk-comparison-claim-strict",
                     strict_sdk_remote_prefix
                     + SDK_COMPARISON_CLAIM_STRICT_GATE
                     + "'",
-                    "Run the 15-iteration SDK comparison with all strict commercial lanes required.",
+                    "Run the 15-iteration SDK comparison with the external SDK lane required.",
                 ),
             ],
             "notes": [
                 "Prefer the detached launcher for normal use; the following SSH commands show the exact gate it runs.",
-                "Use this only for a broad commercial-SDK claim.",
+                "Use this only for a broad third-party SDK claim.",
                 (
-                    "The remote shell must already have Syncfusion licensing, "
+                    "The remote shell must already have "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_CMD, "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME, and "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION configured."

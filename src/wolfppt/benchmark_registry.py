@@ -729,22 +729,6 @@ BENCHMARK_ADAPTER_SPECS: tuple[BenchmarkAdapterSpec, ...] = (
         "apache_poi_roundtrip_unavailable_reason",
     ),
     BenchmarkAdapterSpec(
-        "spire-presentation-roundtrip",
-        "roundtrip",
-        "commercial Spire.Presentation baseline",
-        "spire_presentation_roundtrip_available",
-        "_bench_spire_presentation_roundtrip",
-        "spire_presentation_roundtrip_unavailable_reason",
-    ),
-    BenchmarkAdapterSpec(
-        "syncfusion-roundtrip",
-        "roundtrip",
-        "commercial Syncfusion baseline",
-        "syncfusion_roundtrip_available",
-        "_bench_syncfusion_roundtrip",
-        "syncfusion_roundtrip_unavailable_reason",
-    ),
-    BenchmarkAdapterSpec(
         "external-command-roundtrip",
         "roundtrip",
         "custom external SDK command baseline",

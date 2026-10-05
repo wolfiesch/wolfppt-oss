@@ -2,18 +2,8 @@
 
 from __future__ import annotations
 
-import importlib.metadata
 import xml.etree.ElementTree as ET
 from pathlib import Path
-
-
-def installed_package_version(*distribution_names: str) -> str | None:
-    for name in distribution_names:
-        try:
-            return importlib.metadata.version(name)
-        except importlib.metadata.PackageNotFoundError:
-            continue
-    return None
 
 
 def maven_dependency_versions(pom_path: Path, artifacts: set[str]) -> dict[str, str]:

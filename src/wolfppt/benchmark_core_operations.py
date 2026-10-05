@@ -15,8 +15,6 @@ from .adapters.python_pptx import roundtrip as python_pptx_roundtrip
 from .adapters.python_pptx import summarize as python_pptx_summarize
 from .adapters.rust_core import inspect as rust_inspect
 from .adapters.rust_core import roundtrip as rust_roundtrip
-from .adapters.spire_presentation import roundtrip as spire_presentation_roundtrip
-from .adapters.syncfusion import roundtrip as syncfusion_roundtrip
 from .benchmark_runtime import elapsed_ms as _elapsed_ms, stamp as _stamp
 from .benchmark_validation import _roundtrip_details, _validate_output
 from .compare import compare_semantics, semantic_mismatch_preview
@@ -168,55 +166,6 @@ def _bench_apache_poi_roundtrip(
         {
             "part_count": result.part_count,
             "has_vba": result.has_vba,
-            "sdk_versions": result.sdk_versions,
-        }
-    )
-    return elapsed_ms, details
-
-
-def _bench_spire_presentation_roundtrip(
-    fixture_id: str,
-    fixture_path: Path,
-    expected_path: Path,
-    tmp_path: Path,
-    validate_openxml: bool,
-) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"spire-presentation-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
-    start = perf_counter()
-    result = spire_presentation_roundtrip(fixture_path, out)
-    elapsed_ms = _elapsed_ms(start)
-    details = _roundtrip_details(fixture_id, fixture_path, out, validate_openxml)
-    details.update(
-        {
-            "part_count": result.part_count,
-            "has_vba": result.has_vba,
-            "sdk_versions": result.sdk_versions,
-        }
-    )
-    return elapsed_ms, details
-
-
-def _bench_syncfusion_roundtrip(
-    fixture_id: str,
-    fixture_path: Path,
-    expected_path: Path,
-    tmp_path: Path,
-    validate_openxml: bool,
-) -> tuple[float, dict[str, Any]]:
-    out = (
-        tmp_path
-        / f"syncfusion-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
-    )
-    start = perf_counter()
-    result = syncfusion_roundtrip(fixture_path, out)
-    elapsed_ms = _elapsed_ms(start)
-    details = _roundtrip_details(fixture_id, fixture_path, out, validate_openxml)
-    details.update(
-        {
-            "part_count": result.part_count,
-            "has_vba": result.has_vba,
-            "command": result.command,
-            "trial_allowed": result.trial_allowed,
             "sdk_versions": result.sdk_versions,
         }
     )

@@ -33,8 +33,6 @@ from .adapters import external_command as _external_command_adapter
 from .adapters import openxml_sdk as _openxml_sdk_adapter
 from .adapters import pptxgenjs as _pptxgenjs_adapter
 from .adapters import rust_core as _rust_core_adapter
-from .adapters import spire_presentation as _spire_presentation_adapter
-from .adapters import syncfusion as _syncfusion_adapter
 from .benchmark_fit_text_fonts import find_fit_text_font
 from .benchmark_models import (
     BenchmarkAdapter,
@@ -463,18 +461,6 @@ def _benchmark_adapter_namespace() -> dict[str, Any]:
             ),
             "pptxgenjs_available": _pptxgenjs_adapter.pptxgenjs_available,
             "rust_cli_available": _rust_core_adapter.rust_cli_available,
-            "spire_presentation_roundtrip_available": (
-                _spire_presentation_adapter.spire_presentation_roundtrip_available
-            ),
-            "spire_presentation_roundtrip_unavailable_reason": (
-                _spire_presentation_adapter.spire_presentation_roundtrip_unavailable_reason
-            ),
-            "syncfusion_roundtrip_available": (
-                _syncfusion_adapter.syncfusion_roundtrip_available
-            ),
-            "syncfusion_roundtrip_unavailable_reason": (
-                _syncfusion_adapter.syncfusion_roundtrip_unavailable_reason
-            ),
         }
     )
     for module in _BENCHMARK_OPERATION_MODULES:

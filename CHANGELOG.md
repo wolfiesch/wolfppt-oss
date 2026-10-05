@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.4] - 2026-10-04
+
+### Removed
+- Drops the remaining commercial-SDK benchmark adapters. This release supersedes the yanked 0.1.3.
+
+## [0.1.3] - 2026-10-04
+
+### Changed
+- Supersedes the yanked 0.1.0, 0.1.1, and 0.1.2 releases and drops vendor-specific benchmark adapters from the package.
+
 ## [0.1.2] - 2026-10-02
 
 ### Fixed

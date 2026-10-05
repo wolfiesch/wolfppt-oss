@@ -130,11 +130,10 @@ fixture manifest. It records latency separately from correctness checks, so
 semantic diffs, package diffs, and optional Open XML validation do not inflate
 the measured adapter time. The default suite compares the stdlib semantic
 extractor, `python-pptx` summary/round-trip baselines, the official .NET Open XML
-SDK, a PptxGenJS generation-only lane, Apache POI and
-Spire.Presentation round-trip lanes when their toolchains are installed, a
-licensed Syncfusion .NET round-trip lane, an opt-in external command round-trip
-lane for other SDKs, the Rust CLI bridge, and the native Rust Python binding
-when those tools are available. Use
+SDK, a PptxGenJS generation-only lane, an Apache POI round-trip lane when its
+toolchain is installed, an opt-in external command round-trip lane for other
+SDKs, the Rust CLI bridge, and the native Rust Python binding when those tools
+are available. Use
 `--validate-openxml` for release-grade output validation and `--write-results`
 to append samples to `results/runs.jsonl`. The PptxGenJS lane is a generated-deck
 baseline, not evidence of existing-deck preservation; Open XML validation may
@@ -152,11 +151,11 @@ comparisons on valid adapter/fixture pairs and add a python-pptx vs WolfPPT
 speedup table when both sides pass. Use `dev-smoke` for fast edit-loop
 feedback; it is not claim-grade evidence. Useful profiles include `dev-smoke`,
 `core-smoke`, `core-full`, `real-corpus`, `private-real-decks`,
-`sdk-preservation`, `sdk-comparison`, `sdk-spire-reproducer`, `dropin-smoke`,
+`sdk-preservation`, `sdk-comparison`, `dropin-smoke`,
 `dropin-full`, `release-smoke`, and `release-full`. Core and release profiles use built-in
 preservation adapters only; Apache POI claim gates belong in
-`sdk-preservation`, commercial SDKs and custom external commands belong in
-`sdk-comparison`, stricter all-commercial setup proof belongs in
+`sdk-preservation`, custom external commands belong in
+`sdk-comparison`, stricter external-command setup proof belongs in
 `sdk-comparison-strict`, and uncommitted local or VPS-only decks belong in
 `private-real-decks` via `WOLFPPT_PRIVATE_DECKS_DIR`.
 Release profiles omit the generation-only PptxGenJS lane so `--validate-openxml`
@@ -166,7 +165,7 @@ performance gate for release evidence. The gate still reports every near miss,
 but sub-threshold slowdowns of `0.100 ms` or less are treated as timing noise
 rather than material failures.
 Add `--require-adapter <name>` when a comparison lane must be present rather
-than skipped, for example when recording commercial SDK evidence.
+than skipped, for example when recording external SDK evidence.
 For visual-oracle corpus evidence, pair `run-corpus --include-powerpoint` with
 `--require-lane powerpoint-render` so a missing or skipped PowerPoint export
 fails the run instead of being treated as optional. Add
@@ -353,9 +352,6 @@ uv run wolfppt-harness benchmark-profile dropin-smoke --iterations 15 --warmup 2
 WOLFPPT_PRIVATE_DECKS_DIR=/path/to/private/decks uv run wolfppt-harness private-decks --json --min-count 5 --min-distinct-count 5 --min-total-slides 50 --min-total-shapes 100 --min-total-tables 1 --min-total-charts 1 --min-total-media 1 --min-total-embedded-objects 1 --min-decks-with-tables 1 --min-decks-with-charts 1 --min-decks-with-media 1 --min-decks-with-embedded-objects 1 --min-distinct-decks-with-tables 1 --min-distinct-decks-with-charts 1 --min-distinct-decks-with-media 1 --min-distinct-decks-with-embedded-objects 1 --min-slides-per-deck 3 --min-shapes-per-deck 10
 WOLFPPT_PRIVATE_DECKS_DIR=/path/to/private/decks uv run wolfppt-harness benchmark-profile private-real-decks --iterations 15 --warmup 2 --min-private-decks 5 --min-distinct-private-decks 5 --min-private-total-slides 50 --min-private-total-shapes 100 --min-private-total-tables 1 --min-private-total-charts 1 --min-private-total-media 1 --min-private-total-embedded-objects 1 --min-private-decks-with-tables 1 --min-private-decks-with-charts 1 --min-private-decks-with-media 1 --min-private-decks-with-embedded-objects 1 --min-private-distinct-decks-with-tables 1 --min-private-distinct-decks-with-charts 1 --min-private-distinct-decks-with-media 1 --min-private-distinct-decks-with-embedded-objects 1 --min-private-slides-per-deck 3 --min-private-shapes-per-deck 10 --validate-openxml --progress --fail-fast --min-native-roundtrip-speedup 1.0 --min-distinct-fixtures 5 --min-openxml-samples 100 --write-report
 WOLFPPT_PRIVATE_DECKS_DIR=/path/to/private/decks uv run wolfppt-harness private-report-check results/benchmarks/latest
-SYNCFUSION_LICENSE_KEY='...' uv run wolfppt-harness benchmark --adapter syncfusion-roundtrip --fixture text_basic/title_body_bullets --validate-openxml --json
-uv run --with Spire.Presentation wolfppt-harness benchmark-profile sdk-spire-reproducer --iterations 3 --warmup 1 --validate-openxml --progress --write-report
-uv run --with Spire.Presentation wolfppt-harness benchmark --adapter spire-presentation-roundtrip,native-rust-roundtrip --fixture workloads/mixed_real_world_deck --iterations 3 --warmup 1 --validate-openxml --write-report --json
 WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME='Vendor Slides' WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION='1.2.3' WOLFPPT_EXTERNAL_ROUNDTRIP_CMD='vendor-tool --input {input} --output {output}' uv run wolfppt-harness benchmark --adapter external-command-roundtrip --fixture text_basic/title_body_bullets --validate-openxml --json
 WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME='copy-example' WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION='0.0.0' WOLFPPT_EXTERNAL_ROUNDTRIP_CMD='python3 examples/external-roundtrip/external-command/copy_roundtrip.py --input {input} --output {output}' uv run wolfppt-harness benchmark --adapter external-command-roundtrip --fixture text_basic/title_body_bullets --validate-openxml --json
 WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME='Vendor Slides' WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION='1.2.3' WOLFPPT_EXTERNAL_ROUNDTRIP_CMD='vendor-tool --input {input} --output {output}' uv run wolfppt-harness benchmark-profile sdk-comparison --require-adapter external-command-roundtrip --validate-openxml --progress --write-report
