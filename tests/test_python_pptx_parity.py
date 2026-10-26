@@ -12,14 +12,16 @@ from xml.etree import ElementTree as ET
 import pptx
 import pytest
 from pptx.chart.data import BubbleChartData, CategoryChartData
+from pptx.dml.color import RGBColor
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.oxml.ns import qn
-from pptx.util import Inches
+from pptx.util import Inches, Pt
 
 import wolfppt
 
 SS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 C = "{http://schemas.openxmlformats.org/drawingml/2006/chart}"
+A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
 
 def _run_texts(paragraph) -> list[str]:
@@ -242,3 +244,56 @@ def test_chart_replace_data_with_less_data_clears_stale_workbook_cells(
         original = _embedded_workbook(before, 0)
         for name in ("xl/styles.xml", "xl/theme/theme1.xml", "xl/workbook.xml"):
             assert updated.read(name) == original.read(name)
+
+
+def _table_without_text(path: Path) -> bytes:
+    """The slide's table with every a:t emptied: grid, cell, paragraph and run properties."""
+    with zipfile.ZipFile(path) as package:
+        root = ET.fromstring(package.read("ppt/slides/slide1.xml"))
+    table = root.find(f".//{A}tbl")
+    assert table is not None
+    for text in table.iter(f"{A}t"):
+        text.text = ""
+    return ET.tostring(table)
+
+
+@pytest.fixture
+def formatted_table_deck(tmp_path: Path) -> Path:
+    """A table whose first cell holds one formatted run and whose second holds three."""
+    prs = pptx.Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    table = slide.shapes.add_table(1, 2, Inches(1), Inches(1), Inches(6), Inches(1)).table
+    run = table.cell(0, 0).text_frame.paragraphs[0].add_run()
+    run.text = "Plant-based"
+    run.font.size, run.font.bold, run.font.name = Pt(14), True, "Arial"
+    run.font.color.rgb = RGBColor(0x1F, 0x2A, 0x44)
+    paragraph = table.cell(0, 1).text_frame.paragraphs[0]
+    for text, size, name in (("Left ", 12, "Georgia"), ("42", 18, "Arial"), (" units", 10, "Verdana")):
+        run = paragraph.add_run()
+        run.text = text
+        run.font.size, run.font.name = Pt(size), name
+    path = tmp_path / "table.pptx"
+    prs.save(path)
+    return path
+
+
+def test_table_cell_run_text_keeps_run_formatting(
+    formatted_table_deck: Path, tmp_path: Path
+) -> None:
+    presentation = wolfppt.Presentation(formatted_table_deck)
+    table = presentation.slides[0].shapes[0].table
+    table.cell(0, 0).text_frame.paragraphs[0].runs[0].text = "Changed"
+    runs = table.cell(0, 1).text_frame.paragraphs[0].runs
+    runs[1].text = "57"
+    runs[2].text = " pieces"
+    output = tmp_path / "edited.pptx"
+    presentation.save(output)
+
+    reopened = pptx.Presentation(output).slides[0].shapes[0].table
+    run = reopened.cell(0, 0).text_frame.paragraphs[0].runs[0]
+    assert run.text == "Changed"
+    assert (run.font.size, run.font.bold, run.font.name) == (Pt(14), True, "Arial")
+    assert str(run.font.color.rgb) == "1F2A44"
+    assert _run_texts(reopened.cell(0, 1).text_frame.paragraphs[0]) == ["Left ", "57", " pieces"]
+    # Like python-pptx, only the text changes: no run, rPr or pPr is added or dropped.
+    assert _table_without_text(output) == _table_without_text(formatted_table_deck)

@@ -82,13 +82,13 @@ def _set_table_cell_text_frame_paragraph_properties(
             paragraph = paragraphs[paragraph_index]
         except IndexError as exc:
             raise IndexError("paragraph index out of range") from exc
-        paragraph_properties = _paragraph_properties_element(paragraph)
+        # Run text and line breaks alone must not add an empty a:pPr to the paragraph.
         if "alignment" in edits:
-            _set_paragraph_alignment(paragraph_properties, edits["alignment"])
+            _set_paragraph_alignment(_paragraph_properties_element(paragraph), edits["alignment"])
         if "level" in edits:
-            _set_paragraph_level(paragraph_properties, int(edits["level"]))
+            _set_paragraph_level(_paragraph_properties_element(paragraph), int(edits["level"]))
         if "spacing" in edits:
-            _set_paragraph_spacing(paragraph_properties, edits["spacing"])
+            _set_paragraph_spacing(_paragraph_properties_element(paragraph), edits["spacing"])
         if "font" in edits:
             default_run_properties = _paragraph_default_run_properties_element(
                 paragraph
@@ -159,15 +159,23 @@ def _a_text_paragraph_element(text: str) -> ET.Element:
 
 
 def _set_paragraph_runs(paragraph: ET.Element, runs: list[str]) -> None:
-    for child in list(paragraph):
-        if child.tag in {f"{{{A_NS}}}r", f"{{{A_NS}}}br"}:
-            paragraph.remove(child)
+    # Run text updates retain rPr, hyperlinks, extensions, and existing breaks.
+    # Regenerating a paragraph here made a single run.text setter discard every
+    # other run's formatting, including text outside a find/replace match.
+    existing = paragraph.findall(f"{{{A_NS}}}r")
+    for run, text in zip(existing, runs, strict=False):
+        text_node = run.find(f"{{{A_NS}}}t")
+        if text_node is None:
+            text_node = ET.SubElement(run, f"{{{A_NS}}}t")
+        text_node.text = str(text)
+    for run in existing[len(runs) :]:
+        paragraph.remove(run)
     insert_at = len(paragraph)
     for index, child in enumerate(list(paragraph)):
         if _xml_local_name(child.tag) in {"endParaRPr", "extLst"}:
             insert_at = index
             break
-    for run_text in runs:
+    for run_text in runs[len(existing) :]:
         run = ET.Element(f"{{{A_NS}}}r")
         text_node = ET.SubElement(run, f"{{{A_NS}}}t")
         text_node.text = str(run_text)
