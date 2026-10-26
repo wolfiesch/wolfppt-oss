@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.5] - 2026-10-26
+
+### Fixed
+- Setting `run.text` on a run in a table cell keeps that run's formatting (size, bold, font, color) and every other run in the paragraph, as python-pptx does. Previously the paragraph was rebuilt from plain runs, so a single run edit dropped all of its `a:rPr`. Run text edits also no longer add an empty `a:pPr` to the paragraph.
+
 ## [0.1.4] - 2026-10-04
 
 ### Removed
