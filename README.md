@@ -2,10 +2,12 @@
 
 [![CI](https://github.com/wolfiesch/wolfppt-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/wolfiesch/wolfppt-oss/actions/workflows/ci.yml)
 
-Edit existing PowerPoint `.pptx` decks from Python with a python-pptx-style API
-and keep every part you did not touch, including themes, layouts, masters,
-charts, media, and notes, byte-for-byte identical. WolfPPT is MIT licensed and
-also creates new decks.
+A python-pptx alternative for editing existing PowerPoint `.pptx` decks from
+Python. Change text, tables, and chart data while every part you did not touch,
+including themes, slide layouts, masters, charts, media, and notes, stays
+byte-for-byte identical. The API mirrors python-pptx
+(`from wolfppt import Presentation`), editing needs no PowerPoint or
+LibreOffice install, and WolfPPT is MIT licensed and also creates new decks.
 
 ```bash
 pip install wolfppt
@@ -49,7 +51,18 @@ The saved copy rewrites only the two edited slide parts. Task guides for
 The benchmark harness in this repository measures these claims and stays a
 first-class part of the project.
 
-## Compared with python-pptx
+This package does not convert decks to PDF or images: its optional render
+smoke check calls LibreOffice. To convert `.pptx` to PDF or PNG on a Linux
+server without PowerPoint or LibreOffice, see the separate commercial
+[Wolf Runtime workflow](https://wolfppt.com/convert-pptx-to-pdf-python).
+
+## When to use WolfPPT instead of python-pptx
+
+Use WolfPPT to update decks a designer or another team maintains, where a
+save must keep their layouts, themes, and charts exactly as they were. Use
+python-pptx to generate new decks from code, or when a script needs a call the
+WolfPPT facade does not list. A [step-by-step comparison](https://wolfppt.com/python-pptx-alternative)
+is on wolfppt.com.
 
 - **API shape:** the facade mirrors python-pptx names (`Presentation`,
   `slides`, `shapes`, `text_frame`, `runs`, `table.cell(...)`) for the
