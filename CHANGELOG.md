@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.6] - 2026-10-29
+
+### Changed
+- Package metadata: the PyPI summary now states what the package does in general terms (create, read, and edit `.pptx` files) before the python-pptx-compatible API and byte-for-byte preservation. Adds Development Status, Intended Audience, and Topic classifiers, more keywords, and Documentation, Issues, and Changelog project links.
+- The README opens with the python-pptx alternative use case, states that this package does not convert to PDF, and adds a "When to use WolfPPT instead of python-pptx" lead-in.
+
 ## [0.1.5] - 2026-10-26
 
 ### Fixed

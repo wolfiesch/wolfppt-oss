@@ -601,7 +601,7 @@ def _version() -> str:
     try:
         return importlib.metadata.version("wolfppt")
     except importlib.metadata.PackageNotFoundError:
-        return "0.1.5"
+        return "0.1.6"
 
 
 def _short_sha(repo_root: Path) -> str:
