@@ -719,6 +719,15 @@ freeze the candidate commit, produce the platform evidence card with
 claims job at the exact frozen head, and only then publish. The checklist
 defines the full gate order and the evidence to record at each step.
 
+## Related libraries
+
+The same MIT-licensed family covers the other Office formats:
+
+- [WolfXL](https://github.com/SynthGL/wolfxl-oss): read, write, and edit Excel
+  `.xlsx` and `.xlsm` workbooks, an openpyxl alternative (`pip install wolfxl`).
+- [WolfDocx](https://github.com/wolfiesch/wolfdocx-oss): edit Word `.docx`
+  documents, a python-docx alternative (`pip install wolfdocx`).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
