@@ -1,0 +1,119 @@
+{
+  "status": "inspected",
+  "cases": [
+    {
+      "filename": "python-pptx-minimal.pptx",
+      "declared_slides": 0,
+      "slide_parts": 0,
+      "text_shapes": 0,
+      "pictures": 0,
+      "tables": 0,
+      "chart_references": 0,
+      "slide_text": [],
+      "declared_latin_fonts": [
+        "+mj-lt",
+        "+mn-lt",
+        "Calibri"
+      ],
+      "preset_shapes": []
+    },
+    {
+      "filename": "python-pptx-test.pptx",
+      "declared_slides": 1,
+      "slide_parts": 1,
+      "text_shapes": 2,
+      "pictures": 0,
+      "tables": 0,
+      "chart_references": 0,
+      "slide_text": [
+        "Presentation Title Text | Subtitle Text"
+      ],
+      "declared_latin_fonts": [
+        "+mj-lt",
+        "+mn-lt",
+        "Calibri"
+      ],
+      "preset_shapes": []
+    },
+    {
+      "filename": "poi-table-with-theme.pptx",
+      "declared_slides": 1,
+      "slide_parts": 1,
+      "text_shapes": 0,
+      "pictures": 0,
+      "tables": 1,
+      "chart_references": 0,
+      "slide_text": [
+        "Abc |   | def | def |   | hij |   | klm |   | nop"
+      ],
+      "declared_latin_fonts": [
+        "+mj-lt",
+        "+mn-lt",
+        "Arial",
+        "Calibri",
+        "Calibri Light"
+      ],
+      "preset_shapes": []
+    },
+    {
+      "filename": "poi-picture-transparency.pptx",
+      "declared_slides": 4,
+      "slide_parts": 4,
+      "text_shapes": 0,
+      "pictures": 4,
+      "tables": 0,
+      "chart_references": 0,
+      "slide_text": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "declared_latin_fonts": [
+        "Arial",
+        "Times New Roman"
+      ],
+      "preset_shapes": [
+        "rect"
+      ]
+    },
+    {
+      "filename": "poi-bar-chart.pptx",
+      "declared_slides": 1,
+      "slide_parts": 1,
+      "text_shapes": 1,
+      "pictures": 0,
+      "tables": 0,
+      "chart_references": 1,
+      "slide_text": [
+        "My  | Bar  | Chart"
+      ],
+      "declared_latin_fonts": [
+        "+mj-lt",
+        "+mn-lt",
+        "Calibri"
+      ],
+      "preset_shapes": []
+    },
+    {
+      "filename": "poi-sample.pptx",
+      "declared_slides": 2,
+      "slide_parts": 2,
+      "text_shapes": 4,
+      "pictures": 0,
+      "tables": 0,
+      "chart_references": 0,
+      "slide_text": [
+        "Lorem ipsum dolor sit amet | Nunc at risus vel erat tempus posuere. Aenean non ante.",
+        "Lorem ipsum dolor sit amet | Lorem | ipsum | dolor | sit | amet"
+      ],
+      "declared_latin_fonts": [
+        "+mn-lt",
+        "Arial",
+        "Calibri"
+      ],
+      "preset_shapes": []
+    }
+  ],
+  "boundary": "Part structure and declared text only; rendering remains unverified"
+}
