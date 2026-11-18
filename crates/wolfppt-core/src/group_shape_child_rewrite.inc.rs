@@ -16,7 +16,7 @@ fn set_group_shape_child_text_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"grpSp" {
                     if group_index == target_group_index {
                         group_depth = 1;
@@ -40,7 +40,7 @@ fn set_group_shape_child_text_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 writer.write_event(Event::End(event))?;
                 if in_target_child && name == b"sp" {
                     in_target_child = false;
@@ -80,7 +80,7 @@ fn set_group_shape_child_paragraph_text_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"grpSp" {
                     if group_index == target_group_index {
                         group_depth = 1;
@@ -105,7 +105,7 @@ fn set_group_shape_child_paragraph_text_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_paragraph && name == b"t" {
                     if !wrote_replacement {
                         writer.write_event(Event::Text(BytesText::new(replacement)))?;
@@ -131,14 +131,16 @@ fn set_group_shape_child_paragraph_text_in_slide(
                     group_depth -= 1;
                 }
             }
-            Event::Text(_event) if in_target_paragraph && in_text => {
+            Event::Text(_) | Event::GeneralRef(_) | Event::CData(_)
+                if in_target_paragraph && in_text =>
+            {
                 if wrote_replacement {
                     writer.write_event(Event::Text(BytesText::new("")))?;
                 } else {
                     writer.write_event(Event::Text(BytesText::new(replacement)))?;
                     wrote_replacement = true;
+                    replacements += 1;
                 }
-                replacements += 1;
             }
             Event::Eof => break,
             event => writer.write_event(event)?,
@@ -166,13 +168,16 @@ fn set_group_shape_child_run_text_in_slide(
     let mut run_index = 0;
     let mut in_target_child = false;
     let mut in_target_paragraph = false;
+    let mut in_target_run = false;
     let mut target_run_seen = false;
+    let mut in_text = false;
+    let mut wrote_replacement = false;
     let mut replacements = 0;
 
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"grpSp" {
                     if group_index == target_group_index {
                         group_depth = 1;
@@ -193,32 +198,27 @@ fn set_group_shape_child_run_text_in_slide(
                     run_index = 0;
                     target_run_seen = false;
                 } else if in_target_paragraph && name == b"r" {
-                    let is_target = run_index == target_run_index;
-                    run_index += 1;
-                    if is_target {
+                    in_target_run = run_index == target_run_index;
+                    if in_target_run {
                         target_run_seen = true;
-                        writer.write_event(Event::Start(event.borrow()))?;
-                        write_replaced_run_body(&mut reader, &mut writer, &event, replacement)?;
-                        replacements += 1;
-                        continue;
                     }
+                    run_index += 1;
+                    wrote_replacement = false;
+                } else if in_target_run && name == b"t" {
+                    in_text = true;
                 }
                 writer.write_event(Event::Start(event))?;
             }
-            Event::Empty(event)
-                if in_target_paragraph && local_name(event.name().as_ref()) == b"r" =>
-            {
-                if run_index == target_run_index {
-                    target_run_seen = true;
-                    write_text_only_run(&mut writer, &event, replacement)?;
-                    replacements += 1;
-                } else {
-                    writer.write_event(Event::Empty(event))?;
-                }
-                run_index += 1;
-            }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
+                if in_target_run && name == b"t" {
+                    if !wrote_replacement {
+                        writer.write_event(Event::Text(BytesText::new(replacement)))?;
+                        wrote_replacement = true;
+                        replacements += 1;
+                    }
+                    in_text = false;
+                }
                 if in_target_paragraph
                     && name == b"p"
                     && !target_run_seen
@@ -228,6 +228,10 @@ fn set_group_shape_child_run_text_in_slide(
                     replacements += 1;
                 }
                 writer.write_event(Event::End(event))?;
+                if in_target_run && name == b"r" {
+                    in_target_run = false;
+                    wrote_replacement = false;
+                }
                 if in_target_paragraph && name == b"p" {
                     in_target_paragraph = false;
                 }
@@ -236,6 +240,17 @@ fn set_group_shape_child_run_text_in_slide(
                 }
                 if group_depth > 0 && name == b"grpSp" {
                     group_depth -= 1;
+                }
+            }
+            Event::Text(_) | Event::GeneralRef(_) | Event::CData(_)
+                if in_target_run && in_text =>
+            {
+                if wrote_replacement {
+                    writer.write_event(Event::Text(BytesText::new("")))?;
+                } else {
+                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
+                    wrote_replacement = true;
+                    replacements += 1;
                 }
             }
             Event::Eof => break,
@@ -259,9 +274,9 @@ fn set_group_shape_child_geometry_in_slide(
     reader.config_mut().trim_text(false);
     let mut writer = Writer::new(Vec::with_capacity(xml.len()));
     let mut group_index = 0;
-    let mut group_depth: usize = 0;
+    let mut shape_depth: usize = 0;
+    let mut in_target_group = false;
     let mut child_index = 0;
-    let mut child_depth: usize = 0;
     let mut in_target_child = false;
     let mut in_target_transform = false;
     let mut updated_offset = false;
@@ -270,26 +285,23 @@ fn set_group_shape_child_geometry_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
-                if name == b"grpSp" {
-                    if group_index == target_group_index {
-                        group_depth = 1;
+                let qualified_name = event.name();
+                let name = local_name(qualified_name.as_ref().as_bytes());
+                if is_shape_element_name(name) {
+                    if shape_depth == 0 && name == b"grpSp" {
+                        // Group ordinals count only top-level groups.
+                        in_target_group = group_index == target_group_index;
+                        group_index += 1;
                         child_index = 0;
-                    } else if group_depth > 0 {
-                        group_depth += 1;
+                    } else if in_target_group && shape_depth == 1 {
+                        // Every direct shape child counts, including child groups.
+                        in_target_child = child_index == target_child_index;
+                        child_index += 1;
                     }
-                    group_index += 1;
-                } else if group_depth == 1 && is_shape_element_name(&name) {
-                    if child_index == target_child_index {
-                        in_target_child = true;
-                        child_depth = 1;
-                    }
-                    child_index += 1;
-                } else if in_target_child && is_shape_element_name(&name) {
-                    child_depth += 1;
+                    shape_depth += 1;
                 }
 
-                if in_target_child && child_depth == 1 && name == b"xfrm" {
+                if in_target_child && shape_depth == 2 && name == b"xfrm" {
                     in_target_transform = true;
                 }
 
@@ -310,7 +322,15 @@ fn set_group_shape_child_geometry_in_slide(
                 }
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let qualified_name = event.name();
+                let name = local_name(qualified_name.as_ref().as_bytes());
+                if is_shape_element_name(name) {
+                    if shape_depth == 0 && name == b"grpSp" {
+                        group_index += 1;
+                    } else if in_target_group && shape_depth == 1 {
+                        child_index += 1;
+                    }
+                }
                 if in_target_transform && name == b"off" && !updated_offset {
                     writer.write_event(Event::Empty(rewrite_event_attributes(
                         &event,
@@ -328,20 +348,20 @@ fn set_group_shape_child_geometry_in_slide(
                 }
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
-                if in_target_transform && name == b"xfrm" {
+                let qualified_name = event.name();
+                let name = local_name(qualified_name.as_ref().as_bytes());
+                if in_target_transform && shape_depth == 2 && name == b"xfrm" {
                     in_target_transform = false;
                 }
-                writer.write_event(Event::End(event))?;
-                if in_target_child && is_shape_element_name(&name) {
-                    child_depth = child_depth.saturating_sub(1);
-                    if child_depth == 0 {
+                if is_shape_element_name(name) {
+                    shape_depth = shape_depth.saturating_sub(1);
+                    if shape_depth == 1 {
                         in_target_child = false;
+                    } else if shape_depth == 0 {
+                        in_target_group = false;
                     }
                 }
-                if group_depth > 0 && name == b"grpSp" {
-                    group_depth -= 1;
-                }
+                writer.write_event(Event::End(event))?;
             }
             Event::Eof => break,
             event => writer.write_event(event)?,
@@ -357,14 +377,13 @@ fn set_group_shape_child_geometry_in_slide(
 fn extract_shape_id_from_event(
     name: &[u8],
     attributes: quick_xml::events::attributes::Attributes<'_>,
-    decoder: quick_xml::encoding::Decoder,
 ) -> Option<usize> {
     if local_name(name) != b"cNvPr" {
         return None;
     }
     for attr in attributes.flatten() {
-        if local_name(attr.key.as_ref()) == b"id" {
-            if let Ok(val) = attr.decode_and_unescape_value(decoder) {
+        if local_name(attr.key.as_ref().as_bytes()) == b"id" {
+            if let Ok(val) = attr.normalized_value(quick_xml::XmlVersion::Implicit1_0) {
                 if let Ok(id) = val.parse::<usize>() {
                     return Some(id);
                 }
@@ -388,11 +407,12 @@ fn delete_group_shape_child_in_slide(
     let mut outer_group_depth = 0usize;
     let mut deleted = false;
     let mut removed_relationship_ids = std::collections::BTreeSet::new();
+    let mut removed_shape_ids = std::collections::BTreeSet::new();
 
     loop {
         match reader.read_event()? {
             Event::Start(start) => {
-                let name = local_name(start.name().as_ref()).to_vec();
+                let name = local_name(start.name().as_ref().as_bytes()).to_vec();
                 if !in_target_group {
                     if name == b"grpSp" {
                         let mut group_header_events = vec![Event::Start(start.into_owned())];
@@ -401,16 +421,15 @@ fn delete_group_shape_child_in_slide(
                             let next_event = reader.read_event()?;
                             let is_break = match &next_event {
                                 Event::Start(s) | Event::Empty(s) => {
-                                    if local_name(s.name().as_ref()) == b"cNvPr" {
+                                    if local_name(s.name().as_ref().as_bytes()) == b"cNvPr" {
                                         group_id = extract_shape_id_from_event(
-                                            s.name().as_ref(),
+                                            s.name().as_ref().as_bytes(),
                                             s.attributes(),
-                                            reader.decoder(),
                                         );
                                         true
                                     } else {
-                                        local_name(s.name().as_ref()) == b"grpSpPr"
-                                            || is_shape_element_name(local_name(s.name().as_ref()))
+                                        local_name(s.name().as_ref().as_bytes()) == b"grpSpPr"
+                                            || is_shape_element_name(local_name(s.name().as_ref().as_bytes()))
                                     }
                                 }
                                 Event::Eof => true,
@@ -444,24 +463,22 @@ fn delete_group_shape_child_in_slide(
                             match &event {
                                 Event::Start(s) => {
                                     if child_id.is_none()
-                                        && local_name(s.name().as_ref()) == b"cNvPr"
+                                        && local_name(s.name().as_ref().as_bytes()) == b"cNvPr"
                                     {
                                         child_id = extract_shape_id_from_event(
-                                            s.name().as_ref(),
+                                            s.name().as_ref().as_bytes(),
                                             s.attributes(),
-                                            reader.decoder(),
                                         );
                                     }
                                     child_depth += 1;
                                 }
                                 Event::Empty(e) => {
                                     if child_id.is_none()
-                                        && local_name(e.name().as_ref()) == b"cNvPr"
+                                        && local_name(e.name().as_ref().as_bytes()) == b"cNvPr"
                                     {
                                         child_id = extract_shape_id_from_event(
-                                            e.name().as_ref(),
+                                            e.name().as_ref().as_bytes(),
                                             e.attributes(),
-                                            reader.decoder(),
                                         );
                                     }
                                 }
@@ -482,17 +499,15 @@ fn delete_group_shape_child_in_slide(
                         if child_id == Some(target_child_shape_id) {
                             for ev in &child_events {
                                 match ev {
-                                    Event::Start(s) => {
-                                        collect_relationship_ids(
-                                            s,
-                                            reader.decoder(),
-                                            &mut removed_relationship_ids,
-                                        );
-                                    }
-                                    Event::Empty(e) => {
+                                    Event::Start(e) | Event::Empty(e) => {
+                                        if let Some(id) = extract_shape_id_from_event(
+                                            e.name().as_ref().as_bytes(),
+                                            e.attributes(),
+                                        ) {
+                                            removed_shape_ids.insert(id);
+                                        }
                                         collect_relationship_ids(
                                             e,
-                                            reader.decoder(),
                                             &mut removed_relationship_ids,
                                         );
                                     }
@@ -514,27 +529,26 @@ fn delete_group_shape_child_in_slide(
                 }
             }
             Event::Empty(empty) => {
-                let name = local_name(empty.name().as_ref()).to_vec();
+                let name = local_name(empty.name().as_ref().as_bytes()).to_vec();
                 if in_target_group && target_group_depth == 1 && is_shape_element_name(&name) {
                     let child_id = extract_shape_id_from_event(
-                        empty.name().as_ref(),
+                        empty.name().as_ref().as_bytes(),
                         empty.attributes(),
-                        reader.decoder(),
                     );
                     if child_id == Some(target_child_shape_id) {
                         collect_relationship_ids(
                             &empty,
-                            reader.decoder(),
                             &mut removed_relationship_ids,
                         );
                         deleted = true;
+                        removed_shape_ids.insert(target_child_shape_id);
                         continue;
                     }
                 }
                 writer.write_event(Event::Empty(empty))?;
             }
             Event::End(end) => {
-                let name = local_name(end.name().as_ref()).to_vec();
+                let name = local_name(end.name().as_ref().as_bytes()).to_vec();
                 if in_target_group {
                     if name == b"grpSp" {
                         target_group_depth -= 1;
@@ -563,8 +577,73 @@ fn delete_group_shape_child_in_slide(
         )));
     }
 
-    let rewritten = writer.into_inner();
+    let rewritten = detach_deleted_shape_connections(&writer.into_inner(), &removed_shape_ids)?;
     let surviving_relationship_ids = relationship_ids_in_xml(&rewritten);
     removed_relationship_ids.retain(|id| !surviving_relationship_ids.contains(id));
     Ok((rewritten, 1, removed_relationship_ids))
+}
+
+fn detach_deleted_shape_connections(
+    xml: &[u8],
+    removed_shape_ids: &std::collections::BTreeSet<usize>,
+) -> Result<Vec<u8>, WolfPptError> {
+    // A connector can precede its deleted target or live outside its group.
+    // Inspect the whole surviving slide only after collecting the subtree IDs.
+    let mut reader = Reader::from_reader(xml);
+    reader.config_mut().trim_text(false);
+    let mut writer = Writer::new(Vec::with_capacity(xml.len()));
+    let mut connection_properties_depth = 0usize;
+    let mut skipping_depth = 0usize;
+    loop {
+        let event = reader.read_event()?;
+        if skipping_depth > 0 {
+            match event {
+                Event::Start(_) => skipping_depth += 1,
+                Event::End(_) => skipping_depth -= 1,
+                Event::Eof => {
+                    return Err(WolfPptError::XmlText(
+                        "unexpected EOF while detaching deleted shape connector".to_string(),
+                    ));
+                }
+                _ => {}
+            }
+            continue;
+        }
+        match &event {
+            Event::Start(start) | Event::Empty(start) => {
+                let qname = start.name();
+                let name = local_name(qname.as_ref().as_bytes());
+                if connection_properties_depth == 1
+                    && matches!(name, b"stCxn" | b"endCxn")
+                    && start.attributes().flatten().any(|attr| {
+                        attr.key.as_ref() == "id"
+                            && attr
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                .ok()
+                                .and_then(|value| value.parse::<usize>().ok())
+                                .is_some_and(|id| removed_shape_ids.contains(&id))
+                    })
+                {
+                    if matches!(&event, Event::Start(_)) {
+                        skipping_depth = 1;
+                    }
+                    continue;
+                }
+                if matches!(&event, Event::Start(_)) {
+                    if connection_properties_depth > 0 {
+                        connection_properties_depth += 1;
+                    } else if name == b"cNvCxnSpPr" {
+                        connection_properties_depth = 1;
+                    }
+                }
+            }
+            Event::End(_) => {
+                connection_properties_depth = connection_properties_depth.saturating_sub(1);
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+        writer.write_event(event)?;
+    }
+    Ok(writer.into_inner())
 }

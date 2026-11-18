@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import zipfile
+from typing import TYPE_CHECKING
 from xml.etree import ElementTree as ET
+
+if TYPE_CHECKING:
+    from .table_facade import TableCell
 
 from .shape_payloads import (
     _paragraph_runs_and_line_breaks,
@@ -22,8 +26,159 @@ from .xml_helpers import xml_local_name as _xml_local_name
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
+# Facade attribute -> direct ``a:pPr`` XML attribute. The values ride the table
+# cell paragraph spacing queue, whose XML writer already serializes them.
+_PARAGRAPH_XML_ATTRIBUTES = {
+    "margin_left": "marL",
+    "margin_right": "marR",
+    "rtl": "rtl",
+}
+
+
+def _table_cell_text_frame_paragraph_attribute(
+    cell: TableCell,
+    paragraph_index: int,
+    attr: str,
+) -> int | bool | None:
+    """Return a direct ``a:pPr`` attribute: pending edit, else saved XML."""
+    if paragraph_index < 0 or paragraph_index >= len(
+        _table_cell_text_frame_paragraph_texts(cell)
+    ):
+        raise IndexError("paragraph index out of range")
+    presentation = cell._table._slide._presentation
+    cell_key = (
+        cell._table._slide._index,
+        cell._table._table_index,
+        cell._row_idx,
+        cell._col_idx,
+    )
+    pending = presentation._table_cell_text_frame_paragraph_spacing_edits.get(
+        (*cell_key, paragraph_index),
+        {},
+    )
+    if attr in pending:
+        return pending[attr]
+    if cell_key in presentation._table_cell_text_frame_content_edits:
+        # Replaced paragraphs are written without paragraph properties.
+        return None
+    raw = _read_table_cell_text_frame_paragraph_attribute(
+        cell,
+        paragraph_index,
+        _PARAGRAPH_XML_ATTRIBUTES[attr],
+    )
+    if raw is None:
+        return None
+    if attr == "rtl":
+        if raw in ("1", "true"):
+            return True
+        if raw in ("0", "false"):
+            return False
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
+def _set_table_cell_text_frame_paragraph_attribute(
+    cell: TableCell,
+    paragraph_index: int,
+    attr: str,
+    value: int | bool | None,
+) -> None:
+    if _table_cell_text_frame_paragraph_attribute(cell, paragraph_index, attr) == value:
+        return
+    cell._table._slide._presentation._queue_table_cell_text_frame_paragraph_spacing(
+        cell._table._slide._index,
+        cell._table._table_index,
+        cell._row_idx,
+        cell._col_idx,
+        paragraph_index,
+        attr,
+        value,
+    )
+
+
+def _read_table_cell_text_frame_paragraph_attribute(
+    cell: TableCell,
+    paragraph_index: int,
+    xml_attribute: str,
+) -> str | None:
+    slide_part = cell._table._slide.partname
+    if not slide_part:
+        return None
+    try:
+        with zipfile.ZipFile(cell._table._slide._presentation.path) as package:
+            root = ET.fromstring(package.read(slide_part))
+        cell_element = _table_cell_xml_element(
+            root,
+            cell._table._table_index,
+            cell._row_idx,
+            cell._col_idx,
+        )
+        text_body = cell_element.find(f"{{{A_NS}}}txBody")
+    except (
+        AttributeError,
+        FileNotFoundError,
+        IndexError,
+        KeyError,
+        ET.ParseError,
+        zipfile.BadZipFile,
+    ):
+        return None
+    if text_body is None:
+        return None
+    paragraphs = text_body.findall(f"{{{A_NS}}}p")
+    if paragraph_index >= len(paragraphs):
+        return None
+    paragraph_properties = paragraphs[paragraph_index].find(f"{{{A_NS}}}pPr")
+    if paragraph_properties is None:
+        return None
+    return paragraph_properties.get(xml_attribute)
+
+
+def _hydrate_queued_table_text_content(cell: TableCell) -> None:
+    """Project whole-cell/frame edits before falling back to saved run XML.
+
+    The queue token changes only when whole content changes. Subsequent run
+    setters retain their live cached values instead of hydrating the original
+    whole-content value again during a read or find/replace dry run.
+    """
+    presentation = cell._table._slide._presentation
+    key = (
+        cell._table._slide._index,
+        cell._table._table_index,
+        cell._row_idx,
+        cell._col_idx,
+    )
+    if key in presentation._table_cell_text_frame_content_edits:
+        paragraphs = presentation._table_cell_text_frame_content_edits[key]
+        token = ("frame", tuple(paragraphs))
+    elif key in presentation._table_cell_edits:
+        text = presentation._table_cell_edits[key]
+        paragraphs = text.split("\n") if text else [""]
+        token = ("cell", tuple(paragraphs))
+    else:
+        return
+    payload = _table_cell_property_payload(cell)
+    properties = (
+        "text_frame_paragraphs",
+        "text_frame_paragraph_runs",
+        "text_frame_paragraph_line_breaks",
+    )
+    if payload.get("_pending_text_frame_content_token") == token and all(
+        name in payload for name in properties
+    ):
+        return
+    parsed = [_paragraph_runs_and_line_breaks(str(text)) for text in paragraphs]
+    payload["text_frame_paragraphs"] = list(paragraphs)
+    payload["text_frame_paragraph_runs"] = [runs for runs, _ in parsed]
+    payload["text_frame_paragraph_line_breaks"] = [breaks for _, breaks in parsed]
+    payload["_pending_text_frame_content_token"] = token
+
 
 def _table_cell_text_frame_paragraph_texts(cell: TableCell) -> list[str]:
+    _hydrate_queued_table_text_content(cell)
     payload = _table_cell_property_payload(cell)
     paragraphs = payload.get("text_frame_paragraphs")
     if not isinstance(paragraphs, list):
@@ -68,6 +223,7 @@ def _read_table_cell_text_frame_paragraph_texts(cell: TableCell) -> list[str]:
 def _table_cell_text_frame_paragraph_runs(
     cell: TableCell,
 ) -> list[list[str]]:
+    _hydrate_queued_table_text_content(cell)
     payload = _table_cell_property_payload(cell)
     runs = payload.get("text_frame_paragraph_runs")
     if not isinstance(runs, list):
@@ -78,9 +234,7 @@ def _table_cell_text_frame_paragraph_runs(
         )
         payload["text_frame_paragraph_runs"] = runs
     return [
-        [str(run) for run in paragraph_runs]
-        if isinstance(paragraph_runs, list)
-        else []
+        [str(run) for run in paragraph_runs] if isinstance(paragraph_runs, list) else []
         for paragraph_runs in runs
     ]
 
@@ -88,6 +242,7 @@ def _table_cell_text_frame_paragraph_runs(
 def _table_cell_text_frame_paragraph_line_breaks(
     cell: TableCell,
 ) -> list[list[int]]:
+    _hydrate_queued_table_text_content(cell)
     payload = _table_cell_property_payload(cell)
     line_breaks = payload.get("text_frame_paragraph_line_breaks")
     paragraph_runs = _table_cell_text_frame_paragraph_runs(cell)

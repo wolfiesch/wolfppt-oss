@@ -10,6 +10,8 @@ from xml.etree import ElementTree as ET
 from .chart_edits import _chart_data_replacements_from_package
 from .package_parts import (
     copy_open_package_with_replacements as _copy_open_package_with_replacements,
+)
+from .package_parts import (
     normalize_package_partname as _normalize_package_partname,
 )
 from .shape_xml import _shape_xml_element
@@ -185,15 +187,16 @@ def simple_package_fast_path_available(
     text_run_underline_edits: list[
         tuple[tuple[int, int], tuple[int, int, int, bool | None]]
     ],
+    text_run_strike_edits: list[
+        tuple[tuple[int, int], tuple[int, int, int, bool | None]]
+    ] = (),
     text_run_font_size_edits: list[
         tuple[tuple[int, int], tuple[int, int, int, int | None]]
     ],
     text_run_font_name_edits: list[
         tuple[tuple[int, int], tuple[int, int, int, str | None]]
     ],
-    text_run_font_color_edits: list[
-        tuple[tuple[int, int, int, int], tuple[int, str]]
-    ],
+    text_run_font_color_edits: list[tuple[tuple[int, int, int, int], tuple[int, str]]],
     text_run_appends: list[tuple[tuple[int, int, int, int], str]],
     paragraph_line_break_edits: list[tuple[int, int, int, int]],
     paragraph_text_edits: list[tuple[tuple[int, int, int], str]],
@@ -244,9 +247,7 @@ def simple_package_fast_path_available(
     group_child_text_frame_auto_size_edits: list[
         tuple[tuple[int, int, int], str | None]
     ],
-    group_child_text_frame_fit_edits: list[
-        tuple[tuple[int, int, int], dict[str, Any]]
-    ],
+    group_child_text_frame_fit_edits: list[tuple[tuple[int, int, int], dict[str, Any]]],
     geometry_edits: list[tuple[tuple[int, int], tuple[int, int, int, int]]],
     group_child_geometry_edits: list[
         tuple[tuple[int, int, int], tuple[int, int, int, int]]
@@ -270,6 +271,7 @@ def simple_package_fast_path_available(
             text_run_bold_edits,
             text_run_italic_edits,
             text_run_underline_edits,
+            text_run_strike_edits,
             text_run_font_size_edits,
             text_run_font_name_edits,
             text_run_font_color_edits,

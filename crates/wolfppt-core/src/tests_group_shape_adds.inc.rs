@@ -336,3 +336,84 @@
             .filter(|part| part.name != "ppt/slides/slide1.xml")
             .all(|part| second_manifest.parts.contains(part)));
     }
+
+    #[test]
+    fn retains_nested_group_extents_through_repeated_child_adds() {
+        let source = "../../fixtures/pptx/shapes/grouped_shapes.pptx";
+        let dir = tempfile::tempdir().unwrap();
+        let nested = dir.path().join("nested-group.pptx");
+        let first = dir.path().join("nested-child-1.pptx");
+        let out = dir.path().join("nested-child-2.pptx");
+        let source_summary = summarize_presentation(source).unwrap();
+
+        add_slide_nested_group_shape(source, &nested, 0, 0).unwrap();
+        let first_result = add_slide_nested_group_auto_shape_with_text(
+            &nested,
+            &first,
+            0,
+            0,
+            1,
+            "hexagon",
+            457200,
+            1188720,
+            1005840,
+            594360,
+            "First nested hexagon",
+        )
+        .unwrap();
+        let second_result = add_slide_nested_group_auto_shape_with_text(
+            &first,
+            &out,
+            0,
+            0,
+            1,
+            "hexagon",
+            1828800,
+            1097280,
+            914400,
+            685800,
+            "Second nested hexagon",
+        )
+        .unwrap();
+
+        let summary = summarize_presentation(&out).unwrap();
+        let slide_xml = read_zip_text(&out, "ppt/slides/slide1.xml");
+        assert!(slide_xml.contains(
+            r#"<a:off x="457200" y="1097280"/><a:ext cx="2286000" cy="685800"/><a:chOff x="457200" y="1097280"/><a:chExt cx="2286000" cy="685800"/>"#
+        ));
+        let outer_group = &summary.slides[0].shapes[0];
+        let nested_group = &outer_group.children[1];
+
+        assert_eq!(first_result.shape_id, 5);
+        assert_eq!(second_result.shape_id, 6);
+        assert_eq!(outer_group.transform, source_summary.slides[0].shapes[0].transform);
+        assert_eq!(
+            nested_group.transform,
+            Some(TransformSummary {
+                x: 457200,
+                y: 1097280,
+                cx: 2286000,
+                cy: 685800,
+            })
+        );
+        assert_eq!(
+            nested_group.children[0].transform,
+            Some(TransformSummary {
+                x: 457200,
+                y: 1188720,
+                cx: 1005840,
+                cy: 594360,
+            })
+        );
+        assert_eq!(
+            nested_group.children[1].transform,
+            Some(TransformSummary {
+                x: 1828800,
+                y: 1097280,
+                cx: 914400,
+                cy: 685800,
+            })
+        );
+        assert_eq!(nested_group.children[0].text, "First nested hexagon");
+        assert_eq!(nested_group.children[1].text, "Second nested hexagon");
+    }

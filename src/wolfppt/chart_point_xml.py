@@ -7,43 +7,96 @@ from xml.etree import ElementTree as ET
 
 from .chart_data_label_text_xml import (
     data_label_insert_index as _data_label_insert_index,
+)
+from .chart_data_label_text_xml import (
     insert_chart_data_label_paragraph_line_break as _insert_chart_data_label_paragraph_line_break,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_auto_size as _set_point_data_label_auto_size,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_body_margin as _set_point_data_label_body_margin,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_bool as _set_chart_data_label_font_bool,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_fill_type as _set_chart_data_label_font_fill_type,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_gradient as _set_chart_data_label_font_gradient,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_language_id as _set_chart_data_label_font_language_id,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_name as _set_chart_data_label_font_name,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_pattern as _set_chart_data_label_font_pattern,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_pattern_rgb as _set_chart_data_label_font_pattern_rgb,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_rgb as _set_chart_data_label_font_rgb,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_size as _set_chart_data_label_font_size,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_font_underline as _set_chart_data_label_font_underline,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_number_format as _set_chart_data_label_number_format,
-    set_chart_data_label_number_format_source_linked as _set_chart_data_label_number_format_source_linked,
+)
+from .chart_data_label_text_xml import (
+    set_chart_data_label_number_format_source_linked as _set_chart_data_label_number_format_source_linked,  # noqa: E501
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_paragraph_format as _set_chart_data_label_paragraph_format,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_paragraph_runs as _set_chart_data_label_paragraph_runs,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_paragraphs as _set_chart_data_label_paragraphs,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_position as _set_chart_data_label_position,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_run_formats as _set_chart_data_label_run_formats,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_text as _set_chart_data_label_text,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_text_frame as _set_chart_data_label_text_frame,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_text_frame_fit as _set_chart_data_label_text_frame_fit,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_text_properties as _set_chart_data_label_text_properties,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_vertical_anchor as _set_point_data_label_vertical_anchor,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_word_wrap as _set_point_data_label_word_wrap,
 )
-from .dml_fill import (
-    no_fill_element as _no_fill_element,
-    set_shape_gradient_fill as _set_shape_gradient_fill,
-    set_shape_pattern_fill as _set_shape_pattern_fill,
-    set_shape_pattern_fill_color as _set_shape_pattern_fill_color,
-    solid_fill_element as _solid_fill_element,
+from .chart_element_format_xml import (
+    CHART_FORMAT_PROPERTIES as _CHART_FORMAT_PROPERTIES,
+)
+from .chart_element_format_xml import (
+    set_chart_element_format_properties_in_order as _set_chart_element_format_properties_in_order,
+)
+from .chart_element_format_xml import (
+    set_chart_element_format_property as _set_chart_element_format_property,
 )
 from .xml_helpers import xml_local_name as _xml_local_name
 
-A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 
 _SERIES_CHILD_ORDER = [
@@ -52,14 +105,27 @@ _SERIES_CHILD_ORDER = [
     "tx",
     "spPr",
     "invertIfNegative",
+    "pictureOptions",
+    "marker",
     "dPt",
     "dLbls",
+    "trendline",
+    "errBars",
     "cat",
+    "xVal",
     "val",
+    "yVal",
+    "bubbleSize",
+    "bubble3D",
+    "smooth",
+    "shape",
     "extLst",
 ]
-_SERIES_CHILD_INDEX = {
-    local_name: index for index, local_name in enumerate(_SERIES_CHILD_ORDER)
+_SERIES_CHILD_INDEX = {local_name: index for index, local_name in enumerate(_SERIES_CHILD_ORDER)}
+#: Point scalar properties and the ``c:dPt`` children that carry them.
+CHART_POINT_SCALAR_PROPERTIES = {
+    "invert_if_negative": "invertIfNegative",
+    "explosion": "explosion",
 }
 
 
@@ -77,6 +143,15 @@ def set_chart_point_data_label_properties(
             data_labels,
             int(point_label_edit["point_index"]),
         )
+        properties = point_label_edit.get("properties", {})
+        if "_label_xml" in properties:
+            final_label = ET.fromstring(properties["_label_xml"])
+            if final_label.tag != f"{{{C_NS}}}dLbl":
+                raise ValueError("point label snapshot must be c:dLbl")
+            point_label.attrib.clear()
+            point_label.attrib.update(final_label.attrib)
+            point_label[:] = list(final_label)
+            continue
         run_formats = []
         paragraph_formats = []
         paragraph_line_breaks = []
@@ -217,59 +292,40 @@ def set_chart_point_format_properties(
             series_element,
             int(point_format_edit["point_index"]),
         )
-        for attr, value in point_format_edit.get("properties", {}).items():
-            if attr == "fill_type":
-                if value not in {"solid", "background", "patterned", "gradient"}:
-                    raise ValueError(f"unsupported chart point fill type: {value!r}")
-                if value == "solid":
-                    _set_point_solid_fill(point)
-                elif value == "background":
-                    _set_element_background_fill(point)
-                elif value == "patterned":
-                    _set_element_pattern_fill(point, None)
-                else:
-                    _set_element_gradient_fill(
-                        point,
-                        point_format_edit.get("properties", {}).get("fill_gradient"),
-                    )
-                continue
-            if attr == "fill_rgb":
-                _set_point_fill_rgb(point, str(value))
-                continue
-            if attr == "fill_gradient":
-                _set_element_gradient_fill(point, value)
-                continue
-            if attr == "fill_pattern":
-                _set_element_pattern_fill(point, value)
-                continue
-            if attr == "fill_pattern_fore_rgb":
-                _set_element_pattern_rgb(point, "fgClr", str(value))
-                continue
-            if attr == "fill_pattern_back_rgb":
-                _set_element_pattern_rgb(point, "bgClr", str(value))
-                continue
-            if attr == "line_rgb":
-                _set_element_line_rgb(point, str(value))
-                continue
-            if attr == "line_width":
-                _set_element_line_width(point, int(value))
-                continue
-            if attr == "line_dash":
-                _set_element_line_dash(point, value)
-                continue
-            if attr == "line_fill_type":
-                _set_element_line_fill_type(point, str(value))
-                continue
-            if attr == "line_pattern":
-                _set_element_line_pattern_fill(point, value)
-                continue
-            if attr == "line_pattern_fore_rgb":
-                _set_element_line_pattern_rgb(point, "fgClr", str(value))
-                continue
-            if attr == "line_pattern_back_rgb":
-                _set_element_line_pattern_rgb(point, "bgClr", str(value))
-                continue
-            raise ValueError(f"unsupported chart point format property: {attr!r}")
+        properties = point_format_edit.get("properties", {})
+        # One queued edit merges scalar and format properties for the same point.
+        _set_chart_element_format_properties_in_order(
+            point,
+            {
+                attr: value
+                for attr, value in properties.items()
+                if attr not in CHART_POINT_SCALAR_PROPERTIES
+            },
+            "point",
+        )
+        for attr, value in properties.items():
+            if attr in CHART_POINT_SCALAR_PROPERTIES:
+                set_chart_point_scalar(point, attr, value)
+
+
+def set_chart_point_scalar(point: ET.Element, attr: str, value: Any) -> None:
+    """Write ``invert_if_negative`` (bool) or ``explosion`` (percent) on ``c:dPt``.
+
+    ``None`` removes the point override so the series value applies again.
+    """
+    local_name = CHART_POINT_SCALAR_PROPERTIES[attr]
+    child = point.find(f"{{{C_NS}}}{local_name}")
+    if value is None:
+        if child is not None:
+            point.remove(child)
+        return
+    if child is None:
+        child = ET.Element(f"{{{C_NS}}}{local_name}")
+        point.insert(_dpt_child_insert_index(point, local_name), child)
+    if attr == "invert_if_negative":
+        child.set("val", "1" if value else "0")
+    else:
+        child.set("val", str(int(value)))
 
 
 def set_chart_point_marker_format_properties(
@@ -286,67 +342,16 @@ def set_chart_point_marker_format_properties(
             int(point_marker_format_edit["point_index"]),
         )
         marker = _chart_point_marker_element(point)
-        for attr, value in point_marker_format_edit.get("properties", {}).items():
-            if attr == "fill_type":
-                if value not in {"solid", "background", "patterned", "gradient"}:
-                    raise ValueError(f"unsupported chart marker fill type: {value!r}")
-                if value == "solid":
-                    _set_element_solid_fill(marker)
-                elif value == "background":
-                    _set_element_background_fill(marker)
-                elif value == "patterned":
-                    _set_element_pattern_fill(marker, None)
-                else:
-                    _set_element_gradient_fill(
-                        marker,
-                        point_marker_format_edit.get("properties", {}).get(
-                            "fill_gradient"
-                        ),
-                    )
-                continue
-            if attr == "fill_rgb":
-                _set_element_fill_rgb(marker, str(value))
-                continue
-            if attr == "fill_gradient":
-                _set_element_gradient_fill(marker, value)
-                continue
-            if attr == "fill_pattern":
-                _set_element_pattern_fill(marker, value)
-                continue
-            if attr == "fill_pattern_fore_rgb":
-                _set_element_pattern_rgb(marker, "fgClr", str(value))
-                continue
-            if attr == "fill_pattern_back_rgb":
-                _set_element_pattern_rgb(marker, "bgClr", str(value))
-                continue
-            if attr == "line_rgb":
-                _set_element_line_rgb(marker, str(value))
-                continue
-            if attr == "line_width":
-                _set_element_line_width(marker, int(value))
-                continue
-            if attr == "line_dash":
-                _set_element_line_dash(marker, value)
-                continue
-            if attr == "line_fill_type":
-                _set_element_line_fill_type(marker, str(value))
-                continue
-            if attr == "line_pattern":
-                _set_element_line_pattern_fill(marker, value)
-                continue
-            if attr == "line_pattern_fore_rgb":
-                _set_element_line_pattern_rgb(marker, "fgClr", str(value))
-                continue
-            if attr == "line_pattern_back_rgb":
-                _set_element_line_pattern_rgb(marker, "bgClr", str(value))
-                continue
+        properties = point_marker_format_edit.get("properties", {})
+        for attr, value in properties.items():
             if attr == "marker_style":
                 _set_marker_style(marker, None if value is None else str(value))
-                continue
-            if attr == "marker_size":
+            elif attr == "marker_size":
                 _set_marker_size(marker, None if value is None else int(value))
-                continue
-            raise ValueError(f"unsupported chart marker format property: {attr!r}")
+            elif attr in _CHART_FORMAT_PROPERTIES:
+                _set_chart_element_format_property(marker, attr, value, properties)
+            else:
+                raise ValueError(f"unsupported chart marker format property: {attr!r}")
 
 
 def set_chart_series_format_properties(
@@ -358,59 +363,14 @@ def set_chart_series_format_properties(
             chart_element,
             int(series_format_edit["series_index"]),
         )
-        for attr, value in series_format_edit.get("properties", {}).items():
-            if attr == "fill_type":
-                if value not in {"solid", "background", "patterned", "gradient"}:
-                    raise ValueError(f"unsupported chart series fill type: {value!r}")
-                if value == "solid":
-                    _set_element_solid_fill(series_element)
-                elif value == "background":
-                    _set_element_background_fill(series_element)
-                elif value == "patterned":
-                    _set_element_pattern_fill(series_element, None)
-                else:
-                    _set_element_gradient_fill(
-                        series_element,
-                        series_format_edit.get("properties", {}).get("fill_gradient"),
-                    )
-                continue
-            if attr == "fill_rgb":
-                _set_element_fill_rgb(series_element, str(value))
-                continue
-            if attr == "fill_gradient":
-                _set_element_gradient_fill(series_element, value)
-                continue
-            if attr == "fill_pattern":
-                _set_element_pattern_fill(series_element, value)
-                continue
-            if attr == "fill_pattern_fore_rgb":
-                _set_element_pattern_rgb(series_element, "fgClr", str(value))
-                continue
-            if attr == "fill_pattern_back_rgb":
-                _set_element_pattern_rgb(series_element, "bgClr", str(value))
-                continue
-            if attr == "line_rgb":
-                _set_element_line_rgb(series_element, str(value))
-                continue
-            if attr == "line_width":
-                _set_element_line_width(series_element, int(value))
-                continue
-            if attr == "line_dash":
-                _set_element_line_dash(series_element, value)
-                continue
-            if attr == "line_fill_type":
-                _set_element_line_fill_type(series_element, str(value))
-                continue
-            if attr == "line_pattern":
-                _set_element_line_pattern_fill(series_element, value)
-                continue
-            if attr == "line_pattern_fore_rgb":
-                _set_element_line_pattern_rgb(series_element, "fgClr", str(value))
-                continue
-            if attr == "line_pattern_back_rgb":
-                _set_element_line_pattern_rgb(series_element, "bgClr", str(value))
-                continue
-            raise ValueError(f"unsupported chart series format property: {attr!r}")
+        properties = series_format_edit.get("properties", {})
+        for attr, value in properties.items():
+            if attr == "invert_if_negative":
+                _set_chart_series_invert_if_negative(series_element, bool(value))
+            elif attr in _CHART_FORMAT_PROPERTIES:
+                _set_chart_element_format_property(series_element, attr, value, properties)
+            else:
+                raise ValueError(f"unsupported chart series format property: {attr!r}")
 
 
 def set_chart_series_data_label_properties(
@@ -423,12 +383,24 @@ def set_chart_series_data_label_properties(
             int(series_data_label_edit["series_index"]),
         )
         data_labels = _chart_series_data_labels_element(series_element)
+        properties = series_data_label_edit.get("properties", {})
         for attr, value in series_data_label_edit.get("properties", {}).items():
             if attr == "has_data_labels":
                 if value is False:
                     existing = series_element.find(f"{{{C_NS}}}dLbls")
                     if existing is not None:
                         series_element.remove(existing)
+                continue
+            if attr in {
+                "text_format_edits",
+                "_text_xml",
+                "separator",
+                "show_bubble_size",
+                "show_leader_lines",
+            }:
+                from .chart_data_label_xml import _set_chart_data_label_property
+
+                _set_chart_data_label_property(data_labels, attr, value)
                 continue
             if attr == "show_value":
                 _set_chart_data_label_bool_child(data_labels, "showVal", bool(value))
@@ -518,9 +490,11 @@ def set_chart_series_data_label_properties(
                     None if value is None else str(value),
                 )
                 continue
-            raise ValueError(
-                f"unsupported chart series data-label property: {attr!r}"
-            )
+            raise ValueError(f"unsupported chart series data-label property: {attr!r}")
+        if "_text_xml" in properties:
+            from .chart_font_format_facade import replace_chart_text_xml
+
+            replace_chart_text_xml(data_labels, properties["_text_xml"], _data_label_insert_index)
 
 
 def _chart_series_data_labels_element(series_element: ET.Element) -> ET.Element:
@@ -528,13 +502,6 @@ def _chart_series_data_labels_element(series_element: ET.Element) -> ET.Element:
     if data_labels is not None:
         return data_labels
     data_labels = ET.Element(f"{{{C_NS}}}dLbls")
-    _set_chart_data_label_bool_child(data_labels, "showLegendKey", False)
-    _set_chart_data_label_bool_child(data_labels, "showVal", False)
-    _set_chart_data_label_bool_child(data_labels, "showCatName", False)
-    _set_chart_data_label_bool_child(data_labels, "showSerName", False)
-    _set_chart_data_label_bool_child(data_labels, "showPercent", False)
-    _set_chart_data_label_bool_child(data_labels, "showBubbleSize", False)
-    _set_chart_data_label_bool_child(data_labels, "showLeaderLines", True)
     series_element.insert(
         _chart_series_data_labels_insert_index(series_element),
         data_labels,
@@ -596,7 +563,7 @@ def _chart_point_marker_element(point: ET.Element) -> ET.Element:
 
 
 def _chart_series_element(chart_element: ET.Element, series_index: int) -> ET.Element:
-    series_items = chart_element.findall(f"{{{C_NS}}}ser")
+    series_items = chart_element.findall(f".//{{{C_NS}}}ser")
     for fallback_index, series_element in enumerate(series_items):
         raw_index = series_element.find(f"{{{C_NS}}}idx")
         if (
@@ -619,144 +586,6 @@ def _set_chart_data_label_bool_child(
         child = ET.Element(f"{{{C_NS}}}{local_name}")
         data_labels.insert(_data_label_insert_index(data_labels, local_name), child)
     child.set("val", "1" if enabled else "0")
-
-
-def _set_point_solid_fill(point: ET.Element) -> None:
-    _set_element_solid_fill(point)
-
-
-def _set_point_fill_rgb(point: ET.Element, rgb: str) -> None:
-    _set_element_fill_rgb(point, rgb)
-
-
-def _set_element_solid_fill(element: ET.Element) -> None:
-    shape_properties = _shape_properties_element(element)
-    for child in list(shape_properties):
-        if child.tag in {
-            f"{{{A_NS}}}noFill",
-            f"{{{A_NS}}}solidFill",
-            f"{{{A_NS}}}gradFill",
-            f"{{{A_NS}}}blipFill",
-            f"{{{A_NS}}}pattFill",
-            f"{{{A_NS}}}grpFill",
-        }:
-            shape_properties.remove(child)
-    shape_properties.insert(0, ET.Element(f"{{{A_NS}}}solidFill"))
-
-
-def _set_element_fill_rgb(element: ET.Element, rgb: str) -> None:
-    shape_properties = _shape_properties_element(element)
-    solid_fill = shape_properties.find(f"{{{A_NS}}}solidFill")
-    if solid_fill is None:
-        _set_element_solid_fill(element)
-        solid_fill = shape_properties.find(f"{{{A_NS}}}solidFill")
-    assert solid_fill is not None
-    for child in list(solid_fill):
-        solid_fill.remove(child)
-    ET.SubElement(solid_fill, f"{{{A_NS}}}srgbClr", {"val": rgb})
-
-
-def _set_element_pattern_fill(element: ET.Element, pattern: Any) -> None:
-    _set_shape_pattern_fill(
-        _shape_properties_element(element),
-        None if pattern is None else str(pattern),
-    )
-
-
-def _set_element_pattern_rgb(element: ET.Element, color_tag: str, rgb: str) -> None:
-    _set_shape_pattern_fill_color(_shape_properties_element(element), color_tag, rgb)
-
-
-def _set_element_background_fill(element: ET.Element) -> None:
-    _no_fill_element(_shape_properties_element(element))
-
-
-def _set_element_gradient_fill(element: ET.Element, gradient: Any) -> None:
-    _set_shape_gradient_fill(
-        _shape_properties_element(element),
-        gradient if isinstance(gradient, dict) else {},
-    )
-
-
-def _set_element_line_rgb(element: ET.Element, rgb: str) -> None:
-    shape_properties = _shape_properties_element(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    solid_fill = line.find(f"{{{A_NS}}}solidFill")
-    if solid_fill is None:
-        solid_fill = ET.Element(f"{{{A_NS}}}solidFill")
-        line.insert(0, solid_fill)
-    for child in list(solid_fill):
-        solid_fill.remove(child)
-    ET.SubElement(solid_fill, f"{{{A_NS}}}srgbClr", {"val": rgb})
-
-
-def _set_element_line_width(element: ET.Element, width: int) -> None:
-    shape_properties = _shape_properties_element(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    line.set("w", str(width))
-
-
-def _set_element_line_dash(element: ET.Element, dash_style: Any) -> None:
-    shape_properties = _shape_properties_element(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    preset_dash = line.find(f"{{{A_NS}}}prstDash")
-    if dash_style is None:
-        if preset_dash is not None:
-            line.remove(preset_dash)
-        return
-    if preset_dash is None:
-        preset_dash = ET.Element(f"{{{A_NS}}}prstDash")
-        line.append(preset_dash)
-    preset_dash.set("val", str(dash_style))
-
-
-def _set_element_line_fill_type(element: ET.Element, fill_type: str) -> None:
-    shape_properties = _shape_properties_element(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    if fill_type == "solid":
-        _solid_fill_element(line)
-        return
-    if fill_type == "background":
-        _no_fill_element(line)
-        return
-    if fill_type == "patterned":
-        _set_shape_pattern_fill(line, None)
-        return
-    raise ValueError(f"unsupported chart line fill type: {fill_type!r}")
-
-
-def _set_element_line_pattern_fill(element: ET.Element, pattern: Any) -> None:
-    shape_properties = _shape_properties_element(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    _set_shape_pattern_fill(line, None if pattern is None else str(pattern))
-
-
-def _set_element_line_pattern_rgb(
-    element: ET.Element,
-    color_tag: str,
-    rgb: str,
-) -> None:
-    shape_properties = _shape_properties_element(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    _set_shape_pattern_fill_color(line, color_tag, rgb)
 
 
 def _set_marker_style(marker: ET.Element, style: str | None) -> None:
@@ -783,24 +612,20 @@ def _set_marker_size(marker: ET.Element, size: int | None) -> None:
     size_element.set("val", str(size))
 
 
-def _shape_properties_element(element: ET.Element) -> ET.Element:
-    shape_properties = element.find(f"{{{C_NS}}}spPr")
-    if shape_properties is not None:
-        return shape_properties
-    shape_properties = ET.Element(f"{{{C_NS}}}spPr")
-    local_name = _xml_local_name(element.tag)
-    if local_name == "ser":
-        insert_index = _chart_series_child_insert_index(element, "spPr")
-    elif local_name == "marker":
-        insert_index = _marker_child_insert_index(element, "spPr")
-    else:
-        insert_index = _data_label_insert_index(element, "spPr")
-    element.insert(insert_index, shape_properties)
-    return shape_properties
-
-
 def _chart_series_data_labels_insert_index(series_element: ET.Element) -> int:
     return _chart_series_child_insert_index(series_element, "dLbls")
+
+
+def _set_chart_series_invert_if_negative(series_element: ET.Element, value: bool) -> None:
+    child = series_element.find(f"{{{C_NS}}}invertIfNegative")
+    val_str = "1" if value else "0"
+    if child is None:
+        child = ET.Element(f"{{{C_NS}}}invertIfNegative")
+        child.set("val", val_str)
+        insert_idx = _chart_series_child_insert_index(series_element, "invertIfNegative")
+        series_element.insert(insert_idx, child)
+    else:
+        child.set("val", val_str)
 
 
 def _chart_series_child_insert_index(series_element: ET.Element, local_name: str) -> int:

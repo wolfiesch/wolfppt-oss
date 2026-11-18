@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from types import ModuleType
 
 from .adapters.libreoffice import render_pdf
 from .adapters.openxml import validate as validate_openxml
@@ -23,21 +24,33 @@ from .adapters.rust_core import replace_text_run as rust_replace_text_run
 from .adapters.rust_core import roundtrip as rust_roundtrip
 from .adapters.rust_core import set_paragraph_text as rust_set_paragraph_text
 from .adapters.rust_core import set_shape_text as rust_set_shape_text
-from .benchmark import run_benchmarks, write_benchmark_report
+from .cli_api_surface import (
+    handle_python_api_surface_command,
+    register_python_api_surface_command,
+)
+from .cli_background_picture import (
+    handle_background_picture_command,
+    register_background_picture_commands,
+)
 from .cli_benchmark_profiles import (
     handle_benchmark_adapters_command,
     handle_benchmark_profile_command,
     handle_benchmark_profiles_command,
     register_benchmark_profile_commands,
 )
-from .cli_api_surface import (
-    handle_python_api_surface_command,
-    register_python_api_surface_command,
-)
 from .cli_capability_plan import (
     handle_capability_check_command,
     handle_capability_plan_command,
     register_capability_plan_commands,
+)
+from .cli_comments import (
+    handle_comment_command,
+    handle_comment_targets_command,
+    register_comment_commands,
+)
+from .cli_financial_chart import (
+    handle_financial_chart_command,
+    register_financial_chart_commands,
 )
 from .cli_helpers import parse_key_value_int_args as _parse_key_value_int_args
 from .cli_helpers import split_csv_args as _split_csv_args
@@ -46,6 +59,11 @@ from .cli_private_decks import (
     handle_private_report_check_command,
     register_private_deck_commands,
 )
+from .cli_sanitization import (
+    handle_sanitization_command,
+    register_sanitization_commands,
+)
+from .cli_security import handle_security_command, register_security_commands
 from .cli_tools import handle_tools_command, register_tools_command
 from .cli_validation import (
     handle_validate_command,
@@ -58,6 +76,7 @@ from .dropin_coverage import (
     dropin_behavior_coverage,
     render_dropin_behavior_coverage_markdown,
 )
+from .editions import CommercialFeatureError, commercial_module
 from .extractor import extract_semantics
 from .matrix import write_matrix
 from .native import add_image as native_add_image
@@ -76,10 +95,90 @@ from .package_diff import diff_packages, package_manifest
 from .results import HarnessResult, append_result
 from .runner import run_corpus, write_corpus_report
 
+# Commands implemented only by the commercial build, with the feature name a
+# Community install reports when asked to run one.
+_COMMERCIAL_COMMANDS = {
+    "render-native": "Native rendering",
+    "layout-diagnostics": "Layout diagnostics",
+    "layout-crop": "Layout preview crops",
+    "layout-resolve": "Layout resolution",
+    "reporting-refresh": "Reporting refresh",
+}
+
+
+def _commercial_or_none(name: str) -> ModuleType | None:
+    try:
+        return commercial_module(name, name)
+    except CommercialFeatureError:
+        return None
+
+
+class MissingOptionalDependencyError(RuntimeError):
+    """A harness command needs an optional Python dependency."""
+
+
+def _require_baseline_for_command(args: argparse.Namespace) -> None:
+    """Load python-pptx only for commands that execute the baseline."""
+    if args.command in {"benchmark", "benchmark-profile"}:
+        from .benchmark import BENCHMARK_ADAPTERS, DEFAULT_BENCHMARK_ADAPTERS
+        from .benchmark_runtime import python_pptx_available
+
+        if args.command == "benchmark":
+            selected = _split_csv_args(args.adapters) or DEFAULT_BENCHMARK_ADAPTERS
+        else:
+            from .benchmark_profiles import resolve_benchmark_profile
+
+            profile = resolve_benchmark_profile(args.profile)
+            batches = _split_csv_args(args.batch_names)
+            selected = {
+                name
+                for batch in profile.batches
+                if not batches or batch.name in batches
+                for name in batch.adapter_names
+            }
+        if not any(
+            adapter.name in selected and adapter.available is python_pptx_available
+            for adapter in BENCHMARK_ADAPTERS
+        ):
+            return
+    elif args.command not in {
+        "corpus",
+        "python-pptx-summary",
+        "python-pptx-roundtrip",
+    }:
+        return
+
+    try:
+        import pptx  # noqa: F401 - verify the command's optional dependency
+    except ModuleNotFoundError as exc:
+        if exc.name != "pptx":
+            raise
+        raise MissingOptionalDependencyError(
+            "python-pptx is required for this command; "
+            "install the baseline extra with: pip install 'wolfppt[baseline]'"
+        ) from exc
+
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    native_render_cli = _commercial_or_none("cli_native_render")
+    layout_cli = _commercial_or_none("cli_layout")
+    reporting = _commercial_or_none("reporting")
+
     parser = argparse.ArgumentParser(prog="wolfppt-harness")
     sub = parser.add_subparsers(dest="command", required=True)
+    pages_parser = sub.add_parser(
+        "pages-to-pptx",
+        help="import a wolfsuite.pdf-pages.v1 manifest as an image-only deck",
+        description=(
+            "Write one unrecompressed PNG picture per slide. Relative image paths "
+            "resolve beside the manifest; the first page sets the uniformly bounded "
+            "deck size. Other aspect ratios are centered and reported as omissions. "
+            "Admission: 512 pages, 64 MiB/PNG, 100 million pixels/PNG, 128 MiB total."
+        ),
+    )
+    pages_parser.add_argument("manifest", type=Path)
+    pages_parser.add_argument("--output", required=True, type=Path)
 
     extract_parser = sub.add_parser(
         "extract", help="extract semantic JSON from a PPTX/PPTM"
@@ -474,9 +573,7 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         dest="required_domains",
         default=list(DEFAULT_REQUIRED_DOMAINS),
-        help=(
-            "domain that must be represented; repeat or pass comma-separated names"
-        ),
+        help=("domain that must be represented; repeat or pass comma-separated names"),
     )
     dropin_coverage_parser.add_argument(
         "--min-behaviors",
@@ -511,10 +608,44 @@ def main(argv: list[str] | None = None) -> int:
     register_validation_commands(sub)
     register_capability_plan_commands(sub)
 
-
     register_private_deck_commands(sub)
 
+    register_comment_commands(sub)
+    register_background_picture_commands(sub)
+    register_financial_chart_commands(sub)
+    if native_render_cli is not None:
+        native_render_cli.register_native_render_commands(sub)
+    if layout_cli is not None:
+        layout_cli.register_layout_diagnostics_commands(sub)
+
+    register_security_commands(sub)
+    register_sanitization_commands(sub)
+
     register_tools_command(sub)
+    if reporting is not None:
+        reporting_parser = sub.add_parser(
+            "reporting-refresh",
+            help="refresh or assemble an approved existing reporting package",
+        )
+        reporting_parser.add_argument("--request", type=Path)
+        reporting_parser.add_argument(
+            "--operation",
+            choices=(
+                "report-refresh",
+                "keyed-series",
+                "table-cell",
+                "chart-cache-refresh",
+                "deck-refresh",
+                "targets",
+                "template-refresh",
+                "template-targets",
+                "assemble",
+                "assembly-targets",
+            ),
+            default="report-refresh",
+        )
+        reporting_parser.add_argument("--input", required=True, type=Path)
+        reporting_parser.add_argument("--output", type=Path)
 
     demo_parser = sub.add_parser(
         "demo",
@@ -563,7 +694,35 @@ def main(argv: list[str] | None = None) -> int:
         help="extra pytest arguments for the unit/regression row",
     )
 
+    command = argv[0] if argv else None
+    if command in _COMMERCIAL_COMMANDS and command not in sub.choices:
+        print(CommercialFeatureError(_COMMERCIAL_COMMANDS[command]), file=sys.stderr)
+        return 2
+
     args = parser.parse_args(argv)
+    try:
+        _require_baseline_for_command(args)
+    except MissingOptionalDependencyError as exc:
+        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    if args.command == "pages-to-pptx":
+        from .page_import import PageImportRefusal, pages_to_pptx
+
+        try:
+            receipt = pages_to_pptx(args.manifest, args.output)
+        except PageImportRefusal as exc:
+            print(
+                json.dumps(
+                    {"status": "refused", "error": exc.to_dict()}, sort_keys=True
+                )
+            )
+            return 2
+        print(json.dumps(receipt, indent=2, sort_keys=True))
+        return 0
 
     if args.command == "extract":
         print(extract_semantics(args.path).to_json())
@@ -897,6 +1056,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if run.status == "pass" else 1
 
     if args.command == "benchmark":
+        # Keep benchmark execution imports local to this subcommand.
+        from .benchmark import run_benchmarks, write_benchmark_report
+
         try:
             run = run_benchmarks(
                 iterations=args.iterations,
@@ -982,6 +1144,54 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "private-report-check":
         return handle_private_report_check_command(args)
 
+    if args.command == "comment-targets":
+        return handle_comment_targets_command(args)
+
+    if args.command == "comment":
+        return handle_comment_command(args)
+
+    if args.command == "financial-chart":
+        return handle_financial_chart_command(args)
+
+    if args.command == "background-picture":
+        return handle_background_picture_command(args)
+
+    if args.command == "render-native":
+        return native_render_cli.handle_native_render_command(args)
+
+    if args.command == "layout-diagnostics":
+        return layout_cli.handle_layout_diagnostics_command(args)
+
+    if args.command == "layout-crop":
+        return layout_cli.handle_layout_crop_command(args)
+
+    if args.command == "layout-resolve":
+        return layout_cli.handle_layout_resolve_command(args)
+
+    if args.command in {
+        "encrypt",
+        "decrypt",
+        "write-protection",
+        "signature-inspect",
+        "signature-sign",
+    }:
+        return handle_security_command(args)
+
+    if args.command in {"sanitize", "sanitize-inspect"}:
+        return handle_sanitization_command(args)
+
+    if args.command == "reporting-refresh":
+        return reporting.main(
+            [
+                "--operation",
+                args.operation,
+                *(["--request", str(args.request)] if args.request is not None else []),
+                "--input",
+                str(args.input),
+                *(["--output", str(args.output)] if args.output is not None else []),
+            ]
+        )
+
     if args.command == "demo":
         from .demo import main as demo_main
 
@@ -1015,11 +1225,11 @@ def main(argv: list[str] | None = None) -> int:
             rc_argv.extend(args.pytest_args)
         return run_release_candidate(rc_argv)
 
-
     if args.command == "tools":
         return handle_tools_command(args)
 
     return 2
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

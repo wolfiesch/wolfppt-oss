@@ -78,7 +78,7 @@ pub fn replace_slide_text_run_at_index(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -140,7 +140,7 @@ pub fn set_slide_shape_text_at_index(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -203,7 +203,7 @@ pub fn set_slide_shape_paragraph_text_at_index(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -271,7 +271,7 @@ fn replace_slide_text_inner(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -362,7 +362,7 @@ fn replace_slide_image_inner(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -391,43 +391,26 @@ fn replace_slide_image_inner(
 
 pub fn summarize_presentation(path: impl AsRef<Path>) -> Result<PresentationSummary, WolfPptError> {
     let path = path.as_ref();
-    let file = File::open(path)?;
-    let mut archive = ZipArchive::new(file)?;
+    let mut summary = summarize_presentation_bytes(File::open(path)?)?;
+    summary.path = path.to_path_buf();
+    Ok(summary)
+}
+
+/// Summarizes an in-memory package. The returned summary has an empty `path`
+/// because no file backs the package.
+pub fn summarize_presentation_bytes<R: Read + std::io::Seek>(
+    input: R,
+) -> Result<PresentationSummary, WolfPptError> {
+    let mut archive = ZipArchive::new(input)?;
     let (slide_parts, has_vba) = presentation_part_facts(&mut archive)?;
     let mut slides = Vec::new();
 
     for part in slide_parts {
-        let mut xml = Vec::new();
-        archive.by_name(&part)?.read_to_end(&mut xml)?;
-        let relationships = read_relationships(&mut archive, &part)?;
-        let notes = read_notes(&mut archive, &part, &relationships)?;
-        let image_relationships = relationships_by_type(&relationships, &["/image"]);
-        let chart_relationships = relationships_by_type(&relationships, &["/chart"]);
-        let comment_relationships =
-            relationships_by_type(&relationships, &["/comments", "/comment"]);
-        let media_relationships =
-            relationships_by_type(&relationships, &["/audio", "/media", "/video"]);
-        let ole_relationships = relationships_by_type(&relationships, &["/oleObject", "/package"]);
-        let shapes = extract_shapes(&xml);
-        slides.push(SlideSummary {
-            part,
-            texts: extract_text_runs(&xml),
-            tables: extract_tables(&xml),
-            shapes,
-            notes,
-            relationships,
-            image_relationships,
-            chart_relationships,
-            comment_relationships,
-            media_relationships,
-            ole_relationships,
-            has_transition: has_element(&xml, b"transition"),
-            has_timing: has_element(&xml, b"timing"),
-        });
+        slides.push(summarize_slide_part(&mut archive, part)?);
     }
 
     Ok(PresentationSummary {
-        path: path.to_path_buf(),
+        path: PathBuf::new(),
         slide_count: slides.len(),
         slides,
         has_vba,
@@ -442,25 +425,37 @@ pub fn summarize_slide_at_index(
     let file = File::open(path)?;
     let mut archive = ZipArchive::new(file)?;
     let Some(part) = slide_part_at_index(&mut archive, slide_index)? else {
-        return Err(WolfPptError::InvalidInput(format!(
-            "slide index {slide_index} was not found"
-        )));
+        return Err(slide_index_not_found(slide_index));
     };
+    summarize_slide_part(&mut archive, part)
+}
+
+fn slide_index_not_found(slide_index: usize) -> WolfPptError {
+    WolfPptError::InvalidInput(format!("slide index {slide_index} was not found"))
+}
+
+fn summarize_slide_part<R: Read + std::io::Seek>(
+    archive: &mut ZipArchive<R>,
+    part: String,
+) -> Result<SlideSummary, WolfPptError> {
     let mut xml = Vec::new();
     archive.by_name(&part)?.read_to_end(&mut xml)?;
-    let relationships = read_relationships(&mut archive, &part)?;
-    let notes = read_notes(&mut archive, &part, &relationships)?;
+    let relationships = read_relationships(archive, &part)?;
+    let notes = read_notes(archive, &part, &relationships)?;
     let image_relationships = relationships_by_type(&relationships, &["/image"]);
     let chart_relationships = relationships_by_type(&relationships, &["/chart"]);
     let comment_relationships = relationships_by_type(&relationships, &["/comments", "/comment"]);
     let media_relationships =
         relationships_by_type(&relationships, &["/audio", "/media", "/video"]);
     let ole_relationships = relationships_by_type(&relationships, &["/oleObject", "/package"]);
+    let effective_xml = effective_mc_xml(&xml);
+    let (texts, [has_transition, has_timing]) =
+        extract_text_runs_and_elements(&effective_xml, [b"transition", b"timing"]);
     Ok(SlideSummary {
         part,
-        texts: extract_text_runs(&xml),
-        tables: extract_tables(&xml),
-        shapes: extract_shapes(&xml),
+        texts,
+        tables: extract_tables_from_effective(&effective_xml),
+        shapes: extract_shapes_from_effective(&effective_xml),
         notes,
         relationships,
         image_relationships,
@@ -468,9 +463,160 @@ pub fn summarize_slide_at_index(
         comment_relationships,
         media_relationships,
         ole_relationships,
-        has_transition: has_element(&xml, b"transition"),
-        has_timing: has_element(&xml, b"timing"),
+        has_transition,
+        has_timing,
     })
+}
+
+/// Summarizes slides of one package file while parsing its ZIP central
+/// directory and presentation slide order once.
+///
+/// Every [`SlideSummaryReader::summarize_slide`] call opens the file, checks
+/// that it is still the package that was indexed (size, modification time
+/// and, on Unix, device, inode and change time of the opened handle), reads
+/// the slide's parts through the cached index, and closes the handle before
+/// returning. A replaced or rewritten file is re-indexed, so no stale bytes are
+/// read and no handle outlives a call. Output equals [`summarize_slide_at_index`].
+#[derive(Debug)]
+pub struct SlideSummaryReader {
+    path: PathBuf,
+    package: Option<IndexedSlidePackage>,
+    package_loads: usize,
+}
+
+#[derive(Debug)]
+struct IndexedSlidePackage {
+    identity: PackageFileIdentity,
+    file: AttachedPackageFile,
+    archive: ZipArchive<AttachedPackageFile>,
+    slide_parts: Vec<String>,
+}
+
+impl SlideSummaryReader {
+    pub fn new(path: impl AsRef<Path>) -> Self {
+        Self {
+            path: path.as_ref().to_path_buf(),
+            package: None,
+            package_loads: 0,
+        }
+    }
+
+    /// Number of times the package index (ZIP central directory and slide
+    /// order) has been parsed: once per distinct file identity read.
+    pub fn package_loads(&self) -> usize {
+        self.package_loads
+    }
+
+    pub fn summarize_slide(&mut self, slide_index: usize) -> Result<SlideSummary, WolfPptError> {
+        let file = File::open(&self.path)?;
+        let identity = PackageFileIdentity::of(&file.metadata()?);
+        let cached = self
+            .package
+            .take()
+            .filter(|package| package.identity == identity);
+        let file_slot = cached
+            .as_ref()
+            .map_or_else(AttachedPackageFile::default, |package| package.file.clone());
+        let _attachment = file_slot.attach(file);
+        let package = match cached {
+            Some(package) => package,
+            None => {
+                let mut archive = ZipArchive::new(file_slot.clone())?;
+                let slide_parts = slide_parts(&mut archive)?;
+                self.package_loads += 1;
+                IndexedSlidePackage {
+                    identity,
+                    file: file_slot.clone(),
+                    archive,
+                    slide_parts,
+                }
+            }
+        };
+        self.package.insert(package).summarize_slide(slide_index)
+    }
+}
+
+impl IndexedSlidePackage {
+    fn summarize_slide(&mut self, slide_index: usize) -> Result<SlideSummary, WolfPptError> {
+        let Some(part) = self.slide_parts.get(slide_index).cloned() else {
+            return Err(slide_index_not_found(slide_index));
+        };
+        summarize_slide_part(&mut self.archive, part)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PackageFileIdentity {
+    len: u64,
+    modified: Option<std::time::SystemTime>,
+    #[cfg(unix)]
+    device_inode_ctime: (u64, u64, i64, i64),
+}
+
+impl PackageFileIdentity {
+    fn of(metadata: &std::fs::Metadata) -> Self {
+        #[cfg(unix)]
+        use std::os::unix::fs::MetadataExt;
+        Self {
+            len: metadata.len(),
+            modified: metadata.modified().ok(),
+            #[cfg(unix)]
+            device_inode_ctime: (
+                metadata.dev(),
+                metadata.ino(),
+                metadata.ctime(),
+                metadata.ctime_nsec(),
+            ),
+        }
+    }
+}
+
+/// A package file handle shared with a cached [`ZipArchive`]; it holds an open
+/// file only while an [`AttachedPackageFile::attach`] guard lives.
+#[derive(Debug, Clone, Default)]
+struct AttachedPackageFile(std::sync::Arc<std::sync::Mutex<Option<File>>>);
+
+struct PackageFileAttachment<'a>(&'a AttachedPackageFile);
+
+impl Drop for PackageFileAttachment<'_> {
+    fn drop(&mut self) {
+        self.0.slot().take();
+    }
+}
+
+impl AttachedPackageFile {
+    fn attach(&self, file: File) -> PackageFileAttachment<'_> {
+        *self.slot() = Some(file);
+        PackageFileAttachment(self)
+    }
+
+    fn slot(&self) -> std::sync::MutexGuard<'_, Option<File>> {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn with_file<T>(
+        &self,
+        operation: impl FnOnce(&mut File) -> std::io::Result<T>,
+    ) -> std::io::Result<T> {
+        match self.slot().as_mut() {
+            Some(file) => operation(file),
+            None => Err(std::io::Error::other("package file is not open")),
+        }
+    }
+}
+
+impl Read for AttachedPackageFile {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.with_file(|file| file.read(buf))
+    }
+}
+
+impl std::io::Seek for AttachedPackageFile {
+    fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
+        self.with_file(|file| file.seek(pos))
+    }
 }
 
 impl EditOperation {
@@ -488,6 +634,7 @@ impl EditOperation {
             | EditOperation::SetTextRunBold { slide_index, .. }
             | EditOperation::SetTextRunItalic { slide_index, .. }
             | EditOperation::SetTextRunUnderline { slide_index, .. }
+            | EditOperation::SetTextRunStrike { slide_index, .. }
             | EditOperation::SetTextRunFontSize { slide_index, .. }
             | EditOperation::SetTextRunFontName { slide_index, .. }
             | EditOperation::SetTextRunFormatting { slide_index, .. }
@@ -587,51 +734,22 @@ impl EditOperation {
                 underline,
                 ..
             } => set_text_run_underline_at_index_in_slide(payload, *run_index, *underline),
+            EditOperation::SetTextRunStrike {
+                run_index,
+                strike,
+                ..
+            } => set_text_run_strike_at_index_in_slide(payload, *run_index, *strike),
             EditOperation::SetTextRunFontSize {
                 run_index, size, ..
             } => set_text_run_font_size_at_index_in_slide(payload, *run_index, *size),
             EditOperation::SetTextRunFontName {
                 run_index, name, ..
             } => set_text_run_font_name_at_index_in_slide(payload, *run_index, name.as_deref()),
-            EditOperation::SetTextRunFormatting {
-                run_index,
-                set_bold,
-                bold,
-                set_italic,
-                italic,
-                set_underline,
-                underline,
-                set_size,
-                size,
-                set_name,
-                name,
-                set_color,
-                color,
-                ..
-            } => set_text_run_formatting_at_index_in_slide(
-                payload,
-                *run_index,
-                &TextRunFormattingPatch {
-                    bold: if *set_bold { Some(*bold) } else { None },
-                    italic: if *set_italic { Some(*italic) } else { None },
-                    underline: if *set_underline {
-                        Some(*underline)
-                    } else {
-                        None
-                    },
-                    size: if *set_size { Some(*size) } else { None },
-                    name: if *set_name {
-                        Some(name.as_deref())
-                    } else {
-                        None
-                    },
-                    color: if *set_color {
-                        Some(color.as_deref())
-                    } else {
-                        None
-                    },
-                },
-            ),
+            EditOperation::SetTextRunFormatting { .. } => {
+                let (run_index, patch) = text_run_formatting_edit(self)
+                    .expect("SetTextRunFormatting yields a run formatting edit")?;
+                set_text_run_formatting_at_index_in_slide(payload, run_index, &patch)
+            }
             EditOperation::AppendParagraphText {
                 shape_index, text, ..
             } => append_shape_paragraph_text_in_slide(payload, *shape_index, text),
@@ -682,6 +800,8 @@ impl EditOperation {
                 italic,
                 set_underline,
                 underline,
+                set_strike,
+                strike,
                 set_size,
                 size,
                 set_name,
@@ -702,6 +822,11 @@ impl EditOperation {
                     italic: if *set_italic { Some(*italic) } else { None },
                     underline: if *set_underline {
                         Some(*underline)
+                    } else {
+                        None
+                    },
+                    strike: if *set_strike {
+                        Some(*strike)
                     } else {
                         None
                     },
@@ -821,5 +946,76 @@ impl EditOperation {
                 ..
             } => delete_table_column_in_slide(payload, *table_index, *col_index),
         }
+    }
+}
+
+#[cfg(test)]
+mod slide_summary_reader_tests {
+    use super::*;
+
+    const MULTI_SLIDE: &str = "../../fixtures/pptx/workloads/large_real_world_deck.pptx";
+    const TWO_SLIDE: &str = "../../fixtures/pptx/slides/two_slide_text.pptx";
+
+    #[test]
+    fn reader_indexes_the_package_once_and_matches_per_call_summaries() {
+        let mut reader = SlideSummaryReader::new(MULTI_SLIDE);
+        let slide_count = summarize_presentation(MULTI_SLIDE).unwrap().slide_count;
+        assert!(slide_count > 2);
+        for slide_index in (0..slide_count).rev() {
+            assert_eq!(
+                reader.summarize_slide(slide_index).unwrap(),
+                summarize_slide_at_index(MULTI_SLIDE, slide_index).unwrap()
+            );
+        }
+        assert_eq!(reader.package_loads(), 1);
+        let error = reader.summarize_slide(slide_count).unwrap_err().to_string();
+        assert_eq!(
+            error,
+            summarize_slide_at_index(MULTI_SLIDE, slide_count)
+                .unwrap_err()
+                .to_string()
+        );
+        assert_eq!(reader.package_loads(), 1);
+    }
+
+    #[test]
+    fn reader_reindexes_a_replaced_file_and_never_reads_a_removed_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("deck.pptx");
+        std::fs::copy(MULTI_SLIDE, &path).unwrap();
+        let mut reader = SlideSummaryReader::new(&path);
+        assert_eq!(
+            reader.summarize_slide(0).unwrap(),
+            summarize_slide_at_index(MULTI_SLIDE, 0).unwrap()
+        );
+
+        let replacement = dir.path().join("replacement.pptx");
+        std::fs::copy(TWO_SLIDE, &replacement).unwrap();
+        std::fs::rename(&replacement, &path).unwrap();
+        assert_eq!(
+            reader.summarize_slide(1).unwrap(),
+            summarize_slide_at_index(TWO_SLIDE, 1).unwrap()
+        );
+        assert_eq!(reader.package_loads(), 2);
+        assert!(reader.summarize_slide(2).is_err());
+
+        std::fs::remove_file(&path).unwrap();
+        assert!(matches!(
+            reader.summarize_slide(0),
+            Err(WolfPptError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound
+        ));
+    }
+
+    #[test]
+    fn detached_package_file_refuses_reads() {
+        let mut detached = AttachedPackageFile::default();
+        let mut byte = [0_u8; 1];
+        assert!(detached.read(&mut byte).is_err());
+        let file = File::open(TWO_SLIDE).unwrap();
+        {
+            let _attachment = detached.attach(file);
+            assert_eq!(detached.clone().read(&mut byte).unwrap(), 1);
+        }
+        assert!(detached.read(&mut byte).is_err());
     }
 }

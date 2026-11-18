@@ -38,6 +38,11 @@ class PresentationChartQueueMixin:
             self._chart_legend_edits[key] = {"has_legend": False}
             return
         queued = self._chart_legend_edits.setdefault(key, {"has_legend": True})
+        legend = dict(legend)
+        if "format" in legend:
+            queued.setdefault("format", {}).update(legend.pop("format"))
+        if "text_format_edits" in legend:
+            queued.setdefault("text_format_edits", []).extend(legend.pop("text_format_edits"))
         queued.update(legend)
 
     def _queue_chart_font(
@@ -70,9 +75,7 @@ class PresentationChartQueueMixin:
                 ("series_index", "point_index"),
             )
             data_labels = {
-                attr: value
-                for attr, value in data_labels.items()
-                if attr != "point_labels"
+                attr: value for attr, value in data_labels.items() if attr != "point_labels"
             }
         if "point_formats" in data_labels:
             _merge_scoped_chart_edits(
@@ -82,9 +85,7 @@ class PresentationChartQueueMixin:
                 ("series_index", "point_index"),
             )
             data_labels = {
-                attr: value
-                for attr, value in data_labels.items()
-                if attr != "point_formats"
+                attr: value for attr, value in data_labels.items() if attr != "point_formats"
             }
         if "point_marker_formats" in data_labels:
             _merge_scoped_chart_edits(
@@ -94,9 +95,7 @@ class PresentationChartQueueMixin:
                 ("series_index", "point_index"),
             )
             data_labels = {
-                attr: value
-                for attr, value in data_labels.items()
-                if attr != "point_marker_formats"
+                attr: value for attr, value in data_labels.items() if attr != "point_marker_formats"
             }
         if "series_formats" in data_labels:
             _merge_scoped_chart_edits(
@@ -106,19 +105,31 @@ class PresentationChartQueueMixin:
                 ("series_index",),
             )
             data_labels = {
-                attr: value
-                for attr, value in data_labels.items()
-                if attr != "series_formats"
+                attr: value for attr, value in data_labels.items() if attr != "series_formats"
             }
         if "series_data_labels" in data_labels:
-            queued.setdefault("series_data_labels", []).extend(
-                data_labels["series_data_labels"]
+            _merge_scoped_chart_edits(
+                queued,
+                "series_data_labels",
+                data_labels["series_data_labels"],
+                ("series_index",),
             )
             data_labels = {
-                attr: value
-                for attr, value in data_labels.items()
-                if attr != "series_data_labels"
+                attr: value for attr, value in data_labels.items() if attr != "series_data_labels"
             }
+        if "plot_data_labels" in data_labels:
+            _merge_scoped_chart_edits(
+                queued,
+                "plot_data_labels",
+                data_labels["plot_data_labels"],
+                ("plot_index",),
+            )
+            data_labels = {
+                attr: value for attr, value in data_labels.items() if attr != "plot_data_labels"
+            }
+        if "text_format_edits" in data_labels:
+            data_labels = dict(data_labels)
+            queued.setdefault("text_format_edits", []).extend(data_labels.pop("text_format_edits"))
         queued.update(data_labels)
 
     def _queue_chart_plot_property(
@@ -132,6 +143,20 @@ class PresentationChartQueueMixin:
             (slide_index, shape_index),
             {},
         )[attr] = value
+
+    def _queue_chart_data_table(
+        self,
+        slide_index: int,
+        shape_index: int,
+        data_table: dict[str, Any],
+    ) -> None:
+        key = (slide_index, shape_index)
+        queued = self._chart_plot_property_edits.setdefault(key, {})
+        state = dict(queued.get("_data_table") or {})
+        state.update(data_table)
+        queued["_data_table"] = state
+        if "_chart_part" in data_table:
+            queued["_chart_part"] = data_table["_chart_part"]
 
     def _queue_chart_axis_title(
         self,
@@ -168,6 +193,22 @@ class PresentationChartQueueMixin:
     ) -> None:
         self._chart_style_edits[(slide_index, shape_index)] = style
 
+    def _queue_chart_trendlines(
+        self,
+        chart_part: str,
+        series_index: int,
+        spec: Any,
+    ) -> None:
+        self._chart_trendline_edits[(chart_part, series_index)] = spec
+
+    def _queue_chart_error_bars(
+        self,
+        chart_part: str,
+        series_index: int,
+        spec: Any,
+    ) -> None:
+        self._chart_error_bar_edits[(chart_part, series_index)] = spec
+
 
 def _merge_scoped_chart_edits(
     queued: dict[str, Any],
@@ -181,10 +222,7 @@ def _merge_scoped_chart_edits(
             (
                 candidate
                 for candidate in existing
-                if all(
-                    candidate.get(identity) == item.get(identity)
-                    for identity in identity_keys
-                )
+                if all(candidate.get(identity) == item.get(identity) for identity in identity_keys)
             ),
             None,
         )
@@ -192,7 +230,12 @@ def _merge_scoped_chart_edits(
             existing.append(dict(item))
             continue
         match_properties = match.setdefault("properties", {})
+        if key == "plot_data_labels" and item.get("properties", {}).get("has_data_labels") is False:
+            match_properties.clear()
         for attr, value in item.get("properties", {}).items():
+            if attr == "text_format_edits":
+                match_properties.setdefault("text_format_edits", []).extend(value)
+                continue
             if attr == "run_formats":
                 match_properties.setdefault("run_formats", []).extend(value)
                 continue
@@ -226,6 +269,8 @@ def _merge_chart_title_edit(
     title = dict(incoming)
     if "format" in title:
         queued.setdefault("format", {}).update(title.pop("format"))
+    if "text_format_edits" in title:
+        queued.setdefault("text_format_edits", []).extend(title.pop("text_format_edits"))
     if "run_formats" in title:
         queued.setdefault("run_formats", []).extend(title.pop("run_formats"))
     if "paragraph_formats" in title:

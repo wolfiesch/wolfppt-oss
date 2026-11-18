@@ -26,10 +26,13 @@ mod tests {
     include!("tests_group_shape_child_edits.inc.rs");
     include!("tests_text_shapes.inc.rs");
     include!("tests_text_batch.inc.rs");
+    include!("tests_run_color.inc.rs");
     include!("tests_slide_reorder_shape_delete.inc.rs");
     include!("tests_slide_duplicate.inc.rs");
     include!("tests_slide_delete.inc.rs");
     include!("tests_package.inc.rs");
     include!("tests_table_row_column_mutation.inc.rs");
-    include!("tests_workbook_cell_update.inc.rs");
+    include!("tests_deck_assembly.inc.rs");
+    include!("tests_bytes_api.inc.rs");
+    include!("tests_utf8_bom.inc.rs");
 }

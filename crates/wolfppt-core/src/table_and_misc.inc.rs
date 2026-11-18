@@ -21,7 +21,7 @@ fn replace_table_cell_text_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                match local_name(event.name().as_ref()) {
+                match local_name(event.name().as_ref().as_bytes()) {
                     b"tbl" => {
                         in_target_table = table_index == target_table_index;
                         table_index += 1;
@@ -43,7 +43,7 @@ fn replace_table_cell_text_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::End(event) => {
-                match local_name(event.name().as_ref()) {
+                match local_name(event.name().as_ref().as_bytes()) {
                     b"t" => {
                         if in_text && in_target_cell && !wrote_replacement {
                             writer.write_event(Event::Text(BytesText::new(replacement)))?;
@@ -62,7 +62,7 @@ fn replace_table_cell_text_in_slide(
                 }
                 writer.write_event(Event::End(event))?;
             }
-            Event::Text(_event) if in_text && in_target_cell => {
+            Event::Text(_) | Event::GeneralRef(_) | Event::CData(_) if in_text && in_target_cell => {
                 if wrote_replacement {
                     writer.write_event(Event::Text(BytesText::new("")))?;
                 } else {
@@ -104,7 +104,7 @@ fn replace_table_cell_text_batch_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                match local_name(event.name().as_ref()) {
+                match local_name(event.name().as_ref().as_bytes()) {
                     b"tbl" => {
                         current_table = Some(table_index);
                         table_index += 1;
@@ -130,7 +130,7 @@ fn replace_table_cell_text_batch_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::End(event) => {
-                match local_name(event.name().as_ref()) {
+                match local_name(event.name().as_ref().as_bytes()) {
                     b"t" => {
                         if in_text {
                             if let Some(replacement) = current_cell_replacement {
@@ -153,7 +153,9 @@ fn replace_table_cell_text_batch_in_slide(
                 }
                 writer.write_event(Event::End(event))?;
             }
-            Event::Text(_event) if in_text && current_cell_replacement.is_some() => {
+            Event::Text(_) | Event::GeneralRef(_) | Event::CData(_)
+                if in_text && current_cell_replacement.is_some() =>
+            {
                 let replacement = current_cell_replacement.unwrap_or("");
                 if wrote_replacement {
                     writer.write_event(Event::Text(BytesText::new("")))?;
@@ -207,7 +209,7 @@ fn set_table_cell_merge_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"tbl" {
                     in_target_table = table_index == target_table_index;
                     table_index += 1;
@@ -256,7 +258,7 @@ fn set_table_cell_merge_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && name == b"tc" {
                     let row = current_row.unwrap_or(usize::MAX);
                     let col = col_index;
@@ -275,7 +277,7 @@ fn set_table_cell_merge_in_slide(
                 writer.write_event(Event::Empty(event))?;
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 writer.write_event(Event::End(event))?;
                 if name == b"tc" {
                     current_cell = None;
@@ -344,7 +346,7 @@ fn set_table_style_flags_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"tbl" {
                     in_target_table = table_index == target_table_index;
                     table_index += 1;
@@ -374,7 +376,7 @@ fn set_table_style_flags_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && name == b"tblPr" {
                     writer.write_event(Event::Empty(rewrite_event_optional_attributes(
                         &event,
@@ -397,7 +399,7 @@ fn set_table_style_flags_in_slide(
                 writer.write_event(Event::Empty(event))?;
             }
             Event::End(event) => {
-                if local_name(event.name().as_ref()) == b"tbl" {
+                if local_name(event.name().as_ref().as_bytes()) == b"tbl" {
                     in_target_table = false;
                     wrote_table_properties = false;
                 }
@@ -417,7 +419,7 @@ fn table_style_flag_attributes(
     for key in flags.keys() {
         if !matches!(
             key.as_str(),
-            "firstCol" | "firstRow" | "bandRow" | "lastCol" | "lastRow" | "bandCol"
+            "firstCol" | "firstRow" | "bandRow" | "lastCol" | "lastRow" | "bandCol" | "rtl"
         ) {
             return Err(WolfPptError::InvalidInput(format!(
                 "unsupported table style flag: {key}"
@@ -425,7 +427,7 @@ fn table_style_flag_attributes(
         }
     }
     Ok([
-        "firstCol", "firstRow", "bandRow", "lastCol", "lastRow", "bandCol",
+        "firstCol", "firstRow", "bandRow", "lastCol", "lastRow", "bandCol", "rtl",
     ]
     .into_iter()
     .filter_map(|key| flags.get(key).map(|value| (key, *value)))
@@ -458,23 +460,6 @@ fn relationships_by_type(
         })
         .cloned()
         .collect()
-}
-
-fn has_element(xml: &[u8], name: &[u8]) -> bool {
-    let mut reader = Reader::from_reader(xml);
-    reader.config_mut().trim_text(true);
-    loop {
-        match reader.read_event() {
-            Ok(Event::Start(event)) | Ok(Event::Empty(event)) => {
-                if local_name(event.name().as_ref()) == name {
-                    return true;
-                }
-            }
-            Ok(Event::Eof) => return false,
-            Err(_) => return false,
-            _ => {}
-        }
-    }
 }
 
 fn relationship_part_name(part_name: &str) -> String {

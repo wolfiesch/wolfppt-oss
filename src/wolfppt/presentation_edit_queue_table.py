@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 class PresentationTableQueueMixin:
     def _queue_table_cell_text(
         self,
@@ -117,6 +118,35 @@ class PresentationTableQueueMixin:
             (slide_index, table_index, row_index, col_index)
         ] = value
 
+    def _queue_table_cell_border(
+        self,
+        slide_index: int,
+        table_index: int,
+        row_index: int,
+        col_index: int,
+        edge: str,
+        *,
+        width: int | None = None,
+        color: str | None = None,
+        no_fill: bool = False,
+        clear: bool = False,
+    ) -> None:
+        key = (slide_index, table_index, row_index, col_index)
+        cell_borders = self._table_cell_border_edits.setdefault(key, {})
+        if clear:
+            cell_borders[edge] = {"clear": True}
+            return
+        edge_props = cell_borders.setdefault(edge, {})
+        edge_props.pop("clear", None)
+        if width is not None:
+            edge_props["width"] = width
+        if no_fill:
+            edge_props["no_fill"] = True
+            edge_props.pop("color", None)
+        elif color is not None:
+            edge_props["color"] = color
+            edge_props.pop("no_fill", None)
+
     def _queue_table_cell_text_frame_margin(
         self,
         slide_index: int,
@@ -172,10 +202,11 @@ class PresentationTableQueueMixin:
         row_index: int,
         col_index: int,
         value: str | None,
+        autofit_scale: dict[str, float | None] | None = None,
     ) -> None:
         self._table_cell_text_frame_auto_size_edits[
             (slide_index, table_index, row_index, col_index)
-        ] = value
+        ] = (value, autofit_scale)
 
     def _queue_table_cell_text_frame_fit(
         self,
@@ -224,7 +255,7 @@ class PresentationTableQueueMixin:
         col_index: int,
         paragraph_index: int,
         attr: str,
-        value: int | float | None,
+        value: float | None,
     ) -> None:
         self._table_cell_text_frame_paragraph_spacing_edits.setdefault(
             (slide_index, table_index, row_index, col_index, paragraph_index),
@@ -445,6 +476,18 @@ class PresentationTableQueueMixin:
         attr: str,
         value: bool,
     ) -> None:
+        self._table_style_edits.setdefault((slide_index, table_index), {})[attr] = value
+
+    def _queue_table_style_id(
+        self,
+        slide_index: int,
+        table_index: int,
+        style_id: str | None,
+    ) -> None:
         self._table_style_edits.setdefault((slide_index, table_index), {})[
-            attr
-        ] = value
+            "tableStyleId"
+        ] = style_id
+        if hasattr(self, "_table_style_id_edits") and isinstance(
+            self._table_style_id_edits, dict
+        ):
+            self._table_style_id_edits[(slide_index, table_index)] = style_id

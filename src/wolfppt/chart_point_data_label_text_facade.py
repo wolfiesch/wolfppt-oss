@@ -9,58 +9,150 @@ from xml.etree import ElementTree as ET
 
 from .chart_data_label_paragraph_font_xml import (
     data_label_paragraph_fill_type as _data_label_paragraph_fill_type,
+)
+from .chart_data_label_paragraph_font_xml import (
     data_label_paragraph_font_element as _data_label_paragraph_font_element,
+)
+from .chart_data_label_paragraph_font_xml import (
     data_label_paragraph_font_properties as _data_label_paragraph_font_properties,
+)
+from .chart_data_label_paragraph_font_xml import (
     data_label_paragraph_gradient_payload as _data_label_paragraph_gradient_payload,
+)
+from .chart_data_label_paragraph_font_xml import (
     data_label_paragraph_pattern as _data_label_paragraph_pattern,
+)
+from .chart_data_label_paragraph_font_xml import (
     data_label_paragraph_pattern_rgb as _data_label_paragraph_pattern_rgb,
+)
+from .chart_data_label_paragraph_font_xml import (
     data_label_paragraph_rgb as _data_label_paragraph_rgb,
+)
+from .chart_data_label_paragraph_font_xml import (
     set_data_label_paragraph_font as _set_data_label_paragraph_font,
 )
 from .chart_data_label_run_facade import DataLabelRunFont, DataLabelRunHyperlink
 from .chart_data_label_text_xml import (
     chart_data_label_body_properties as _point_data_label_body_properties,
+)
+from .chart_data_label_text_xml import (
     chart_data_label_paragraph_properties as _point_data_label_paragraph_properties,
+)
+from .chart_data_label_text_xml import (
     chart_data_label_paragraph_spacing_value as _point_data_label_paragraph_spacing_value,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_auto_size as _set_point_data_label_auto_size,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_body_margin as _set_point_data_label_body_margin,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_paragraph_format as _set_point_data_label_paragraph_format,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_vertical_anchor as _set_point_data_label_vertical_anchor,
+)
+from .chart_data_label_text_xml import (
     set_chart_data_label_word_wrap as _set_point_data_label_word_wrap,
+)
+from .chart_font_format_facade import (
+    ChartParagraphFormat,
+    ChartPortionFormat,
+    ChartTextFormat,
+    _set_portion_color_element,
+    default_run_properties_element,
+    run_properties_element,
+    update_chart_rich_run_texts,
 )
 from .chart_point_data_label_xml import (
     insert_point_data_label_paragraph_line_break as _insert_point_data_label_paragraph_line_break,
+)
+from .chart_point_data_label_xml import (
     point_data_label_paragraph_line_breaks as _point_data_label_paragraph_line_breaks,
+)
+from .chart_point_data_label_xml import (
     point_data_label_paragraph_run_texts as _point_data_label_paragraph_run_texts,
+)
+from .chart_point_data_label_xml import (
     point_data_label_paragraph_texts as _point_data_label_paragraph_texts,
+)
+from .chart_point_data_label_xml import (
     point_data_label_text as _point_data_label_text,
+)
+from .chart_point_data_label_xml import (
     set_point_data_label_paragraph_runs as _set_point_data_label_paragraph_runs,
+)
+from .chart_point_data_label_xml import (
     set_point_data_label_paragraphs as _set_point_data_label_paragraphs,
+)
+from .chart_point_data_label_xml import (
     set_point_data_label_text as _set_point_data_label_text,
+)
+from .chart_point_data_label_xml import (
     set_point_data_label_text_frame_fit as _set_point_data_label_text_frame_fit,
 )
 from .chart_point_facade_xml import _chart_point_data_label_element
+from .dml.color import ColorTextAndTransforms, fill_color_element
 from .dml_fill import default_gradient_payload as _default_gradient_payload
 from .facade_values import (
     centipoints_to_emu as _centipoints_to_emu,
+)
+from .facade_values import (
     centipoints_value as _centipoints_value,
+)
+from .facade_values import (
     coerce_paragraph_level as _coerce_paragraph_level,
+)
+from .facade_values import (
     emu_to_centipoints as _emu_to_centipoints,
+)
+from .facade_values import (
     fill_type_value as _fill_type_value,
+)
+from .facade_values import (
     language_id_value as _language_id_value,
+)
+from .facade_values import (
     normalize_language_id as _normalize_language_id,
+)
+from .facade_values import (
     normalize_line_spacing as _normalize_line_spacing,
+)
+from .facade_values import (
     normalize_paragraph_alignment as _normalize_paragraph_alignment,
+)
+from .facade_values import (
     normalize_paragraph_spacing_length as _normalize_paragraph_spacing_length,
+)
+from .facade_values import (
     normalize_pattern_type as _normalize_pattern_type,
+)
+from .facade_values import (
     normalize_rgb as _normalize_rgb,
+)
+from .facade_values import (
     normalize_text_frame_auto_size as _normalize_text_frame_auto_size,
+)
+from .facade_values import (
     normalize_text_frame_vertical_anchor as _normalize_text_frame_vertical_anchor,
+)
+from .facade_values import (
     normalize_text_frame_word_wrap as _normalize_text_frame_word_wrap,
+)
+from .facade_values import (
     paragraph_alignment_value as _paragraph_alignment_value,
+)
+from .facade_values import (
     pattern_type_value as _pattern_type_value,
+)
+from .facade_values import (
     rgb_value as _rgb_value,
+)
+from .facade_values import (
     text_frame_auto_size_value as _text_frame_auto_size_value,
+)
+from .facade_values import (
     text_frame_vertical_anchor_value as _text_frame_vertical_anchor_value,
 )
 from .shape_format_facade import GradientStops as _GradientStops
@@ -73,6 +165,10 @@ C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 class DataLabelTextFrame:
     def __init__(self, label: Any) -> None:
         self._label = label
+
+    @property
+    def text_format(self) -> ChartTextFormat:
+        return self._label.text_format
 
     @property
     def auto_size(self) -> Any:
@@ -181,17 +277,12 @@ class DataLabelTextFrame:
         text = str(value)
         if text == self.text:
             return
-        element = _chart_point_data_label_element(
-            self._label._point._series._chart._shape,
-            self._label._point._series.index,
-            self._label._point._index,
-            create=True,
-        )
+        element = self._label_element(create=True)
         _set_point_data_label_text(element, text)
         self._label._queue({"text": text})
 
     @property
-    def paragraphs(self) -> "DataLabelParagraphCollection":
+    def paragraphs(self) -> DataLabelParagraphCollection:
         return DataLabelParagraphCollection(self._label)
 
     def clear(self) -> None:
@@ -223,7 +314,7 @@ class DataLabelTextFrame:
         _set_point_data_label_text_frame_fit(element, fit)
         self._label._queue({"fit": fit})
 
-    def add_paragraph(self) -> "DataLabelParagraph":
+    def add_paragraph(self) -> DataLabelParagraph:
         paragraph_runs = _point_data_label_paragraph_run_texts(
             _chart_point_data_label_element(
                 self._label._point._series._chart._shape,
@@ -246,12 +337,7 @@ class DataLabelTextFrame:
         )
         if normalized == current:
             return
-        element = _chart_point_data_label_element(
-            self._label._point._series._chart._shape,
-            self._label._point._series.index,
-            self._label._point._index,
-            create=True,
-        )
+        element = self._label_element(create=True)
         _set_point_data_label_paragraphs(element, normalized)
         self._label._queue({"paragraphs": normalized})
 
@@ -266,13 +352,9 @@ class DataLabelTextFrame:
         )
         if normalized == current:
             return
-        element = _chart_point_data_label_element(
-            self._label._point._series._chart._shape,
-            self._label._point._series.index,
-            self._label._point._index,
-            create=True,
-        )
-        _set_point_data_label_paragraph_runs(element, normalized)
+        element = self._label_element(create=True)
+        if not update_chart_rich_run_texts(element, normalized):
+            _set_point_data_label_paragraph_runs(element, normalized)
         line_breaks = _point_data_label_paragraph_line_breaks(element)
         payload: dict[str, Any] = {"paragraph_runs": normalized}
         if line_breaks:
@@ -307,12 +389,7 @@ class DataLabelTextFrame:
         self._label._queue({property_name: margin})
 
     def _label_element(self, *, create: bool = False) -> ET.Element:
-        return _chart_point_data_label_element(
-            self._label._point._series._chart._shape,
-            self._label._point._series.index,
-            self._label._point._index,
-            create=create,
-        )
+        return self._label._element(create)
 
 
 class DataLabelParagraphCollection(Sequence["DataLabelParagraph"]):
@@ -322,7 +399,7 @@ class DataLabelParagraphCollection(Sequence["DataLabelParagraph"]):
     def __getitem__(
         self,
         index: int | slice,
-    ) -> "DataLabelParagraph | list[DataLabelParagraph]":
+    ) -> DataLabelParagraph | list[DataLabelParagraph]:
         paragraphs = _point_data_label_paragraph_texts(
             _chart_point_data_label_element(
                 self._label._point._series._chart._shape,
@@ -341,7 +418,7 @@ class DataLabelParagraphCollection(Sequence["DataLabelParagraph"]):
             raise IndexError("paragraph index out of range")
         return DataLabelParagraph(self._label, index)
 
-    def __iter__(self) -> Iterator["DataLabelParagraph"]:
+    def __iter__(self) -> Iterator[DataLabelParagraph]:
         for index in range(len(self)):
             yield DataLabelParagraph(self._label, index)
 
@@ -377,21 +454,27 @@ class DataLabelParagraph:
         text = str(value)
         if text == self.text:
             return
-        paragraphs = _point_data_label_paragraph_texts(
-            _chart_point_data_label_element(
-                self._label._point._series._chart._shape,
-                self._label._point._series.index,
-                self._label._point._index,
-            )
-        )
+        element = self._label._element(True)
+        rich = element.find(f"{{{C_NS}}}tx/{{{C_NS}}}rich")
+        original = [] if rich is None else rich.findall(f"{{{A_NS}}}p")
+        paragraphs = _point_data_label_paragraph_texts(element)
         paragraphs[self._index] = text
-        DataLabelTextFrame(self._label)._set_paragraphs(paragraphs)
+        _set_point_data_label_paragraphs(element, paragraphs)
+        rich = element.find(f"{{{C_NS}}}tx/{{{C_NS}}}rich")
+        assert rich is not None
+        updated = rich.findall(f"{{{A_NS}}}p")
+        for index, paragraph in enumerate(original):
+            if index != self._index:
+                position = list(rich).index(updated[index])
+                rich.remove(updated[index])
+                rich.insert(position, paragraph)
+        self._label._queue({"paragraphs": paragraphs})
 
     @property
     def part(self) -> None:
         raise AttributeError("'DataLabel' object has no attribute 'part'")
 
-    def clear(self) -> "DataLabelParagraph":
+    def clear(self) -> DataLabelParagraph:
         self.text = ""
         return self
 
@@ -425,12 +508,44 @@ class DataLabelParagraph:
         )
 
     @property
-    def runs(self) -> "DataLabelRunCollection":
+    def runs(self) -> DataLabelRunCollection:
         return DataLabelRunCollection(self._label, self._index)
 
     @property
-    def font(self) -> "DataLabelParagraphFont":
+    def font(self) -> DataLabelParagraphFont:
         return DataLabelParagraphFont(self)
+
+    @property
+    def paragraph_format(self) -> ChartParagraphFormat:
+        return ChartParagraphFormat(
+            lambda create: _element_targets(self._paragraph_properties(create)),
+            lambda scope, delta: self._label._queue(
+                {
+                    "text_format_edits": [
+                        {"paragraph_index": self._index, "scope": scope, "delta": dict(delta)}
+                    ]
+                }
+            ),
+        )
+
+    @property
+    def portion_format(self) -> ChartPortionFormat:
+        def targets(create: bool) -> list[ET.Element]:
+            properties = self._paragraph_properties(create)
+            return _element_targets(
+                None if properties is None else default_run_properties_element(properties, create)
+            )
+
+        return ChartPortionFormat(
+            targets,
+            lambda scope, delta: self._label._queue(
+                {
+                    "text_format_edits": [
+                        {"paragraph_index": self._index, "scope": scope, "delta": dict(delta)}
+                    ]
+                }
+            ),
+        )
 
     @property
     def alignment(self) -> Any:
@@ -493,7 +608,7 @@ class DataLabelParagraph:
         spacing = _normalize_line_spacing(value)
         self._set_spacing_value("line_spacing", spacing)
 
-    def add_run(self) -> "DataLabelRun":
+    def add_run(self) -> DataLabelRun:
         paragraph_runs = _point_data_label_paragraph_run_texts(
             _chart_point_data_label_element(
                 self._label._point._series._chart._shape,
@@ -507,12 +622,7 @@ class DataLabelParagraph:
         return DataLabelRun(self._label, self._index, run_index)
 
     def _queue_format(self, properties: dict[str, Any]) -> None:
-        label_element = _chart_point_data_label_element(
-            self._label._point._series._chart._shape,
-            self._label._point._series.index,
-            self._label._point._index,
-            create=True,
-        )
+        label_element = self._label._element(True)
         _set_point_data_label_paragraph_format(label_element, self._index, properties)
         self._label._queue(
             {
@@ -526,12 +636,7 @@ class DataLabelParagraph:
         )
 
     def _paragraph_properties(self, create: bool) -> ET.Element | None:
-        label_element = _chart_point_data_label_element(
-            self._label._point._series._chart._shape,
-            self._label._point._series.index,
-            self._label._point._index,
-            create=create,
-        )
+        label_element = self._label._element(create)
         return _point_data_label_paragraph_properties(
             label_element,
             self._index,
@@ -607,11 +712,11 @@ class DataLabelParagraphFont:
             self._queue_font({"size": size})
 
     @property
-    def color(self) -> "DataLabelParagraphColorFormat":
+    def color(self) -> DataLabelParagraphColorFormat:
         return DataLabelParagraphColorFormat(self._paragraph)
 
     @property
-    def fill(self) -> "DataLabelParagraphFontFillFormat":
+    def fill(self) -> DataLabelParagraphFontFillFormat:
         payload = self._paragraph._label.__dict__.setdefault(
             "_paragraph_font_fill_payloads",
             {},
@@ -644,18 +749,22 @@ class DataLabelParagraphFont:
     @language_id.setter
     def language_id(self, value: Any) -> None:
         language_id = _normalize_language_id(value)
-        if language_id != _data_label_paragraph_font_properties(self._paragraph).get(
-            "lang"
-        ):
+        if language_id != _data_label_paragraph_font_properties(self._paragraph).get("lang"):
             self._queue_font({"language_id": language_id})
 
     def _queue_font(self, properties: dict[str, Any]) -> None:
         self._paragraph._queue_format({"font": properties})
 
 
-class DataLabelParagraphColorFormat:
+class DataLabelParagraphColorFormat(ColorTextAndTransforms):
     def __init__(self, paragraph: DataLabelParagraph) -> None:
         self._paragraph = paragraph
+
+    def _color_element(self) -> ET.Element | None:
+        return fill_color_element(_data_label_paragraph_font_element(self._paragraph, create=False))
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        _set_portion_color_element(self._paragraph.portion_format, color)
 
     @property
     def rgb(self) -> Any:
@@ -694,20 +803,18 @@ class DataLabelParagraphFontFillFormat:
         if _data_label_paragraph_fill_type(self._paragraph) == "gradient":
             return
         self._payload["gradient"] = _default_gradient_payload()
-        self._queue_fill(
-            {"fill_type": "gradient", "gradient": self._payload["gradient"]}
-        )
+        self._queue_fill({"fill_type": "gradient", "gradient": self._payload["gradient"]})
 
     @property
     def type(self) -> Any:
         return _fill_type_value(_data_label_paragraph_fill_type(self._paragraph))
 
     @property
-    def fore_color(self) -> "DataLabelParagraphFontFillColorFormat":
+    def fore_color(self) -> DataLabelParagraphFontFillColorFormat:
         return DataLabelParagraphFontFillColorFormat(self._paragraph, "fore")
 
     @property
-    def back_color(self) -> "DataLabelParagraphFontFillColorFormat":
+    def back_color(self) -> DataLabelParagraphFontFillColorFormat:
         return DataLabelParagraphFontFillColorFormat(self._paragraph, "back")
 
     @property
@@ -772,10 +879,18 @@ class DataLabelParagraphFontFillFormat:
         DataLabelParagraphFont(self._paragraph)._queue_font(queued)
 
 
-class DataLabelParagraphFontFillColorFormat:
+class DataLabelParagraphFontFillColorFormat(ColorTextAndTransforms):
     def __init__(self, paragraph: DataLabelParagraph, target: str) -> None:
         self._paragraph = paragraph
         self._target = target
+
+    def _color_element(self) -> ET.Element | None:
+        return fill_color_element(
+            _data_label_paragraph_font_element(self._paragraph, create=False), self._target
+        )
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        _set_portion_color_element(self._paragraph.portion_format, color, self._target)
 
     @property
     def rgb(self) -> Any:
@@ -798,9 +913,7 @@ class DataLabelParagraphFontFillColorFormat:
                 self._paragraph,
                 color_tag,
             ):
-                key = (
-                    "pattern_back_rgb" if self._target == "back" else "pattern_fore_rgb"
-                )
+                key = "pattern_back_rgb" if self._target == "back" else "pattern_fore_rgb"
                 _set_data_label_paragraph_font(self._paragraph, {key: rgb})
                 DataLabelParagraphFont(self._paragraph)._queue_font({key: rgb})
             return
@@ -814,7 +927,7 @@ class DataLabelRunCollection(Sequence["DataLabelRun"]):
         self._label = label
         self._paragraph_index = paragraph_index
 
-    def __getitem__(self, index: int | slice) -> "DataLabelRun | list[DataLabelRun]":
+    def __getitem__(self, index: int | slice) -> DataLabelRun | list[DataLabelRun]:
         runs = _point_data_label_paragraph_run_texts(
             _chart_point_data_label_element(
                 self._label._point._series._chart._shape,
@@ -833,7 +946,7 @@ class DataLabelRunCollection(Sequence["DataLabelRun"]):
             raise IndexError("run index out of range")
         return DataLabelRun(self._label, self._paragraph_index, index)
 
-    def __iter__(self) -> Iterator["DataLabelRun"]:
+    def __iter__(self) -> Iterator[DataLabelRun]:
         for index in range(len(self)):
             yield DataLabelRun(self._label, self._paragraph_index, index)
 
@@ -881,7 +994,7 @@ class DataLabelRun:
         DataLabelTextFrame(self._label)._set_paragraph_runs(paragraph_runs)
 
     @property
-    def hyperlink(self) -> "DataLabelRunHyperlink":
+    def hyperlink(self) -> DataLabelRunHyperlink:
         return DataLabelRunHyperlink()
 
     @property
@@ -889,8 +1002,34 @@ class DataLabelRun:
         raise AttributeError("'DataLabel' object has no attribute 'part'")
 
     @property
-    def font(self) -> "DataLabelRunFont":
+    def font(self) -> DataLabelRunFont:
         return DataLabelRunFont(self)
+
+    @property
+    def portion_format(self) -> ChartPortionFormat:
+        def targets(create: bool) -> list[ET.Element]:
+            rich = self._label._element(create).find(f"{{{C_NS}}}tx/{{{C_NS}}}rich")
+            if rich is None:
+                return []
+            paragraph = rich.findall(f"{{{A_NS}}}p")[self._paragraph_index]
+            run = paragraph.findall(f"{{{A_NS}}}r")[self._index]
+            return _element_targets(run_properties_element(run, create))
+
+        return ChartPortionFormat(
+            targets,
+            lambda scope, delta: self._label._queue(
+                {
+                    "text_format_edits": [
+                        {
+                            "paragraph_index": self._paragraph_index,
+                            "run_index": self._index,
+                            "scope": scope,
+                            "delta": dict(delta),
+                        }
+                    ]
+                }
+            ),
+        )
 
     def _queue_font(self, properties: dict[str, Any]) -> None:
         self._label._queue(
@@ -904,3 +1043,7 @@ class DataLabelRun:
                 ]
             }
         )
+
+
+def _element_targets(element: ET.Element | None) -> list[ET.Element]:
+    return [] if element is None else [element]

@@ -5,8 +5,8 @@ from __future__ import annotations
 import subprocess
 from typing import Any
 
-VALIDATION_ENV = "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.dotnet:$PATH"
-VALIDATION_SDK_ENV = (
+HOSTINGER_ENV = "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.dotnet:$PATH"
+HOSTINGER_SDK_ENV = (
     "export JAVA_HOME=$HOME/.local/java/current && "
     "export PATH=$HOME/.local/maven/apache-maven-3.9.11/bin:"
     "$HOME/.local/java/current/bin:$HOME/.local/bin:$HOME/.cargo/bin:"
@@ -14,6 +14,18 @@ VALIDATION_SDK_ENV = (
 )
 STRICT_EXTERNAL_SDK_METADATA_ENV = (
     "export WOLFPPT_EXTERNAL_ROUNDTRIP_REQUIRE_SDK_METADATA=1"
+)
+
+VPS_SYNC_RESULTS_FILTERS = (
+    "--exclude '/results/*.jsonl' "
+    "--exclude '/results/benchmarks/' "
+    "--exclude '/results/corpus/' "
+    "--exclude '/results/api-surface/' "
+    "--include '/results/release-candidate/.gitignore' "
+    "--include '/results/release-candidate/.gitkeep' "
+    "--include '/results/release-candidate/evidence/***' "
+    "--include '/results/release-candidate/runs.jsonl' "
+    "--exclude '/results/release-candidate/*'"
 )
 
 DROPIN_COVERAGE_GATE = (
@@ -140,8 +152,7 @@ SDK_COMPARISON_TOOL_GATE = (
 )
 
 SDK_COMPARISON_STRICT_TOOL_GATE = (
-    SDK_COMPARISON_TOOL_GATE
-    + " --require-tool external-command-roundtrip"
+    SDK_COMPARISON_TOOL_GATE + " --require-tool external-command-roundtrip"
 )
 
 
@@ -220,7 +231,7 @@ def impacted_validation_plan(paths: list[str] | None = None) -> dict[str, Any]:
 def validation_ladder(
     tier: str,
     *,
-    vps_host: str = "validation-host",
+    vps_host: str = "vps",
     vps_path: str = "~/Projects/wolfppt-validation",
 ) -> dict[str, Any]:
     """Return the recommended validation plan for one development tier."""
@@ -231,17 +242,17 @@ def validation_ladder(
             f"{', '.join(validation_tiers())}"
         )
     sync_command = (
-        "rsync -a --delete --exclude .git --exclude .venv ./ "
+        f"rsync -a --delete --exclude .git --exclude .venv {VPS_SYNC_RESULTS_FILTERS} ./ "
         f"{vps_host}:{vps_path}/"
     )
-    remote_prefix = f"ssh {vps_host} 'cd {vps_path} && {VALIDATION_ENV} && "
+    remote_prefix = f"ssh {vps_host} 'cd {vps_path} && {HOSTINGER_ENV} && "
     private_remote_prefix = (
-        f"ssh {vps_host} 'cd {vps_path} && {VALIDATION_ENV} && "
+        f"ssh {vps_host} 'cd {vps_path} && {HOSTINGER_ENV} && "
         "export WOLFPPT_PRIVATE_DECKS_DIR=/remote/private/decks && "
     )
-    sdk_remote_prefix = f"ssh {vps_host} 'cd {vps_path} && {VALIDATION_SDK_ENV} && "
+    sdk_remote_prefix = f"ssh {vps_host} 'cd {vps_path} && {HOSTINGER_SDK_ENV} && "
     strict_sdk_remote_prefix = (
-        f"ssh {vps_host} 'cd {vps_path} && {VALIDATION_SDK_ENV} && "
+        f"ssh {vps_host} 'cd {vps_path} && {HOSTINGER_SDK_ENV} && "
         f"{STRICT_EXTERNAL_SDK_METADATA_ENV} && "
     )
     if tier == "quick":
@@ -318,7 +329,7 @@ def validation_ladder(
         return {
             "kind": "validation-ladder",
             "tier": tier,
-            "location": "remote validation host",
+            "location": "Hostinger VPS",
             "purpose": "full pre-PR validation without blocking local editing",
             "commands": [
                 _cmd(
@@ -326,7 +337,7 @@ def validation_ladder(
                     "scripts/start-vps-validation.sh",
                     "Prefer this launcher so full PR validation runs in the background.",
                 ),
-                _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+                _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
                 _cmd("python-deps", remote_prefix + "uv sync --extra dev'", "Refresh VPS deps."),
                 _cmd(
                     "native-binding",
@@ -353,7 +364,7 @@ def validation_ladder(
         return {
             "kind": "validation-ladder",
             "tier": tier,
-            "location": "remote validation host",
+            "location": "Hostinger VPS",
             "purpose": (
                 "third-party and external SDK comparison evidence without making "
                 "vendor tools part of the normal release gate"
@@ -364,7 +375,7 @@ def validation_ladder(
                     "scripts/start-vps-sdk-comparison.sh",
                     "Prefer this launcher so SDK comparison runs in the background.",
                 ),
-                _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+                _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
                 _cmd("python-deps", remote_prefix + "uv sync --extra dev'", "Refresh VPS deps."),
                 _cmd(
                     "release-native",
@@ -394,10 +405,10 @@ def validation_ladder(
         return {
             "kind": "validation-ladder",
             "tier": tier,
-            "location": "remote validation host",
+            "location": "Hostinger VPS",
             "purpose": (
-                "strict SDK comparison evidence that fails unless "
-                "the configured external SDK command is present"
+                "strict SDK comparison evidence that fails unless the configured "
+                "external SDK command and its SDK metadata are present"
             ),
             "commands": [
                 _cmd(
@@ -405,7 +416,7 @@ def validation_ladder(
                     "scripts/start-vps-sdk-comparison.sh --strict-commercial",
                     "Prefer this launcher so strict SDK comparison runs in the background.",
                 ),
-                _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+                _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
                 _cmd("python-deps", remote_prefix + "uv sync --extra dev'", "Refresh VPS deps."),
                 _cmd(
                     "release-native",
@@ -429,9 +440,9 @@ def validation_ladder(
             ],
             "notes": [
                 "Prefer the detached launcher for normal use; the following SSH commands show the exact gate it runs.",
-                "Use this only for a broader third-party SDK claim, after the normal SDK comparison is healthy.",
+                "Use this only for a broader external-SDK claim, after the normal SDK comparison is healthy.",
                 (
-                    "The remote shell must already have "
+                    "The Hostinger shell must already have "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_CMD, "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME, and "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION configured."
@@ -442,7 +453,7 @@ def validation_ladder(
         return {
             "kind": "validation-ladder",
             "tier": tier,
-            "location": "remote validation host",
+            "location": "Hostinger VPS",
             "purpose": (
                 "claim-grade third-party and external SDK comparison evidence "
                 "using 15 measured iterations"
@@ -453,7 +464,7 @@ def validation_ladder(
                     "scripts/start-vps-sdk-comparison.sh --claim-grade",
                     "Prefer this launcher so claim-grade SDK comparison runs in the background.",
                 ),
-                _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+                _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
                 _cmd("python-deps", remote_prefix + "uv sync --extra dev'", "Refresh VPS deps."),
                 _cmd(
                     "release-native",
@@ -484,10 +495,10 @@ def validation_ladder(
         return {
             "kind": "validation-ladder",
             "tier": tier,
-            "location": "remote validation host",
+            "location": "Hostinger VPS",
             "purpose": (
-                "strict claim-grade SDK comparison evidence with "
-                "the configured external SDK command required"
+                "strict claim-grade SDK comparison evidence with the configured "
+                "external SDK command and its SDK metadata required"
             ),
             "commands": [
                 _cmd(
@@ -495,7 +506,7 @@ def validation_ladder(
                     "scripts/start-vps-sdk-comparison.sh --claim-grade --strict-commercial",
                     "Prefer this launcher so strict claim-grade SDK comparison runs in the background.",
                 ),
-                _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+                _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
                 _cmd("python-deps", remote_prefix + "uv sync --extra dev'", "Refresh VPS deps."),
                 _cmd(
                     "release-native",
@@ -521,9 +532,9 @@ def validation_ladder(
             ],
             "notes": [
                 "Prefer the detached launcher for normal use; the following SSH commands show the exact gate it runs.",
-                "Use this only for a broad third-party SDK claim.",
+                "Use this only for a broad external-SDK claim.",
                 (
-                    "The remote shell must already have "
+                    "The Hostinger shell must already have "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_CMD, "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_NAME, and "
                     "WOLFPPT_EXTERNAL_ROUNDTRIP_SDK_VERSION configured."
@@ -534,7 +545,7 @@ def validation_ladder(
         return {
             "kind": "validation-ladder",
             "tier": tier,
-            "location": "remote validation host",
+            "location": "Hostinger VPS",
             "purpose": (
                 "claim-grade benchmark evidence for checked-in real-world-style "
                 "corpus fixtures"
@@ -545,7 +556,7 @@ def validation_ladder(
                     "scripts/start-vps-real-corpus.sh",
                     "Prefer this launcher so real-corpus evidence runs in the background.",
                 ),
-                _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+                _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
                 _cmd(
                     "release-native",
                     remote_prefix
@@ -574,7 +585,7 @@ def validation_ladder(
         return {
             "kind": "validation-ladder",
             "tier": tier,
-            "location": "remote validation host",
+            "location": "Hostinger VPS",
             "purpose": (
                 "claim-grade pressure evidence on uncommitted private decks "
                 "without adding those decks to the repository"
@@ -583,9 +594,9 @@ def validation_ladder(
                 _cmd(
                     "detached-private-real-decks",
                     "scripts/start-vps-private-real-decks.sh --private-decks-dir /remote/private/decks",
-                    "Start the private real-deck gate as a detached remote job.",
+                    "Start the private real-deck gate as a detached Hostinger job.",
                 ),
-                _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+                _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
                 _cmd("python-deps", remote_prefix + "uv sync --extra dev'", "Refresh VPS deps."),
                 _cmd(
                     "release-native",
@@ -621,7 +632,7 @@ def validation_ladder(
         return {
             "kind": "validation-ladder",
             "tier": tier,
-            "location": "remote validation host",
+            "location": "Hostinger VPS",
             "purpose": (
                 "claim-grade release checkpoint on representative core and "
                 "drop-in lanes without running the exhaustive release profile"
@@ -632,7 +643,7 @@ def validation_ladder(
                     "scripts/start-vps-claims.sh --smoke",
                     "Prefer this launcher so representative release evidence runs in the background.",
                 ),
-                _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+                _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
                 _cmd("python-deps", remote_prefix + "uv sync --extra dev'", "Refresh VPS deps."),
                 _cmd(
                     "release-native",
@@ -661,7 +672,7 @@ def validation_ladder(
     return {
         "kind": "validation-ladder",
         "tier": tier,
-        "location": "remote validation host",
+        "location": "Hostinger VPS",
         "purpose": "claim-grade benchmark and release evidence",
         "commands": [
             _cmd(
@@ -669,7 +680,7 @@ def validation_ladder(
                 "scripts/start-vps-claims.sh --full",
                 "Prefer this launcher so claim evidence runs in the background.",
             ),
-            _cmd("sync", sync_command, "Mirror the working tree to the remote validation host."),
+            _cmd("sync", sync_command, "Mirror the working tree to Hostinger."),
             _cmd("python-deps", remote_prefix + "uv sync --extra dev'", "Refresh VPS deps."),
             _cmd(
                 "release-native",

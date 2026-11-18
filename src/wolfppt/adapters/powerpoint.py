@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import tempfile
@@ -11,9 +12,14 @@ from pathlib import Path
 
 
 POWERPOINT_APP = Path("/Applications/Microsoft PowerPoint.app")
-OFFICE_TEMP_ROOT = (
-    Path.home() / "Library/Group Containers/UBF8T346G9.Office/TemporaryItems"
+# PowerPoint for Mac is sandboxed: opening or saving outside its own container
+# raises a modal "Grant File Access" sheet that stalls the Apple Event, so every
+# export is staged inside the container and copied out afterwards.
+POWERPOINT_SANDBOX_DOCUMENTS = (
+    Path.home() / "Library/Containers/com.microsoft.Powerpoint/Data/Documents"
 )
+APPLESCRIPT_TIMEOUT_SECONDS = 170
+OSASCRIPT_TIMEOUT_SECONDS = APPLESCRIPT_TIMEOUT_SECONDS + 30
 
 
 @dataclass(frozen=True)
@@ -41,6 +47,41 @@ def powerpoint_available() -> bool:
     return POWERPOINT_APP.exists()
 
 
+def export_pdf(input_path: str | Path, out_path: str | Path) -> PowerPointExportResult:
+    """Export a deck to one PDF using Microsoft PowerPoint on macOS."""
+
+    source = Path(input_path).resolve()
+    target = Path(out_path).resolve()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not powerpoint_available():
+        return _unavailable(source, target.parent)
+    target.unlink(missing_ok=True)
+
+    with _sandbox_stage_dir() as raw_temp_dir:
+        temp_dir = Path(raw_temp_dir)
+        staged_source = temp_dir / f"input{source.suffix}"
+        staged_pdf = temp_dir / "export.pdf"
+        shutil.copy2(source, staged_source)
+        proc = _run_powerpoint_pdf_export(staged_source, staged_pdf)
+        exported: list[str] = []
+        stderr = proc.stderr
+        if proc.returncode == 0 and staged_pdf.is_file() and staged_pdf.stat().st_size > 0:
+            shutil.copy2(staged_pdf, target)
+            exported.append(str(target))
+        else:
+            stderr = _join_streams(stderr, "PowerPoint did not produce PDF output")
+        return PowerPointExportResult(
+            input_path=str(source),
+            output_dir=str(target.parent),
+            available=True,
+            returncode=proc.returncode,
+            exported_files=exported,
+            stdout=proc.stdout,
+            stderr=stderr,
+            method="native-pdf",
+        )
+
+
 def export_png(input_path: str | Path, out_dir: str | Path) -> PowerPointExportResult:
     """Export slides to PNG using Microsoft PowerPoint on macOS."""
 
@@ -48,21 +89,13 @@ def export_png(input_path: str | Path, out_dir: str | Path) -> PowerPointExportR
     out = Path(out_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
     if not powerpoint_available():
-        return PowerPointExportResult(
-            input_path=str(source),
-            output_dir=str(out),
-            available=False,
-            returncode=None,
-            exported_files=[],
-            stdout="",
-            stderr="Microsoft PowerPoint.app was not found",
-        )
+        return _unavailable(source, out)
     expected_slide_count = _count_slides(source)
 
     for stale in out.glob("*.png"):
         stale.unlink()
 
-    with _office_temp_dir() as raw_temp_dir:
+    with _sandbox_stage_dir() as raw_temp_dir:
         temp_dir = Path(raw_temp_dir)
         staged_source = temp_dir / f"input{source.suffix}"
         staged_png_dir = temp_dir / "png"
@@ -70,7 +103,7 @@ def export_png(input_path: str | Path, out_dir: str | Path) -> PowerPointExportR
         shutil.copy2(source, staged_source)
 
         png_proc = _run_powerpoint_png_export(staged_source, staged_png_dir)
-        staged_pngs = sorted(staged_png_dir.rglob("*.png"))
+        staged_pngs = sorted(staged_png_dir.rglob("*.png"), key=_slide_order)
         if (
             png_proc.returncode == 0
             and expected_slide_count > 0
@@ -93,7 +126,7 @@ def export_png(input_path: str | Path, out_dir: str | Path) -> PowerPointExportR
         pdf_proc = _run_powerpoint_pdf_export(staged_source, staged_pdf)
         if pdf_proc.returncode == 0 and staged_pdf.exists() and staged_pdf.stat().st_size > 0:
             convert_proc = _convert_pdf_to_png(staged_pdf, out, expected_slide_count)
-            exported = sorted(str(path) for path in out.rglob("*.png"))
+            exported = [str(path) for path in sorted(out.rglob("*.png"), key=_slide_order)]
             return PowerPointExportResult(
                 input_path=str(source),
                 output_dir=str(out),
@@ -125,7 +158,7 @@ def _run_powerpoint_png_export(source: Path, out: Path) -> subprocess.CompletedP
     script = f"""
 set deckPath to POSIX file "{_escape_applescript(str(source))}"
 set outPath to POSIX file "{_escape_applescript(str(out))}"
-with timeout of 120 seconds
+with timeout of {APPLESCRIPT_TIMEOUT_SECONDS} seconds
   tell application "Microsoft PowerPoint"
     launch
     set previousAutomationSecurity to automation security
@@ -156,7 +189,7 @@ def _run_powerpoint_pdf_export(source: Path, out: Path) -> subprocess.CompletedP
     script = f"""
 set deckPath to POSIX file "{_escape_applescript(str(source))}" as alias
 set outPath to POSIX file "{_escape_applescript(str(out))}"
-with timeout of 120 seconds
+with timeout of {APPLESCRIPT_TIMEOUT_SECONDS} seconds
   tell application "Microsoft PowerPoint"
     launch
     set previousAutomationSecurity to automation security
@@ -184,11 +217,34 @@ end timeout
 
 
 def _run_osascript(script: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["osascript", "-e", script],
-        text=True,
-        capture_output=True,
-        check=False,
+    try:
+        return subprocess.run(
+            ["osascript", "-e", script],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=OSASCRIPT_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stderr = f"osascript timed out after {exc.timeout} seconds"
+        return subprocess.CompletedProcess(exc.cmd, 124, _text(exc.stdout), stderr)
+
+
+def _text(stream: str | bytes | None) -> str:
+    if isinstance(stream, bytes):
+        return stream.decode(errors="replace")
+    return stream or ""
+
+
+def _unavailable(source: Path, out: Path) -> PowerPointExportResult:
+    return PowerPointExportResult(
+        input_path=str(source),
+        output_dir=str(out),
+        available=False,
+        returncode=None,
+        exported_files=[],
+        stdout="",
+        stderr="Microsoft PowerPoint.app was not found",
     )
 
 
@@ -258,6 +314,13 @@ def _count_slides(path: Path) -> int:
         )
 
 
+def _slide_order(path: Path) -> tuple[int, str]:
+    """Order slide images by their trailing number, so ``Slide10`` follows ``Slide2``."""
+
+    digits = re.search(r"(\d+)$", path.stem)
+    return (int(digits.group(1)) if digits else 0, path.name)
+
+
 def _copy_exported_pngs(paths: list[Path], out_dir: Path) -> list[str]:
     exported: list[str] = []
     for index, path in enumerate(paths, start=1):
@@ -267,9 +330,9 @@ def _copy_exported_pngs(paths: list[Path], out_dir: Path) -> list[str]:
     return exported
 
 
-def _office_temp_dir() -> tempfile.TemporaryDirectory[str]:
-    OFFICE_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
-    return tempfile.TemporaryDirectory(prefix="wolfppt-", dir=OFFICE_TEMP_ROOT)
+def _sandbox_stage_dir() -> tempfile.TemporaryDirectory[str]:
+    POWERPOINT_SANDBOX_DOCUMENTS.mkdir(parents=True, exist_ok=True)
+    return tempfile.TemporaryDirectory(prefix="wolfppt-", dir=POWERPOINT_SANDBOX_DOCUMENTS)
 
 
 def _join_streams(*streams: str) -> str:

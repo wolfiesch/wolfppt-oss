@@ -105,4 +105,22 @@ def apply_chart_save_edits(
         )
         current = step
         step_index += 1
+    if getattr(edits, "chart_trendline_edits", None):
+        step = tmp_dir / f"step-{step_index}.pptx"
+        ops._apply_chart_trendline_edits(
+            current,
+            step,
+            edits.chart_trendline_edits,
+        )
+        current = step
+        step_index += 1
+    if getattr(edits, "chart_error_bar_edits", None):
+        step = tmp_dir / f"step-{step_index}.pptx"
+        ops._apply_chart_error_bar_edits(
+            current,
+            step,
+            edits.chart_error_bar_edits,
+        )
+        current = step
+        step_index += 1
     return current, step_index

@@ -1,0 +1,72 @@
+{
+  "status": "acquired",
+  "cases": [
+    {
+      "filename": "python-pptx-minimal.pptx",
+      "repository": "scanny/python-pptx",
+      "upstream_path": "tests/test_files/minimal.pptx",
+      "git_blob_sha": "4decaca6efefc8923936e6cc84b8292bc5c8200e",
+      "sha256": "f04f94947620332c06dd2ad3c1aa52cb614d3b8d608e8d6fcbe66f5a29c5e4ee",
+      "size_bytes": 15802,
+      "license": "MIT",
+      "acquisition": "GitHub Git blob API; pinned Git blob and SHA-256 verified",
+      "boundary": "Independent upstream test fixture, not a customer document or an Office rendering reference"
+    },
+    {
+      "filename": "python-pptx-test.pptx",
+      "repository": "scanny/python-pptx",
+      "upstream_path": "tests/test_files/test.pptx",
+      "git_blob_sha": "3ba75175d0e8b9b61515e553dd9ce0a4873b434a",
+      "sha256": "8765677cdf43181ef41657cedf28485b5f2cbf166667218c217af07f8336c96f",
+      "size_bytes": 37859,
+      "license": "MIT",
+      "acquisition": "GitHub Git blob API; pinned Git blob and SHA-256 verified",
+      "boundary": "Independent upstream test fixture, not a customer document or an Office rendering reference"
+    },
+    {
+      "filename": "poi-table-with-theme.pptx",
+      "repository": "apache/poi",
+      "upstream_path": "test-data/slideshow/table-with-theme.pptx",
+      "git_blob_sha": "d0a8ead6dc5800aaaf070f60ff9e222e3c79814e",
+      "sha256": "571d0cd2e1e9767249b3a02544c7771c883c48bb191264409729c7cec574ab48",
+      "size_bytes": 35189,
+      "license": "Apache-2.0",
+      "acquisition": "GitHub Git blob API; pinned Git blob and SHA-256 verified",
+      "boundary": "Independent upstream test fixture, not a customer document or an Office rendering reference"
+    },
+    {
+      "filename": "poi-picture-transparency.pptx",
+      "repository": "apache/poi",
+      "upstream_path": "test-data/slideshow/picture-transparency.pptx",
+      "git_blob_sha": "41121f7ddea28546a0faa8342ddc54c00b402c5a",
+      "sha256": "0ce76411a6e2fe3a5b8acf42722b973131a91b93cb5c3118a5a9c481b063e386",
+      "size_bytes": 11793,
+      "license": "Apache-2.0",
+      "acquisition": "GitHub Git blob API; pinned Git blob and SHA-256 verified",
+      "boundary": "Independent upstream test fixture, not a customer document or an Office rendering reference"
+    },
+    {
+      "filename": "poi-bar-chart.pptx",
+      "repository": "apache/poi",
+      "upstream_path": "test-data/slideshow/bar-chart.pptx",
+      "git_blob_sha": "e4d2613046ab69e2d0a5c529b41cbcaa49ac4e30",
+      "sha256": "79e1d218bfb2903e8dc8425a6b1997d9c1976f5a5f025bada85b0c47b5777969",
+      "size_bytes": 44410,
+      "license": "Apache-2.0",
+      "acquisition": "GitHub Git blob API; pinned Git blob and SHA-256 verified",
+      "boundary": "Independent upstream test fixture, not a customer document or an Office rendering reference"
+    },
+    {
+      "filename": "poi-sample.pptx",
+      "repository": "apache/poi",
+      "upstream_path": "test-data/slideshow/sample.pptx",
+      "git_blob_sha": "fbd540c1e0495c9412fe2436705fb7338262a56a",
+      "sha256": "108d7219130a8460298896f45ff777dfe52b8b5527a4b4628b10731ed01d6a8e",
+      "size_bytes": 47215,
+      "license": "Apache-2.0",
+      "acquisition": "GitHub Git blob API; pinned Git blob and SHA-256 verified",
+      "boundary": "Independent upstream test fixture, not a customer document or an Office rendering reference"
+    }
+  ],
+  "redistribution": "Engine test fixtures under the retained upstream licenses; not runtime templates or Office rendering reference images"
+}

@@ -10,8 +10,14 @@ from .chart_xml_utils import (
     C_NS,
     chart_title_element_text,
     child_val,
+)
+from .chart_xml_utils import (
     optional_float as _optional_float,
+)
+from .chart_xml_utils import (
     optional_int as _optional_int,
+)
+from .chart_xml_utils import (
     xml_bool_value as _xml_bool_value,
 )
 
@@ -29,6 +35,7 @@ def default_chart_axis_payload() -> dict[str, Any]:
         "reverse_order": False,
         "minimum_scale": None,
         "maximum_scale": None,
+        "log_base": None,
         "number_format": "General",
         "number_format_is_linked": False,
         "tick_label_offset": 100,
@@ -38,23 +45,38 @@ def default_chart_axis_payload() -> dict[str, Any]:
         "minor_unit": None,
         "crosses": None,
         "crosses_at": None,
+        "category_type": "catAx",
+        "base_time_unit": None,
+        "major_time_unit": None,
+        "minor_time_unit": None,
     }
 
 
 def chart_axis_element(chart: ET.Element, axis: str) -> ET.Element | None:
-    tag = {
-        "cat": "catAx",
-        "val": "valAx",
-    }.get(axis)
-    if tag is None:
-        raise ValueError(f"unsupported chart axis: {axis!r}")
-    return chart.find(f"{{{C_NS}}}plotArea/{{{C_NS}}}{tag}")
+    plot_area = chart.find(f"{{{C_NS}}}plotArea")
+    if plot_area is None:
+        return None
+    if axis == "val":
+        return plot_area.find(f"{{{C_NS}}}valAx")
+    if axis == "val2":
+        value_axes = plot_area.findall(f"{{{C_NS}}}valAx")
+        return value_axes[1] if len(value_axes) > 1 else None
+    if axis == "ser":
+        return plot_area.find(f"{{{C_NS}}}serAx")
+    if axis == "cat":
+        cat_ax = plot_area.find(f"{{{C_NS}}}catAx")
+        if cat_ax is not None:
+            return cat_ax
+        return plot_area.find(f"{{{C_NS}}}dateAx")
+    raise ValueError(f"unsupported chart axis: {axis!r}")
 
 
 def chart_axes_payload(chart: ET.Element | None) -> dict[str, dict[str, Any]]:
     return {
         "cat": chart_axis_payload_from_xml(chart, "cat"),
         "val": chart_axis_payload_from_xml(chart, "val"),
+        "val2": chart_axis_payload_from_xml(chart, "val2"),
+        "ser": chart_axis_payload_from_xml(chart, "ser"),
     }
 
 
@@ -78,21 +100,13 @@ def chart_axis_payload_from_xml(
             "has_title": title is not None,
             "title_text": chart_title_element_text(title),
             "visible": not deleted,
-            "has_major_gridlines": axis_element.find(
-                f"{{{C_NS}}}majorGridlines"
-            )
-            is not None,
-            "has_minor_gridlines": axis_element.find(
-                f"{{{C_NS}}}minorGridlines"
-            )
-            is not None,
+            "has_major_gridlines": axis_element.find(f"{{{C_NS}}}majorGridlines") is not None,
+            "has_minor_gridlines": axis_element.find(f"{{{C_NS}}}minorGridlines") is not None,
             "major_tick_mark": child_val(axis_element, "majorTickMark") or "out",
             "minor_tick_mark": child_val(axis_element, "minorTickMark") or "none",
-            "tick_label_position": child_val(axis_element, "tickLblPos")
-            or "nextTo",
+            "tick_label_position": child_val(axis_element, "tickLblPos") or "nextTo",
             "reverse_order": (
-                scaling is not None
-                and child_val(scaling, "orientation") == "maxMin"
+                scaling is not None and child_val(scaling, "orientation") == "maxMin"
             ),
             "minimum_scale": (
                 None if scaling is None else _optional_float(child_val(scaling, "min"))
@@ -100,10 +114,11 @@ def chart_axis_payload_from_xml(
             "maximum_scale": (
                 None if scaling is None else _optional_float(child_val(scaling, "max"))
             ),
+            "log_base": (
+                None if scaling is None else _optional_float(child_val(scaling, "logBase"))
+            ),
             "number_format": (
-                "General"
-                if num_fmt is None
-                else num_fmt.attrib.get("formatCode", "General")
+                "General" if num_fmt is None else num_fmt.attrib.get("formatCode", "General")
             ),
             "number_format_is_linked": (
                 False
@@ -113,19 +128,53 @@ def chart_axis_payload_from_xml(
             "tick_label_offset": _optional_int(child_val(axis_element, "lblOffset"), 100),
             "tick_label_font_bold": _chart_axis_tick_label_font_bool(axis_element, "b"),
             "tick_label_font_italic": _chart_axis_tick_label_font_bool(axis_element, "i"),
-            "tick_label_font_underline": _chart_axis_tick_label_font_underline(
-                axis_element
-            ),
+            "tick_label_font_underline": _chart_axis_tick_label_font_underline(axis_element),
             "tick_label_font_size": _chart_axis_tick_label_font_size(axis_element),
-            "tick_label_font_language_id": _chart_axis_tick_label_font_language_id(
-                axis_element
-            ),
+            "tick_label_font_language_id": _chart_axis_tick_label_font_language_id(axis_element),
             "tick_label_font_rgb": _chart_axis_tick_label_font_rgb(axis_element),
             "tick_label_font_name": _chart_axis_tick_label_font_name(axis_element),
-            "major_unit": _optional_float(child_val(axis_element, "majorUnit")),
-            "minor_unit": _optional_float(child_val(axis_element, "minorUnit")),
+            "major_unit": (
+                _optional_float(child_val(axis_element, "majorUnit"))
+                if (
+                    axis_element.tag.endswith("}dateAx")
+                    or axis_element.tag == "dateAx"
+                    or axis_element.tag.endswith("}valAx")
+                    or axis_element.tag == "valAx"
+                )
+                else None
+            ),
+            "minor_unit": (
+                _optional_float(child_val(axis_element, "minorUnit"))
+                if (
+                    axis_element.tag.endswith("}dateAx")
+                    or axis_element.tag == "dateAx"
+                    or axis_element.tag.endswith("}valAx")
+                    or axis_element.tag == "valAx"
+                )
+                else None
+            ),
             "crosses": child_val(axis_element, "crosses"),
             "crosses_at": _optional_float(child_val(axis_element, "crossesAt")),
+            "category_type": (
+                "dateAx"
+                if (axis_element.tag.endswith("}dateAx") or axis_element.tag == "dateAx")
+                else "catAx"
+            ),
+            "base_time_unit": (
+                child_val(axis_element, "baseTimeUnit")
+                if (axis_element.tag.endswith("}dateAx") or axis_element.tag == "dateAx")
+                else None
+            ),
+            "major_time_unit": (
+                child_val(axis_element, "majorTimeUnit")
+                if (axis_element.tag.endswith("}dateAx") or axis_element.tag == "dateAx")
+                else None
+            ),
+            "minor_time_unit": (
+                child_val(axis_element, "minorTimeUnit")
+                if (axis_element.tag.endswith("}dateAx") or axis_element.tag == "dateAx")
+                else None
+            ),
         }
     )
     return payload
@@ -143,10 +192,10 @@ def _chart_axis_tick_label_font_size(axis_element: ET.Element) -> int | None:
     return _centipoints_to_emu(int(raw))
 
 
-def _chart_axis_tick_label_run_properties(axis_element: ET.Element) -> ET.Element | None:
-    return axis_element.find(
-        f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+def _chart_axis_tick_label_run_properties(
+    axis_element: ET.Element,
+) -> ET.Element | None:
+    return axis_element.find(f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
 
 
 def _chart_axis_tick_label_font_bool(

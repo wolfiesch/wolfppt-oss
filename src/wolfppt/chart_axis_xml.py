@@ -5,18 +5,37 @@ from __future__ import annotations
 from typing import Any
 from xml.etree import ElementTree as ET
 
-from .chart_xml_utils import A_NS, C_NS, xml_local_name as _xml_local_name
+from .chart_element_format_xml import (
+    CHART_FORMAT_PROPERTIES as _CHART_FORMAT_PROPERTIES,
+)
+from .chart_element_format_xml import (
+    set_chart_element_format_property as _set_chart_element_format_property,
+)
+from .chart_xml_utils import A_NS, C_NS
+from .chart_xml_utils import xml_local_name as _xml_local_name
 from .dml_fill import (
-    no_fill_element as _no_fill_element,
     run_gradient_fill_element as _run_gradient_fill_element,
+)
+from .dml_fill import (
     run_no_fill_element as _run_no_fill_element,
+)
+from .dml_fill import (
     run_pattern_fill_element as _run_pattern_fill_element,
+)
+from .dml_fill import (
     run_solid_fill_element as _run_solid_fill_element,
+)
+from .dml_fill import (
     set_run_gradient_fill as _set_run_gradient_fill,
+)
+from .dml_fill import (
     set_run_pattern_fill as _set_run_pattern_fill,
+)
+from .dml_fill import (
     set_run_pattern_fill_color as _set_run_pattern_fill_color,
+)
+from .dml_fill import (
     set_solid_fill_rgb as _set_solid_fill_rgb,
-    solid_fill_element as _solid_fill_element,
 )
 
 _CHART_AXIS_CHILD_ORDER = [
@@ -43,18 +62,20 @@ _CHART_AXIS_CHILD_ORDER = [
     "tickLblSkip",
     "tickMarkSkip",
     "noMultiLvlLbl",
+    "baseTimeUnit",
     "majorUnit",
+    "majorTimeUnit",
     "minorUnit",
+    "minorTimeUnit",
     "dispUnits",
     "extLst",
 ]
 _CHART_AXIS_CHILD_INDEX = {
     local_name: index for index, local_name in enumerate(_CHART_AXIS_CHILD_ORDER)
 }
-_CHART_AXIS_SCALING_CHILD_ORDER = ["logBase", "orientation", "max", "min"]
+_CHART_AXIS_SCALING_CHILD_ORDER = ["logBase", "orientation", "max", "min", "extLst"]
 _CHART_AXIS_SCALING_CHILD_INDEX = {
-    local_name: index
-    for index, local_name in enumerate(_CHART_AXIS_SCALING_CHILD_ORDER)
+    local_name: index for index, local_name in enumerate(_CHART_AXIS_SCALING_CHILD_ORDER)
 }
 
 
@@ -68,36 +89,15 @@ def set_chart_axis_property(axis_element: ET.Element, attr: str, value: Any) -> 
     if attr == "has_minor_gridlines":
         _set_chart_axis_empty_child(axis_element, "minorGridlines", bool(value))
         return
-    if attr == "axis_fill_type":
-        set_chart_axis_fill_type(axis_element, str(value))
+    if attr.startswith("axis_") and attr[len("axis_") :] in _CHART_FORMAT_PROPERTIES:
+        _set_chart_element_format_property(axis_element, attr[len("axis_") :], value)
         return
-    if attr == "axis_fill_rgb":
-        set_chart_axis_fill_rgb(axis_element, str(value))
-        return
-    if attr == "axis_line_fill_type":
-        set_chart_axis_line_fill_type(axis_element, str(value))
-        return
-    if attr == "axis_line_rgb":
-        set_chart_axis_line_rgb(axis_element, str(value))
-        return
-    if attr == "axis_line_width":
-        set_chart_axis_line_width(axis_element, int(value))
-        return
-    if attr == "axis_line_dash":
-        set_chart_axis_line_dash(axis_element, value)
-        return
-    if attr == "major_gridlines_line_fill_type":
-        _set_chart_axis_major_gridlines_line_fill_type(axis_element, str(value))
-        return
-    if attr == "major_gridlines_line_rgb":
-        _set_chart_axis_major_gridlines_line_rgb(axis_element, str(value))
-        return
-    if attr == "major_gridlines_line_width":
-        _set_chart_axis_major_gridlines_line_width(axis_element, int(value))
-        return
-    if attr == "major_gridlines_line_dash":
-        _set_chart_axis_major_gridlines_line_dash(axis_element, value)
-        return
+    for kind in ("major", "minor"):
+        prefix = f"{kind}_gridlines_"
+        if attr.startswith(prefix) and attr[len(prefix) :] in _CHART_FORMAT_PROPERTIES:
+            gridlines = chart_axis_gridlines_element(axis_element, kind)
+            _set_chart_element_format_property(gridlines, attr[len(prefix) :], value)
+            return
     if attr == "major_tick_mark":
         _set_chart_axis_val_child(axis_element, "majorTickMark", str(value))
         return
@@ -115,6 +115,9 @@ def set_chart_axis_property(axis_element: ET.Element, attr: str, value: Any) -> 
         return
     if attr == "maximum_scale":
         _set_chart_axis_scaling_bound(axis_element, "max", value)
+        return
+    if attr == "log_base":
+        _set_chart_axis_scaling_log_base(axis_element, value)
         return
     if attr == "number_format":
         _set_chart_axis_number_format(axis_element, str(value))
@@ -171,10 +174,24 @@ def set_chart_axis_property(axis_element: ET.Element, attr: str, value: Any) -> 
         )
         return
     if attr == "major_unit":
-        _set_chart_axis_optional_float_child(axis_element, "majorUnit", value)
+        if value is None or not (
+            axis_element.tag.endswith("dateAx") or axis_element.tag.endswith("valAx")
+        ):
+            child = axis_element.find(f"{{{C_NS}}}majorUnit")
+            if child is not None:
+                axis_element.remove(child)
+        else:
+            _set_chart_axis_optional_float_child(axis_element, "majorUnit", value)
         return
     if attr == "minor_unit":
-        _set_chart_axis_optional_float_child(axis_element, "minorUnit", value)
+        if value is None or not (
+            axis_element.tag.endswith("dateAx") or axis_element.tag.endswith("valAx")
+        ):
+            child = axis_element.find(f"{{{C_NS}}}minorUnit")
+            if child is not None:
+                axis_element.remove(child)
+        else:
+            _set_chart_axis_optional_float_child(axis_element, "minorUnit", value)
         return
     if attr == "crosses":
         _set_chart_axis_crosses(axis_element, value)
@@ -182,7 +199,148 @@ def set_chart_axis_property(axis_element: ET.Element, attr: str, value: Any) -> 
     if attr == "crosses_at":
         _set_chart_axis_crosses_at(axis_element, value)
         return
+    if attr == "category_type":
+        _set_chart_axis_category_type(axis_element, value)
+        return
+    if attr == "base_time_unit":
+        if value is None or not axis_element.tag.endswith("dateAx"):
+            child = axis_element.find(f"{{{C_NS}}}baseTimeUnit")
+            if child is not None:
+                axis_element.remove(child)
+        else:
+            _set_chart_axis_val_child(axis_element, "baseTimeUnit", str(value))
+        return
+    if attr == "major_time_unit":
+        if value is None or not axis_element.tag.endswith("dateAx"):
+            child = axis_element.find(f"{{{C_NS}}}majorTimeUnit")
+            if child is not None:
+                axis_element.remove(child)
+        else:
+            _set_chart_axis_val_child(axis_element, "majorTimeUnit", str(value))
+        return
+    if attr == "minor_time_unit":
+        if value is None or not axis_element.tag.endswith("dateAx"):
+            child = axis_element.find(f"{{{C_NS}}}minorTimeUnit")
+            if child is not None:
+                axis_element.remove(child)
+        else:
+            _set_chart_axis_val_child(axis_element, "minorTimeUnit", str(value))
+        return
+    if attr == "position":
+        _set_chart_axis_val_child(axis_element, "axPos", str(value))
+        return
+    if attr == "display_units":
+        set_chart_axis_display_units(axis_element, value)
+        return
     raise ValueError(f"unsupported chart axis property: {attr!r}")
+
+
+CHART_AXIS_BUILT_IN_DISPLAY_UNITS = (
+    "hundreds",
+    "thousands",
+    "tenThousands",
+    "hundredThousands",
+    "millions",
+    "tenMillions",
+    "hundredMillions",
+    "billions",
+    "trillions",
+)
+
+
+def chart_axis_position(axis_element: ET.Element) -> str | None:
+    """Return the ``c:axPos`` token (``b``, ``l``, ``r`` or ``t``) of an axis."""
+    position = axis_element.find(f"{{{C_NS}}}axPos")
+    return None if position is None else position.get("val")
+
+
+def chart_axis_display_units(axis_element: ET.Element) -> dict[str, Any] | None:
+    """Return the ``c:dispUnits`` state of a value axis, ``None`` when absent.
+
+    ``unit`` is a built-in unit token or ``"custom"``; ``custom_unit`` carries the
+    ``c:custUnit`` divisor; ``label_visible`` reports ``c:dispUnitsLbl`` and
+    ``label_text`` its rich text (``None`` means the application-generated label).
+    """
+    display_units = axis_element.find(f"{{{C_NS}}}dispUnits")
+    if display_units is None:
+        return None
+    custom = display_units.find(f"{{{C_NS}}}custUnit")
+    built_in = display_units.find(f"{{{C_NS}}}builtInUnit")
+    custom_unit: float | None = None
+    if custom is not None:
+        unit = "custom"
+        custom_unit = float(custom.get("val", "1"))
+    elif built_in is not None:
+        unit = built_in.get("val", "thousands")
+    else:
+        unit = "thousands"
+    label = display_units.find(f"{{{C_NS}}}dispUnitsLbl")
+    label_text: str | None = None
+    if label is not None:
+        rich = label.find(f"{{{C_NS}}}tx/{{{C_NS}}}rich")
+        if rich is not None:
+            label_text = "\n".join(
+                "".join(text.text or "" for text in paragraph.iter(f"{{{A_NS}}}t"))
+                for paragraph in rich.findall(f"{{{A_NS}}}p")
+            )
+    return {
+        "unit": unit,
+        "custom_unit": custom_unit,
+        "label_visible": label is not None,
+        "label_text": label_text,
+    }
+
+
+def set_chart_axis_display_units(axis_element: ET.Element, state: dict[str, Any] | None) -> None:
+    """Replace the ``c:dispUnits`` unit and label from a full display-units state.
+
+    Existing label layout, shape and text properties and the extension list are
+    kept so a unit change does not discard authored label formatting.
+    """
+    display_units = axis_element.find(f"{{{C_NS}}}dispUnits")
+    if state is None:
+        if display_units is not None:
+            axis_element.remove(display_units)
+        return
+    if _xml_local_name(axis_element.tag) != "valAx":
+        raise ValueError("display units apply only to value axes")
+    if display_units is None:
+        display_units = ET.Element(f"{{{C_NS}}}dispUnits")
+        axis_element.insert(_chart_axis_insert_index(axis_element, "dispUnits"), display_units)
+    for local_name in ("custUnit", "builtInUnit"):
+        child = display_units.find(f"{{{C_NS}}}{local_name}")
+        if child is not None:
+            display_units.remove(child)
+    if state["unit"] == "custom":
+        unit = ET.Element(f"{{{C_NS}}}custUnit", {"val": repr(float(state["custom_unit"]))})
+    else:
+        unit = ET.Element(f"{{{C_NS}}}builtInUnit", {"val": str(state["unit"])})
+    display_units.insert(0, unit)
+    label = display_units.find(f"{{{C_NS}}}dispUnitsLbl")
+    if not state.get("label_visible"):
+        if label is not None:
+            display_units.remove(label)
+        return
+    if label is None:
+        label = ET.Element(f"{{{C_NS}}}dispUnitsLbl")
+        display_units.insert(1, label)
+    text = label.find(f"{{{C_NS}}}tx")
+    if text is not None:
+        label.remove(text)
+    label_text = state.get("label_text")
+    if label_text is None:
+        return
+    text = ET.Element(f"{{{C_NS}}}tx")
+    rich = ET.SubElement(text, f"{{{C_NS}}}rich")
+    ET.SubElement(rich, f"{{{A_NS}}}bodyPr")
+    ET.SubElement(rich, f"{{{A_NS}}}lstStyle")
+    for line in str(label_text).split("\n"):
+        paragraph = ET.SubElement(rich, f"{{{A_NS}}}p")
+        if line:
+            run = ET.SubElement(paragraph, f"{{{A_NS}}}r")
+            ET.SubElement(run, f"{{{A_NS}}}t").text = line
+    insert_at = 1 if label.find(f"{{{C_NS}}}layout") is not None else 0
+    label.insert(insert_at, text)
 
 
 def axis_title_element(axis_element: ET.Element) -> ET.Element:
@@ -216,178 +374,13 @@ def axis_title_element(axis_element: ET.Element) -> ET.Element:
     return title
 
 
-def axis_shape_properties(axis_element: ET.Element) -> ET.Element:
-    shape_properties = axis_element.find(f"{{{C_NS}}}spPr")
-    if shape_properties is not None:
-        return shape_properties
-    shape_properties = ET.Element(f"{{{C_NS}}}spPr")
-    axis_element.insert(
-        _chart_axis_insert_index(axis_element, "spPr"),
-        shape_properties,
-    )
-    return shape_properties
-
-
-def set_chart_axis_fill_type(axis_element: ET.Element, fill_type: str) -> None:
-    shape_properties = axis_shape_properties(axis_element)
-    if fill_type == "solid":
-        _solid_fill_element(shape_properties)
-        return
-    raise ValueError(f"unsupported chart fill type: {fill_type!r}")
-
-
-def set_chart_axis_fill_rgb(axis_element: ET.Element, rgb: str) -> None:
-    shape_properties = axis_shape_properties(axis_element)
-    solid_fill = shape_properties.find(f"{{{A_NS}}}solidFill")
-    if solid_fill is None:
-        _solid_fill_element(shape_properties)
-        solid_fill = shape_properties.find(f"{{{A_NS}}}solidFill")
-    assert solid_fill is not None
-    for child in list(solid_fill):
-        solid_fill.remove(child)
-    ET.SubElement(solid_fill, f"{{{A_NS}}}srgbClr", {"val": rgb})
-
-
-def chart_axis_line(axis_element: ET.Element) -> ET.Element:
-    shape_properties = axis_shape_properties(axis_element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is not None:
-        return line
-    line = ET.Element(f"{{{A_NS}}}ln")
-    shape_properties.append(line)
-    return line
-
-
-def set_chart_axis_line_fill_type(axis_element: ET.Element, fill_type: str) -> None:
-    line = chart_axis_line(axis_element)
-    if fill_type == "solid":
-        _solid_fill_element(line)
-        return
-    if fill_type == "background":
-        _no_fill_element(line)
-        return
-    raise ValueError(f"unsupported chart line fill type: {fill_type!r}")
-
-
-def set_chart_axis_line_rgb(axis_element: ET.Element, rgb: str) -> None:
-    line = chart_axis_line(axis_element)
-    solid_fill = line.find(f"{{{A_NS}}}solidFill")
-    if solid_fill is None:
-        _solid_fill_element(line)
-        solid_fill = line.find(f"{{{A_NS}}}solidFill")
-    assert solid_fill is not None
-    for child in list(solid_fill):
-        solid_fill.remove(child)
-    ET.SubElement(solid_fill, f"{{{A_NS}}}srgbClr", {"val": rgb})
-
-
-def set_chart_axis_line_width(axis_element: ET.Element, width: int) -> None:
-    chart_axis_line(axis_element).set("w", str(width))
-
-
-def set_chart_axis_line_dash(axis_element: ET.Element, dash_style: Any) -> None:
-    line = chart_axis_line(axis_element)
-    preset_dash = line.find(f"{{{A_NS}}}prstDash")
-    if dash_style is None:
-        if preset_dash is not None:
-            line.remove(preset_dash)
-        return
-    if preset_dash is None:
-        preset_dash = ET.Element(f"{{{A_NS}}}prstDash")
-        line.append(preset_dash)
-    preset_dash.set("val", str(dash_style))
-
-
-def _chart_axis_major_gridlines_element(axis_element: ET.Element) -> ET.Element:
-    gridlines = axis_element.find(f"{{{C_NS}}}majorGridlines")
-    if gridlines is not None:
-        return gridlines
-    gridlines = ET.Element(f"{{{C_NS}}}majorGridlines")
-    axis_element.insert(
-        _chart_axis_insert_index(axis_element, "majorGridlines"),
-        gridlines,
-    )
+def chart_axis_gridlines_element(axis_element: ET.Element, kind: str) -> ET.Element:
+    """The axis ``c:majorGridlines`` or ``c:minorGridlines``, created in schema order."""
+    local_name = f"{kind}Gridlines"
+    _set_chart_axis_empty_child(axis_element, local_name, True)
+    gridlines = axis_element.find(f"{{{C_NS}}}{local_name}")
+    assert gridlines is not None
     return gridlines
-
-
-def _chart_axis_major_gridlines_shape_properties(
-    axis_element: ET.Element,
-) -> ET.Element:
-    gridlines = _chart_axis_major_gridlines_element(axis_element)
-    shape_properties = gridlines.find(f"{{{C_NS}}}spPr")
-    if shape_properties is not None:
-        return shape_properties
-    shape_properties = ET.Element(f"{{{C_NS}}}spPr")
-    for index, child in enumerate(list(gridlines)):
-        if child.tag == f"{{{C_NS}}}extLst":
-            gridlines.insert(index, shape_properties)
-            return shape_properties
-    gridlines.append(shape_properties)
-    return shape_properties
-
-
-def _chart_axis_major_gridlines_line(
-    axis_element: ET.Element,
-) -> ET.Element:
-    shape_properties = _chart_axis_major_gridlines_shape_properties(axis_element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is not None:
-        return line
-    line = ET.Element(f"{{{A_NS}}}ln")
-    shape_properties.append(line)
-    return line
-
-
-def _set_chart_axis_major_gridlines_line_fill_type(
-    axis_element: ET.Element,
-    fill_type: str,
-) -> None:
-    line = _chart_axis_major_gridlines_line(axis_element)
-    if fill_type == "solid":
-        _solid_fill_element(line)
-        return
-    if fill_type == "background":
-        _no_fill_element(line)
-        return
-    raise ValueError(f"unsupported chart line fill type: {fill_type!r}")
-
-
-def _set_chart_axis_major_gridlines_line_rgb(
-    axis_element: ET.Element,
-    rgb: str,
-) -> None:
-    line = _chart_axis_major_gridlines_line(axis_element)
-    solid_fill = line.find(f"{{{A_NS}}}solidFill")
-    if solid_fill is None:
-        _solid_fill_element(line)
-        solid_fill = line.find(f"{{{A_NS}}}solidFill")
-    assert solid_fill is not None
-    for child in list(solid_fill):
-        solid_fill.remove(child)
-    ET.SubElement(solid_fill, f"{{{A_NS}}}srgbClr", {"val": rgb})
-
-
-def _set_chart_axis_major_gridlines_line_width(
-    axis_element: ET.Element,
-    width: int,
-) -> None:
-    _chart_axis_major_gridlines_line(axis_element).set("w", str(width))
-
-
-def _set_chart_axis_major_gridlines_line_dash(
-    axis_element: ET.Element,
-    dash_style: Any,
-) -> None:
-    line = _chart_axis_major_gridlines_line(axis_element)
-    preset_dash = line.find(f"{{{A_NS}}}prstDash")
-    if dash_style is None:
-        if preset_dash is not None:
-            line.remove(preset_dash)
-        return
-    if preset_dash is None:
-        preset_dash = ET.Element(f"{{{A_NS}}}prstDash")
-        line.append(preset_dash)
-    preset_dash.set("val", str(dash_style))
 
 
 def _set_chart_axis_delete(axis_element: ET.Element, deleted: bool) -> None:
@@ -462,6 +455,23 @@ def _set_chart_axis_scaling_bound(
         return
     scaling = _chart_axis_scaling_element(axis_element)
     _set_chart_axis_scaling_val_child(scaling, local_name, str(float(value)))
+
+
+def _set_chart_axis_scaling_log_base(
+    axis_element: ET.Element,
+    value: Any,
+) -> None:
+    scaling = axis_element.find(f"{{{C_NS}}}scaling")
+    if value is None:
+        if scaling is not None:
+            child = scaling.find(f"{{{C_NS}}}logBase")
+            if child is not None:
+                scaling.remove(child)
+        return
+    scaling = _chart_axis_scaling_element(axis_element)
+    val = float(value)
+    val_str = str(int(val)) if val.is_integer() else str(val)
+    _set_chart_axis_scaling_val_child(scaling, "logBase", val_str)
 
 
 def _set_chart_axis_optional_float_child(
@@ -557,9 +567,7 @@ def _chart_axis_text_default_run_properties(axis_element: ET.Element) -> ET.Elem
         ET.SubElement(paragraph_properties, f"{{{A_NS}}}defRPr")
         text_properties.append(paragraph)
         axis_element.insert(_chart_axis_insert_index(axis_element, "txPr"), text_properties)
-    run_properties = text_properties.find(
-        f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+    run_properties = text_properties.find(f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
     if run_properties is None:
         paragraph = text_properties.find(f"{{{A_NS}}}p")
         if paragraph is None:
@@ -743,3 +751,37 @@ def _chart_axis_scaling_insert_index(scaling: ET.Element, local_name: str) -> in
         if child_order is not None and child_order > target_order:
             return index
     return len(scaling)
+
+
+def _set_chart_axis_category_type(axis_element: ET.Element, value: Any) -> None:
+    val_str = str(value).lower()
+    is_date = (
+        val_str in {"dateax", "time_scale", "3", "date", "time"}
+        or value == 3
+        or (hasattr(value, "name") and value.name == "TIME_SCALE")
+    )
+    if is_date:
+        axis_element.tag = f"{{{C_NS}}}dateAx"
+        for forbidden in (
+            "lblAlgn",
+            "tickLblSkip",
+            "tickMarkSkip",
+            "noMultiLvlLbl",
+            "crossBetween",
+            "dispUnits",
+        ):
+            child = axis_element.find(f"{{{C_NS}}}{forbidden}")
+            if child is not None:
+                axis_element.remove(child)
+    else:
+        axis_element.tag = f"{{{C_NS}}}catAx"
+        for forbidden in (
+            "baseTimeUnit",
+            "majorTimeUnit",
+            "minorTimeUnit",
+            "majorUnit",
+            "minorUnit",
+        ):
+            child = axis_element.find(f"{{{C_NS}}}{forbidden}")
+            if child is not None:
+                axis_element.remove(child)

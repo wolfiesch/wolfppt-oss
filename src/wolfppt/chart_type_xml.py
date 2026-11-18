@@ -9,18 +9,31 @@ from .chart_xml_utils import (
     A_NS,
     C_NS,
     child_val,
+)
+from .chart_xml_utils import (
     xml_local_name as _xml_local_name,
 )
+from .enum.chart import XL_CHART_TYPE
 
 
 def chart_element_type(chart_element: ET.Element) -> dict[str, str | None]:
+    kind = _xml_local_name(chart_element.tag)
     payload = {
-        "kind": _xml_local_name(chart_element.tag),
+        "kind": kind,
         "bar_dir": child_val(chart_element, "barDir"),
         "grouping": child_val(chart_element, "grouping"),
-        "marker": _first_series_marker(chart_element),
+        "marker": (
+            child_val(chart_element, "wireframe")
+            if kind == "surface3DChart"
+            else _first_series_marker(chart_element)
+        ),
         "explosion": _first_child_value(chart_element, "explosion"),
         "radar_style": child_val(chart_element, "radarStyle"),
+        "stock_type": (
+            "ohlc" if chart_element.find(f"{{{C_NS}}}upDownBars") is not None else "hlc"
+        )
+        if kind == "stockChart"
+        else None,
     }
     if payload["kind"] == "scatterChart":
         payload["scatter_style"] = child_val(chart_element, "scatterStyle")
@@ -42,6 +55,7 @@ def chart_type_value(payload: Any) -> Any:
     scatter_style = payload.get("scatter_style") if isinstance(payload, dict) else None
     line_no_fill = payload.get("line_no_fill") if isinstance(payload, dict) else None
     bubble_3d = payload.get("bubble_3d") if isinstance(payload, dict) else None
+    stock_type = payload.get("stock_type") if isinstance(payload, dict) else None
     chart_name = _chart_type_name(
         kind,
         bar_dir,
@@ -52,11 +66,8 @@ def chart_type_value(payload: Any) -> Any:
         scatter_style,
         line_no_fill,
         bubble_3d,
+        stock_type,
     )
-    try:
-        from pptx.enum.chart import XL_CHART_TYPE
-    except ImportError:
-        return chart_name or kind
     if chart_name is not None:
         return getattr(XL_CHART_TYPE, chart_name)
     return kind
@@ -77,14 +88,18 @@ def chart_type_payload_from_value(chart_type: Any) -> dict[str, str | None]:
         "bar_dir": None,
         "grouping": None,
         "marker": None,
-        "explosion": None,
         "radar_style": None,
+        "stock_type": None,
     }
 
 
 _CHART_TYPE_NAME_BY_ID = {
     -4151: "RADAR",
     -4120: "DOUGHNUT",
+    -4102: "THREE_D_PIE",
+    -4101: "THREE_D_LINE",
+    -4100: "THREE_D_COLUMN",
+    -4098: "THREE_D_AREA",
     1: "AREA",
     4: "LINE",
     5: "PIE",
@@ -92,21 +107,33 @@ _CHART_TYPE_NAME_BY_ID = {
     51: "COLUMN_CLUSTERED",
     52: "COLUMN_STACKED",
     53: "COLUMN_STACKED_100",
+    54: "THREE_D_COLUMN_CLUSTERED",
+    55: "THREE_D_COLUMN_STACKED",
+    56: "THREE_D_COLUMN_STACKED_100",
     57: "BAR_CLUSTERED",
     58: "BAR_STACKED",
     59: "BAR_STACKED_100",
+    60: "THREE_D_BAR_CLUSTERED",
+    61: "THREE_D_BAR_STACKED",
+    62: "THREE_D_BAR_STACKED_100",
     63: "LINE_STACKED",
     64: "LINE_STACKED_100",
     65: "LINE_MARKERS",
     66: "LINE_MARKERS_STACKED",
     67: "LINE_MARKERS_STACKED_100",
     69: "PIE_EXPLODED",
+    70: "THREE_D_PIE_EXPLODED",
     76: "AREA_STACKED",
     77: "AREA_STACKED_100",
+    78: "THREE_D_AREA_STACKED",
+    79: "THREE_D_AREA_STACKED_100",
     80: "DOUGHNUT_EXPLODED",
     81: "RADAR_MARKERS",
     82: "RADAR_FILLED",
-    87: "BUBBLE_THREE_D_EFFECT",
+    83: "SURFACE",
+    84: "SURFACE_WIREFRAME",
+    88: "STOCK_HLC",
+    89: "STOCK_OHLC",
     -4169: "XY_SCATTER",
     72: "XY_SCATTER_SMOOTH",
     73: "XY_SCATTER_SMOOTH_NO_MARKERS",
@@ -115,6 +142,126 @@ _CHART_TYPE_NAME_BY_ID = {
 }
 
 _CHART_TYPE_PAYLOADS = {
+    "THREE_D_AREA": {
+        "kind": "area3DChart",
+        "bar_dir": None,
+        "grouping": "standard",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_AREA_STACKED": {
+        "kind": "area3DChart",
+        "bar_dir": None,
+        "grouping": "stacked",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_AREA_STACKED_100": {
+        "kind": "area3DChart",
+        "bar_dir": None,
+        "grouping": "percentStacked",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_BAR_CLUSTERED": {
+        "kind": "bar3DChart",
+        "bar_dir": "bar",
+        "grouping": "clustered",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_BAR_STACKED": {
+        "kind": "bar3DChart",
+        "bar_dir": "bar",
+        "grouping": "stacked",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_BAR_STACKED_100": {
+        "kind": "bar3DChart",
+        "bar_dir": "bar",
+        "grouping": "percentStacked",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_COLUMN": {
+        "kind": "bar3DChart",
+        "bar_dir": "col",
+        "grouping": "clustered",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_COLUMN_CLUSTERED": {
+        "kind": "bar3DChart",
+        "bar_dir": "col",
+        "grouping": "clustered",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_COLUMN_STACKED": {
+        "kind": "bar3DChart",
+        "bar_dir": "col",
+        "grouping": "stacked",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_COLUMN_STACKED_100": {
+        "kind": "bar3DChart",
+        "bar_dir": "col",
+        "grouping": "percentStacked",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_LINE": {
+        "kind": "line3DChart",
+        "bar_dir": None,
+        "grouping": "standard",
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_PIE": {
+        "kind": "pie3DChart",
+        "bar_dir": None,
+        "grouping": None,
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+    },
+    "THREE_D_PIE_EXPLODED": {
+        "kind": "pie3DChart",
+        "bar_dir": None,
+        "grouping": None,
+        "marker": None,
+        "explosion": "1",
+        "radar_style": None,
+    },
+    "SURFACE": {
+        "kind": "surface3DChart",
+        "bar_dir": None,
+        "grouping": None,
+        "marker": "0",
+        "explosion": None,
+        "radar_style": None,
+    },
+    "SURFACE_WIREFRAME": {
+        "kind": "surface3DChart",
+        "bar_dir": None,
+        "grouping": None,
+        "marker": "1",
+        "explosion": None,
+        "radar_style": None,
+    },
     "AREA": {
         "kind": "areaChart",
         "bar_dir": None,
@@ -359,6 +506,24 @@ _CHART_TYPE_PAYLOADS = {
         "radar_style": None,
         "bubble_3d": "1",
     },
+    "STOCK_HLC": {
+        "kind": "stockChart",
+        "bar_dir": None,
+        "grouping": None,
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+        "stock_type": "hlc",
+    },
+    "STOCK_OHLC": {
+        "kind": "stockChart",
+        "bar_dir": None,
+        "grouping": None,
+        "marker": None,
+        "explosion": None,
+        "radar_style": None,
+        "stock_type": "ohlc",
+    },
 }
 
 
@@ -372,7 +537,29 @@ def _chart_type_name(
     scatter_style: str | None = None,
     line_no_fill: str | None = None,
     bubble_3d: str | None = None,
-) -> str | None:
+    stock_type: str | None = None,
+):
+    if kind == "bar3DChart":
+        return {
+            ("col", "clustered"): "THREE_D_COLUMN_CLUSTERED",
+            ("col", "stacked"): "THREE_D_COLUMN_STACKED",
+            ("col", "percentStacked"): "THREE_D_COLUMN_STACKED_100",
+            ("bar", "clustered"): "THREE_D_BAR_CLUSTERED",
+            ("bar", "stacked"): "THREE_D_BAR_STACKED",
+            ("bar", "percentStacked"): "THREE_D_BAR_STACKED_100",
+        }.get((bar_dir, grouping))
+    if kind == "area3DChart":
+        return {
+            "standard": "THREE_D_AREA",
+            "stacked": "THREE_D_AREA_STACKED",
+            "percentStacked": "THREE_D_AREA_STACKED_100",
+        }.get(grouping)
+    if kind == "line3DChart":
+        return "THREE_D_LINE" if grouping == "standard" else None
+    if kind == "pie3DChart":
+        return "THREE_D_PIE_EXPLODED" if explosion is not None else "THREE_D_PIE"
+    if kind == "surface3DChart":
+        return "SURFACE_WIREFRAME" if marker == "1" else "SURFACE"
     if kind == "barChart":
         names = {
             ("col", "clustered"): "COLUMN_CLUSTERED",
@@ -418,13 +605,11 @@ def _chart_type_name(
             )
         if line_no_fill:
             return "XY_SCATTER"
-        return (
-            "XY_SCATTER_LINES_NO_MARKERS"
-            if marker == "none"
-            else "XY_SCATTER_LINES"
-        )
+        return "XY_SCATTER_LINES_NO_MARKERS" if marker == "none" else "XY_SCATTER_LINES"
     if kind == "bubbleChart":
         return "BUBBLE_THREE_D_EFFECT" if bubble_3d == "1" else "BUBBLE"
+    if kind == "stockChart":
+        return {"hlc": "STOCK_HLC", "ohlc": "STOCK_OHLC"}.get(stock_type)
     return None
 
 
@@ -443,8 +628,7 @@ def _first_series_line_no_fill(chart_element: ET.Element) -> bool:
     if first_series is None:
         return False
     return (
-        first_series.find(f"{{{C_NS}}}spPr/{{{A_NS}}}ln/{{{A_NS}}}noFill")
-        is not None
+        first_series.find(f"{{{C_NS}}}spPr/{{{A_NS}}}ln/{{{A_NS}}}noFill") is not None
     )
 
 

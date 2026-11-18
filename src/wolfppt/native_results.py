@@ -139,6 +139,7 @@ class NativeSlideAddResult:
             "has_vba": self.has_vba,
         }
 
+
 @dataclass(frozen=True)
 class NativeSlideDeleteResult:
     path: str
@@ -224,6 +225,36 @@ class NativeMovieAddResult:
             "slide_part": self.slide_part,
             "media_relationship_id": self.media_relationship_id,
             "video_relationship_id": self.video_relationship_id,
+            "poster_relationship_id": self.poster_relationship_id,
+            "media_part": self.media_part,
+            "poster_part": self.poster_part,
+            "shape_id": self.shape_id,
+            "part_count": self.part_count,
+            "has_vba": self.has_vba,
+        }
+
+
+@dataclass(frozen=True)
+class NativeAudioAddResult:
+    path: str
+    slide_index: int
+    slide_part: str
+    media_relationship_id: str
+    audio_relationship_id: str
+    poster_relationship_id: str
+    media_part: str
+    poster_part: str
+    shape_id: int
+    part_count: int
+    has_vba: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "slide_index": self.slide_index,
+            "slide_part": self.slide_part,
+            "media_relationship_id": self.media_relationship_id,
+            "audio_relationship_id": self.audio_relationship_id,
             "poster_relationship_id": self.poster_relationship_id,
             "media_part": self.media_part,
             "poster_part": self.poster_part,

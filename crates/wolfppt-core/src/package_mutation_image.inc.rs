@@ -60,8 +60,8 @@ pub fn add_slide_image(
     output_path: impl AsRef<Path>,
     slide_index: usize,
     image_path: impl AsRef<Path>,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
 ) -> Result<ImageAddSummary, WolfPptError> {
@@ -109,7 +109,7 @@ pub fn add_slide_image(
 
     for index in 0..archive.len() {
         let file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -167,8 +167,8 @@ pub fn add_slide_group_image(
     slide_index: usize,
     group_index: usize,
     image_path: impl AsRef<Path>,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
 ) -> Result<ImageAddSummary, WolfPptError> {
@@ -217,7 +217,7 @@ pub fn add_slide_group_image(
 
     for index in 0..archive.len() {
         let file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -276,8 +276,8 @@ pub fn add_slide_nested_group_image(
     group_index: usize,
     nested_group_child_index: usize,
     image_path: impl AsRef<Path>,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
 ) -> Result<ImageAddSummary, WolfPptError> {
@@ -327,7 +327,7 @@ pub fn add_slide_nested_group_image(
 
     for index in 0..archive.len() {
         let file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -387,8 +387,8 @@ pub fn add_slide_deeper_nested_group_image(
     nested_group_child_index: usize,
     deeper_group_child_index: usize,
     image_path: impl AsRef<Path>,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
 ) -> Result<ImageAddSummary, WolfPptError> {
@@ -439,7 +439,7 @@ pub fn add_slide_deeper_nested_group_image(
 
     for index in 0..archive.len() {
         let file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -497,8 +497,8 @@ pub fn add_slide_nested_group_image_in_new_group(
     slide_index: usize,
     group_index: usize,
     image_path: impl AsRef<Path>,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
 ) -> Result<ImageAddSummary, WolfPptError> {
@@ -549,7 +549,7 @@ pub fn add_slide_nested_group_image_in_new_group(
 
     for index in 0..archive.len() {
         let file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {

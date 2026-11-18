@@ -7,6 +7,7 @@ from typing import Any
 
 from .image_inputs import InMemoryFile, InMemoryImage
 from .presentation_edit_queue_connectors import PresentationConnectorAddQueueMixin
+from .shape_edit_refs import ShapeEditRef
 
 
 def _queued_path(value: Any) -> Path | InMemoryFile:
@@ -27,19 +28,15 @@ class PresentationMediaAddQueueMixin(PresentationConnectorAddQueueMixin):
         cy_emu: int,
     ) -> None:
         path = _queued_path(image_path)
-        self._shape_adds.append(
-            ("picture", (slide_index, path, x_emu, y_emu, cx_emu, cy_emu))
-        )
+        self._shape_adds.append(("picture", (slide_index, path, x_emu, y_emu, cx_emu, cy_emu)))
 
     def _queue_picture_replace(
         self,
         slide_index: int,
-        relationship_id: str,
+        shape_id: str,
         image_path: str | Path | InMemoryImage,
     ) -> None:
-        self._picture_replace_edits[(slide_index, relationship_id)] = _queued_path(
-            image_path
-        )
+        self._picture_replace_edits[(slide_index, shape_id)] = _queued_path(image_path)
 
     def _queue_movie_add(
         self,
@@ -59,6 +56,55 @@ class PresentationMediaAddQueueMixin(PresentationConnectorAddQueueMixin):
                 "movie",
                 (slide_index, movie, poster, x_emu, y_emu, cx_emu, cy_emu, mime_type),
             )
+        )
+
+    def _queue_audio_add(
+        self,
+        slide_index: int,
+        audio_path: str | Path,
+        poster_frame_path: str | Path | None,
+        x_emu: int,
+        y_emu: int,
+        cx_emu: int,
+        cy_emu: int,
+        mime_type: str,
+    ) -> None:
+        audio = _queued_path(audio_path)
+        poster = None if poster_frame_path is None else _queued_path(poster_frame_path)
+        self._shape_adds.append(
+            (
+                "audio",
+                (slide_index, audio, poster, x_emu, y_emu, cx_emu, cy_emu, mime_type),
+            )
+        )
+
+    def _queue_media_playback(
+        self,
+        slide_index: int,
+        shape_ref: ShapeEditRef,
+        loop: bool,
+        play_across_slides: bool,
+        volume: int,
+        auto_play: bool,
+        controls: dict[str, Any] | None = None,
+    ) -> None:
+        key = (slide_index, shape_ref)
+        previous = self._media_playback_edits.get(key)
+        changed = dict(previous[4]) if previous is not None and len(previous) > 4 else {}
+        if controls is None:
+            controls = {
+                "loop": bool(loop),
+                "play_across_slides": bool(play_across_slides),
+                "volume": int(volume),
+                "auto_play": bool(auto_play),
+            }
+        changed.update(controls)
+        self._media_playback_edits[key] = (
+            bool(loop),
+            bool(play_across_slides),
+            int(volume),
+            bool(auto_play),
+            changed,
         )
 
     def _queue_ole_object_add(
@@ -137,14 +183,10 @@ class PresentationMediaAddQueueMixin(PresentationConnectorAddQueueMixin):
         path = _queued_path(image_path)
         if self._shape_adds:
             previous_kind, previous_args = self._shape_adds[-1]
-            if (
-                previous_kind == "nested_group_shape"
-                and previous_args
-                == (
-                    slide_index,
-                    group_index,
-                    nested_group_child_index,
-                )
+            if previous_kind == "nested_group_shape" and previous_args == (
+                slide_index,
+                group_index,
+                nested_group_child_index,
             ):
                 self._shape_adds[-1] = (
                     "nested_group_picture_in_new_group",
@@ -267,14 +309,10 @@ class PresentationMediaAddQueueMixin(PresentationConnectorAddQueueMixin):
         icon = None if icon_path is None else _queued_path(icon_path)
         if self._shape_adds:
             previous_kind, previous_args = self._shape_adds[-1]
-            if (
-                previous_kind == "nested_group_shape"
-                and previous_args
-                == (
-                    slide_index,
-                    group_index,
-                    nested_group_child_index,
-                )
+            if previous_kind == "nested_group_shape" and previous_args == (
+                slide_index,
+                group_index,
+                nested_group_child_index,
             ):
                 self._shape_adds[-1] = (
                     "nested_group_ole_object_in_new_group",

@@ -30,8 +30,11 @@ def register_validation_commands(subparsers: Any) -> None:
     )
     validate_ladder_parser.add_argument(
         "--vps-host",
-        default="validation-host",
-        help="SSH host alias for VPS validation tiers",
+        default="vps",
+        help=(
+            "SSH host alias for VPS validation tiers; it must be a host configured in "
+            "your SSH client config (the default 'vps' is a placeholder, not a real host)"
+        ),
     )
     validate_ladder_parser.add_argument(
         "--vps-path",

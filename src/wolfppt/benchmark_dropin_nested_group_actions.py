@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from pptx.enum.shapes import MSO_SHAPE
-from pptx.util import Inches
-
 from .benchmark_dropin_common_actions import _shape_at
 from .presentation import Presentation as WolfPresentation
 
@@ -32,6 +29,9 @@ def _apply_python_pptx_dropin_group_existing_nested_children(
     fixture_id: str,
     prs: Any,
 ) -> None:
+    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.util import Inches
+
     if fixture_id not in GROUP_EXISTING_CHILD_TARGETS:
         raise RuntimeError(
             "drop-in group-existing-nested-children benchmark does not support "
@@ -54,6 +54,9 @@ def _apply_wolfppt_dropin_group_existing_nested_children(
     fixture_id: str,
     prs: WolfPresentation,
 ) -> None:
+    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.util import Inches
+
     nested = _dropin_group_shape(
         fixture_id, prs, "group-existing-nested-children"
     ).shapes.add_group_shape()
@@ -72,6 +75,9 @@ def _apply_python_pptx_dropin_group_existing_deeper_nested_children(
     fixture_id: str,
     prs: Any,
 ) -> None:
+    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.util import Inches
+
     if fixture_id not in GROUP_EXISTING_CHILD_TARGETS:
         raise RuntimeError(
             "drop-in group-existing-deeper-nested-children benchmark does not "
@@ -99,6 +105,9 @@ def _apply_wolfppt_dropin_group_existing_deeper_nested_children(
     fixture_id: str,
     prs: WolfPresentation,
 ) -> None:
+    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.util import Inches
+
     deeper = (
         _dropin_group_shape(fixture_id, prs, "group-existing-deeper-nested-children")
         .shapes.add_group_shape()

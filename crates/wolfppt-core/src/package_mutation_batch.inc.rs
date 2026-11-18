@@ -26,7 +26,7 @@ pub fn replace_table_cell_text(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -79,6 +79,41 @@ pub fn apply_edit_batch(
     }
 
     let input = File::open(input_path)?;
+    let (_, batch) = write_edit_batch(input, || File::create(output_path), edits)?;
+    Ok(EditBatchSummary {
+        path: output_path.to_path_buf(),
+        edits: batch.edits,
+        replacements: batch.replacements,
+        part_count: batch.part_count,
+        has_vba: batch.has_vba,
+    })
+}
+
+/// Applies an edit batch to an in-memory package and returns the patched
+/// package bytes. Untouched parts are copied byte for byte, exactly as
+/// [`apply_edit_batch`] does for files.
+pub fn apply_edit_batch_bytes<R: Read + std::io::Seek>(
+    input: R,
+    edits: &[EditOperation],
+) -> Result<EditBatchBytes, WolfPptError> {
+    let (output, mut batch) = write_edit_batch(input, || Ok(Cursor::new(Vec::new())), edits)?;
+    batch.bytes = output.into_inner();
+    Ok(batch)
+}
+
+/// Shared package patch for the path and byte entry points. The output is
+/// created only after every edit has been planned, so a rejected batch never
+/// creates or truncates an output.
+fn write_edit_batch<R, W, F>(
+    input: R,
+    create_output: F,
+    edits: &[EditOperation],
+) -> Result<(W, EditBatchBytes), WolfPptError>
+where
+    R: Read + std::io::Seek,
+    W: std::io::Write + std::io::Seek,
+    F: FnOnce() -> std::io::Result<W>,
+{
     let mut archive = ZipArchive::new(input)?;
     let slide_parts = slide_parts(&mut archive)?;
     let mut edits_by_slide: BTreeMap<String, Vec<EditOperation>> = BTreeMap::new();
@@ -139,27 +174,27 @@ pub fn apply_edit_batch(
         None
     };
 
-    let output = File::create(output_path)?;
+    let output = create_output()?;
     let mut writer = zip::ZipWriter::new(output);
     let mut part_count = 0;
     let mut has_vba = false;
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
 
         if let Some(payload) = rewritten_slides.get(&name) {
             let options = SimpleFileOptions::default().compression_method(file.compression());
             writer.start_file(name, options)?;
             std::io::copy(&mut Cursor::new(payload), &mut writer)?;
-        } else if name == "ppt/presentation.xml" && rewritten_presentation.is_some() {
+        } else if let Some(payload) = rewritten_presentation
+            .as_ref()
+            .filter(|_| name == "ppt/presentation.xml")
+        {
             let options = SimpleFileOptions::default().compression_method(file.compression());
             writer.start_file(name, options)?;
-            std::io::copy(
-                &mut Cursor::new(rewritten_presentation.as_ref().unwrap()),
-                &mut writer,
-            )?;
+            std::io::copy(&mut Cursor::new(payload), &mut writer)?;
         } else if let Some(relationship_ids) = relationships_to_remove.get(&name) {
             let options = SimpleFileOptions::default().compression_method(file.compression());
             let mut payload = Vec::new();
@@ -172,15 +207,18 @@ pub fn apply_edit_batch(
             writer.raw_copy_file(file)?;
         }
     }
-    writer.finish()?;
+    let output = writer.finish()?;
 
-    Ok(EditBatchSummary {
-        path: output_path.to_path_buf(),
-        edits: edits.len(),
-        replacements,
-        part_count,
-        has_vba,
-    })
+    Ok((
+        output,
+        EditBatchBytes {
+            bytes: Vec::new(),
+            edits: edits.len(),
+            replacements,
+            part_count,
+            has_vba,
+        },
+    ))
 }
 
 fn apply_slide_edit_operations(
@@ -216,46 +254,11 @@ fn apply_slide_edit_operations(
             EditOperation::SetTextRunFormatting { .. }
         ) {
             let mut formatting_edits = Vec::new();
-            while let Some(EditOperation::SetTextRunFormatting {
-                run_index,
-                set_bold,
-                bold,
-                set_italic,
-                italic,
-                set_underline,
-                underline,
-                set_size,
-                size,
-                set_name,
-                name,
-                set_color,
-                color,
-                ..
-            }) = regular_edits.get(edit_index)
+            while let Some(edit) = regular_edits
+                .get(edit_index)
+                .and_then(text_run_formatting_edit)
             {
-                formatting_edits.push((
-                    *run_index,
-                    TextRunFormattingPatch {
-                        bold: if *set_bold { Some(*bold) } else { None },
-                        italic: if *set_italic { Some(*italic) } else { None },
-                        underline: if *set_underline {
-                            Some(*underline)
-                        } else {
-                            None
-                        },
-                        size: if *set_size { Some(*size) } else { None },
-                        name: if *set_name {
-                            Some(name.as_deref())
-                        } else {
-                            None
-                        },
-                        color: if *set_color {
-                            Some(color.as_deref())
-                        } else {
-                            None
-                        },
-                    },
-                ));
+                formatting_edits.push(edit?);
                 edit_index += 1;
             }
             let (rewritten, count) =

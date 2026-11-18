@@ -23,6 +23,9 @@ pub fn add_slide_table(
         &[],
     )
 }
+// Preserve the public flat-parameter API used by the Python binding, including
+// unsigned EMU coordinates and sparse cell texts.
+#[allow(clippy::too_many_arguments)]
 pub fn add_slide_table_with_cell_texts(
     input_path: impl AsRef<Path>,
     output_path: impl AsRef<Path>,
@@ -48,6 +51,9 @@ pub fn add_slide_table_with_cell_texts(
         cell_texts,
     )
 }
+// Mirror both public table entry points instead of adding a one-off frame
+// wrapper; the existing signed group frame cannot represent all unsigned EMUs.
+#[allow(clippy::too_many_arguments)]
 fn add_slide_table_impl(
     input_path: impl AsRef<Path>,
     output_path: impl AsRef<Path>,
@@ -217,10 +223,8 @@ struct CellMergeFlags {
 
 fn extract_u64_attr(event: &BytesStart, attr_name: &[u8]) -> Option<u64> {
     for attr in event.attributes().flatten() {
-        if attr.key.as_ref() == attr_name {
-            if let Ok(value_str) = std::str::from_utf8(&attr.value) {
-                return value_str.parse().ok();
-            }
+        if attr.key.as_ref().as_bytes() == attr_name {
+            return attr.value.parse().ok();
         }
     }
     None
@@ -232,26 +236,18 @@ fn extract_cell_merge_flags(event: &BytesStart) -> CellMergeFlags {
     let mut grid_span = 1;
     let mut h_merge = false;
     for attr in event.attributes().flatten() {
-        match attr.key.as_ref() {
+        match attr.key.as_ref().as_bytes() {
             b"rowSpan" => {
-                if let Ok(s) = std::str::from_utf8(&attr.value) {
-                    row_span = s.parse().unwrap_or(1);
-                }
+                row_span = attr.value.parse().unwrap_or(1);
             }
             b"vMerge" => {
-                if let Ok(s) = std::str::from_utf8(&attr.value) {
-                    v_merge = s == "1" || s == "true";
-                }
+                v_merge = attr.value == "1" || attr.value == "true";
             }
             b"gridSpan" => {
-                if let Ok(s) = std::str::from_utf8(&attr.value) {
-                    grid_span = s.parse().unwrap_or(1);
-                }
+                grid_span = attr.value.parse().unwrap_or(1);
             }
             b"hMerge" => {
-                if let Ok(s) = std::str::from_utf8(&attr.value) {
-                    h_merge = s == "1" || s == "true";
-                }
+                h_merge = attr.value == "1" || attr.value == "true";
             }
             _ => {}
         }
@@ -283,7 +279,7 @@ fn inspect_slide_table(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"tbl" {
                     if table_index == target_table_index {
                         in_target_table = true;
@@ -305,7 +301,7 @@ fn inspect_slide_table(
                 }
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && in_grid && name == b"gridCol" {
                     let w = extract_u64_attr(&event, b"w").unwrap_or(0);
                     col_widths.push(w);
@@ -314,7 +310,7 @@ fn inspect_slide_table(
                 }
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && name == b"tblGrid" {
                     in_grid = false;
                 } else if in_target_table && name == b"tr" {
@@ -448,7 +444,7 @@ fn insert_table_row_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"tbl" {
                     if table_index == target_table_index {
                         in_target_table = true;
@@ -465,7 +461,7 @@ fn insert_table_row_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && name == b"tbl" {
                     if !wrote_new_row && current_row == target_row_index {
                         write_empty_table_row(&mut writer, height, col_count)?;
@@ -521,7 +517,7 @@ fn delete_table_row_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"tbl" {
                     if table_index == target_table_index {
                         in_target_table = true;
@@ -542,7 +538,7 @@ fn delete_table_row_in_slide(
                 }
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && name == b"tr" {
                     if current_row == target_row_index {
                         current_row += 1;
@@ -554,7 +550,7 @@ fn delete_table_row_in_slide(
                 writer.write_event(Event::Empty(event))?;
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && name == b"tbl" {
                     in_target_table = false;
                 }
@@ -608,7 +604,7 @@ fn insert_table_column_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"tbl" {
                     if table_index == target_table_index {
                         in_target_table = true;
@@ -640,7 +636,7 @@ fn insert_table_column_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && in_grid && name == b"gridCol" {
                     if grid_col_index == target_col_index && !wrote_grid_col {
                         write_grid_column(&mut writer, width)?;
@@ -659,7 +655,7 @@ fn insert_table_column_in_slide(
                 writer.write_event(Event::Empty(event))?;
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && in_grid && name == b"tblGrid" {
                     if !wrote_grid_col && grid_col_index == target_col_index {
                         write_grid_column(&mut writer, width)?;
@@ -727,7 +723,7 @@ fn delete_table_column_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"tbl" {
                     if table_index == target_table_index {
                         in_target_table = true;
@@ -765,7 +761,7 @@ fn delete_table_column_in_slide(
                 }
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && in_grid && name == b"gridCol" {
                     if grid_col_index == target_col_index {
                         grid_col_index += 1;
@@ -784,7 +780,7 @@ fn delete_table_column_in_slide(
                 writer.write_event(Event::Empty(event))?;
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_table && in_grid && name == b"tblGrid" {
                     in_grid = false;
                 } else if in_target_table && in_row && name == b"tr" {

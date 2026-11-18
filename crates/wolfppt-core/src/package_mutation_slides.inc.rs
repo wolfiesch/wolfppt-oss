@@ -1,12 +1,15 @@
+// Preserve the public flat-parameter API used by the Python binding; connector
+// endpoints remain independent signed EMU coordinates.
+#[allow(clippy::too_many_arguments)]
 pub fn add_slide_connector(
     input_path: impl AsRef<Path>,
     output_path: impl AsRef<Path>,
     slide_index: usize,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
 ) -> Result<ConnectorAddSummary, WolfPptError> {
     let input_path = input_path.as_ref();
     let output_path = output_path.as_ref();
@@ -38,8 +41,12 @@ pub fn add_slide_connector(
         end_y_emu,
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
     Ok(ConnectorAddSummary {
         path: output_path.to_path_buf(),
         slide_index,
@@ -57,10 +64,10 @@ pub fn add_slide_connected_connector(
     output_path: impl AsRef<Path>,
     slide_index: usize,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     begin_shape_id: Option<u64>,
     begin_cxn_pt_idx: Option<u64>,
     end_shape_id: Option<u64>,
@@ -106,8 +113,12 @@ pub fn add_slide_connected_connector(
         end_connection,
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
     Ok(ConnectorAddSummary {
         path: output_path.to_path_buf(),
         slide_index,
@@ -125,20 +136,20 @@ pub fn add_slide_connected_connector_with_auto_shapes(
     output_path: impl AsRef<Path>,
     slide_index: usize,
     begin_preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
     begin_cx_emu: u64,
     begin_cy_emu: u64,
     end_preset_geometry: &str,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     end_cx_emu: u64,
     end_cy_emu: u64,
     connector_preset_geom: &str,
-    connector_begin_x_emu: u64,
-    connector_begin_y_emu: u64,
-    connector_end_x_emu: u64,
-    connector_end_y_emu: u64,
+    connector_begin_x_emu: i64,
+    connector_begin_y_emu: i64,
+    connector_end_x_emu: i64,
+    connector_end_y_emu: i64,
     begin_cxn_pt_idx: u64,
     end_cxn_pt_idx: u64,
 ) -> Result<ConnectorAddSummary, WolfPptError> {
@@ -190,8 +201,12 @@ pub fn add_slide_connected_connector_with_auto_shapes(
         end_cxn_pt_idx,
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
     Ok(ConnectorAddSummary {
         path: output_path.to_path_buf(),
         slide_index,
@@ -287,7 +302,7 @@ fn add_blank_slide(
     let mut has_vba = false;
     for index in 0..archive.len() {
         let file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
@@ -319,7 +334,11 @@ fn add_blank_slide(
     update_package_facts(&new_slide_part, &mut part_count, &mut has_vba);
     writer.start_file(new_slide_rels_part, options)?;
     std::io::copy(&mut Cursor::new(new_slide_rels.as_bytes()), &mut writer)?;
-    update_package_facts(&relationship_part_name(&new_slide_part), &mut part_count, &mut has_vba);
+    update_package_facts(
+        &relationship_part_name(&new_slide_part),
+        &mut part_count,
+        &mut has_vba,
+    );
     writer.finish()?;
 
     Ok(SlideAddSummary {
@@ -334,11 +353,13 @@ fn add_blank_slide(
     })
 }
 
+const PRESENTATION_MAIN_NS: &[u8] = b"http://schemas.openxmlformats.org/presentationml/2006/main";
+
 fn reorder_slide_ids(
     xml: &[u8],
     slide_indices: &[usize],
 ) -> Result<(Vec<u8>, usize), WolfPptError> {
-    let mut reader = Reader::from_reader(xml);
+    let mut reader = quick_xml::NsReader::from_reader(xml);
     let mut writer = Writer::new(Cursor::new(Vec::new()));
     let mut in_slide_id_list = false;
     let mut slide_id_list_depth = 0usize;
@@ -346,11 +367,15 @@ fn reorder_slide_ids(
     let mut captured_entry: Option<(usize, Vec<Event<'static>>)> = None;
     let mut found_list = false;
     let mut changed = false;
+    // Structural element depth outside captured entries: an element seen
+    // with `depth == 1` has exactly one ancestor open, i.e. it is a direct
+    // child of the presentation root.
+    let mut depth = 0usize;
 
     loop {
-        let event = reader.read_event()?;
-        if let Some((depth, events)) = captured_entry.as_mut() {
-            let mut next_depth = *depth;
+        let (resolved, event) = reader.read_resolved_event()?;
+        if let Some((entry_depth, events)) = captured_entry.as_mut() {
+            let mut next_depth = *entry_depth;
             match &event {
                 Event::Start(_) => next_depth += 1,
                 Event::End(_) => next_depth -= 1,
@@ -371,21 +396,40 @@ fn reorder_slide_ids(
             continue;
         }
 
+        // Namespace-aware matching through the library resolver: only the
+        // true PresentationML namespace counts, so the sldIdLst/sldId
+        // elements that section extensions carry in the p14 namespace (or in
+        // any other namespace) never match by local name alone.
+        let is_presentation_ns = matches!(
+            resolved,
+            quick_xml::name::ResolveResult::Bound(ns) if ns.0.as_bytes() == PRESENTATION_MAIN_NS
+        );
         match event {
             Event::Start(start) => {
-                let qname = start.name();
-                let name = local_name(qname.as_ref());
-                if !in_slide_id_list && name == b"sldIdLst" {
+                let qualified_name = start.name();
+                let name = local_name(qualified_name.as_ref().as_bytes());
+                // Only the p:sldIdLst directly under the presentation root
+                // is the presentation slide list: it is seen with exactly
+                // one ancestor open. A presentation-namespace sldIdLst
+                // nested deeper (for example inside a section extension)
+                // must pass through untouched.
+                if !in_slide_id_list && depth == 1 && is_presentation_ns && name == b"sldIdLst" {
+                    depth += 1;
                     in_slide_id_list = true;
                     slide_id_list_depth = 1;
                     found_list = true;
                     writer.write_event(Event::Start(start.into_owned()))?;
                 } else if in_slide_id_list
                     && slide_id_list_depth == 1
+                    && is_presentation_ns
                     && name == b"sldId"
                 {
+                    // The captured element is replayed verbatim, so `depth`
+                    // deliberately ignores it: its End event is consumed by
+                    // the capture above and never reaches this match.
                     captured_entry = Some((1, vec![Event::Start(start.into_owned())]));
                 } else {
+                    depth += 1;
                     if in_slide_id_list {
                         slide_id_list_depth += 1;
                     }
@@ -393,10 +437,10 @@ fn reorder_slide_ids(
                 }
             }
             Event::Empty(empty) => {
-                let qname = empty.name();
                 if in_slide_id_list
                     && slide_id_list_depth == 1
-                    && local_name(qname.as_ref()) == b"sldId"
+                    && local_name(empty.name().as_ref().as_bytes()) == b"sldId"
+                    && is_presentation_ns
                 {
                     slide_entries.push(vec![Event::Empty(empty.into_owned())]);
                 } else {
@@ -404,14 +448,15 @@ fn reorder_slide_ids(
                 }
             }
             Event::End(end) => {
-                let qname = end.name();
-                let name = local_name(qname.as_ref());
-                if in_slide_id_list && slide_id_list_depth == 1 && name == b"sldIdLst" {
+                let qualified_name = end.name();
+                let name = local_name(qualified_name.as_ref().as_bytes());
+                if in_slide_id_list
+                    && slide_id_list_depth == 1
+                    && is_presentation_ns
+                    && name == b"sldIdLst"
+                {
                     validate_slide_order(slide_indices, slide_entries.len())?;
-                    changed = slide_indices
-                        .iter()
-                        .copied()
-                        .ne(0..slide_entries.len());
+                    changed = slide_indices.iter().copied().ne(0..slide_entries.len());
                     for slide_index in slide_indices {
                         for entry_event in &slide_entries[*slide_index] {
                             writer.write_event(entry_event.clone())?;
@@ -426,6 +471,7 @@ fn reorder_slide_ids(
                     }
                     writer.write_event(Event::End(end.into_owned()))?;
                 }
+                depth = depth.saturating_sub(1);
             }
             Event::Eof => break,
             other => writer.write_event(other.into_owned())?,

@@ -125,7 +125,45 @@ def set_title_paragraphs(title: ET.Element, paragraphs: list[str]) -> None:
 def set_title_paragraph_runs(
     title: ET.Element,
     paragraph_runs: list[list[str]],
+    *,
+    preserve_runs: bool = False,
 ) -> None:
+    """Replace title text, or retain run XML for run edits and appends.
+
+    Whole-title and whole-paragraph text assignment uses replacement semantics.
+    Run-level edits retain formatting and other XML on existing run nodes.
+    """
+    if preserve_runs:
+        rich = title.find(f"{{{C_NS}}}tx/{{{C_NS}}}rich")
+        if rich is not None:
+            paragraphs = rich.findall(f"{{{A_NS}}}p")
+            for index, texts in enumerate(paragraph_runs or [[]]):
+                paragraph = (
+                    paragraphs[index]
+                    if index < len(paragraphs)
+                    else ET.SubElement(rich, f"{{{A_NS}}}p")
+                )
+                runs = paragraph.findall(f"{{{A_NS}}}r")
+                for run_index, value in enumerate(texts):
+                    if run_index < len(runs):
+                        run = runs[run_index]
+                    else:
+                        run = ET.Element(f"{{{A_NS}}}r")
+                        end_properties = paragraph.find(f"{{{A_NS}}}endParaRPr")
+                        if end_properties is None:
+                            paragraph.append(run)
+                        else:
+                            paragraph.insert(list(paragraph).index(end_properties), run)
+                    text_node = run.find(f"{{{A_NS}}}t")
+                    if text_node is None:
+                        text_node = ET.SubElement(run, f"{{{A_NS}}}t")
+                    text_node.text = value
+                for run in runs[len(texts) :]:
+                    paragraph.remove(run)
+            for paragraph in paragraphs[len(paragraph_runs or [[]]) :]:
+                rich.remove(paragraph)
+            ensure_title_layout(title)
+            return
     text = title.find(f"{{{C_NS}}}tx")
     existing_body_properties = None
     existing_paragraph_properties: list[ET.Element | None] = []
@@ -525,9 +563,7 @@ def title_paragraph_spacing_value(
 ) -> int | float | None:
     if paragraph_properties is None:
         return None
-    spacing = paragraph_properties.find(
-        f"{{{A_NS}}}{_paragraph_spacing_xml_tag(attr)}"
-    )
+    spacing = paragraph_properties.find(f"{{{A_NS}}}{_paragraph_spacing_xml_tag(attr)}")
     if spacing is None:
         return None
     spacing_points = spacing.find(f"{{{A_NS}}}spcPts")

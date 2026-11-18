@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .slide_edits import _apply_shape_preset_edits
+
 
 @dataclass(frozen=True)
 class PresentationSaveOps:
@@ -89,3 +91,34 @@ class PresentationSaveOps:
     _apply_table_cell_property_edits: Any
     _apply_table_dimension_edits: Any
     _apply_table_style_edits: Any
+    _apply_extended_properties_edits: Any
+    _apply_section_edits: Any
+    _apply_table_style_id_edits: Any
+    _apply_table_cell_border_edits: Any
+    _apply_shape_line_end_edits: Any
+    _apply_shape_z_order_edits: Any
+    _apply_slide_transition_edits: Any = None
+    _apply_custom_properties_edits: Any = None
+    _apply_paragraph_bullet_edits: Any = None
+    _apply_part_paragraph_bullet_edits: Any = None
+    _apply_group_child_paragraph_bullet_edits: Any = None
+    _apply_slide_animation_edits: Any = None
+    _apply_picture_transparency_edits: Any = None
+    _apply_picture_correction_edits: Any = None
+    _apply_picture_recolor_edits: Any = None
+    _apply_chart_trendline_edits: Any = None
+    _apply_chart_error_bar_edits: Any = None
+    _apply_shape_effect_edits: Any = None
+    _apply_shape_glow_edits: Any = None
+    _apply_slide_hidden_edits: Any = None
+    _apply_shape_flip_edits: Any = None
+    _apply_shape_lock_edits: Any = None
+    _apply_slide_layout_edits: Any = None
+    _apply_text_run_advanced_edits: Any = None
+    _apply_text_frame_advanced_edits: Any = None
+    _apply_paragraph_tab_stop_edits: Any = None
+    _apply_group_child_paragraph_tab_stop_edits: Any = None
+    _apply_part_paragraph_tab_stop_edits: Any = None
+    _apply_group_child_text_frame_advanced_edits: Any = None
+    _apply_part_text_frame_advanced_edits: Any = None
+    _apply_shape_preset_edits: Any = _apply_shape_preset_edits

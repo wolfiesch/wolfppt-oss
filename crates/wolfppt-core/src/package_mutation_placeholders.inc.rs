@@ -40,7 +40,7 @@ pub fn add_slide_placeholder_shape(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
             writer.add_directory(name, options)?;
@@ -98,9 +98,9 @@ pub fn add_slide_placeholder_shapes(
     let mut slide_xml = read_archive_text(&mut archive, &slide_part)?.ok_or_else(|| {
         WolfPptError::InvalidInput(format!("slide part {slide_part} was not found"))
     })?;
-    let mut shape_id = max_cnvpr_id(&slide_xml) + 1;
+    let first_shape_id = max_cnvpr_id(&slide_xml) + 1;
     let mut shape_ids = Vec::with_capacity(placeholders.len());
-    for placeholder in placeholders {
+    for (shape_id, placeholder) in (first_shape_id..).zip(placeholders) {
         slide_xml = add_placeholder_shape_to_slide_xml(
             &slide_xml,
             shape_id,
@@ -110,7 +110,6 @@ pub fn add_slide_placeholder_shapes(
             placeholder.placeholder_idx.as_deref(),
         )?;
         shape_ids.push(shape_id);
-        shape_id += 1;
     }
 
     let output = File::create(output_path)?;
@@ -118,7 +117,7 @@ pub fn add_slide_placeholder_shapes(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
             writer.add_directory(name, options)?;
@@ -175,9 +174,9 @@ pub fn add_slide_layout_placeholders(
     let mut slide_xml = read_archive_text(&mut archive, &slide_part)?.ok_or_else(|| {
         WolfPptError::InvalidInput(format!("slide part {slide_part} was not found"))
     })?;
-    let mut shape_id = max_cnvpr_id(&slide_xml) + 1;
+    let first_shape_id = max_cnvpr_id(&slide_xml) + 1;
     let mut shape_ids = Vec::with_capacity(placeholders.len());
-    for placeholder in &placeholders {
+    for (shape_id, placeholder) in (first_shape_id..).zip(&placeholders) {
         slide_xml = add_placeholder_shape_to_slide_xml(
             &slide_xml,
             shape_id,
@@ -187,7 +186,6 @@ pub fn add_slide_layout_placeholders(
             placeholder.placeholder_idx.as_deref(),
         )?;
         shape_ids.push(shape_id);
-        shape_id += 1;
     }
 
     let output = File::create(output_path)?;
@@ -195,7 +193,7 @@ pub fn add_slide_layout_placeholders(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         let options = SimpleFileOptions::default().compression_method(file.compression());
         if file.is_dir() {
             writer.add_directory(name, options)?;

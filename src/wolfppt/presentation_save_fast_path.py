@@ -17,6 +17,8 @@ def apply_simple_package_fast_path(
     edits: Any,
     ops: PresentationSaveOps,
 ) -> tuple[Path, int]:
+    if edits.part_geometry_edits:
+        return current, step_index
     simple_package_fast_path = ops._simple_package_fast_path_available(
         chart_data_edits=edits.chart_data_edits,
         part_shape_text_edits=edits.part_shape_text_edits,
@@ -51,14 +53,10 @@ def apply_simple_package_fast_path(
         group_child_run_text_edits=edits.group_child_run_text_edits,
         group_child_run_font_edits=edits.group_child_run_font_edits,
         group_child_run_hyperlink_edits=edits.group_child_run_hyperlink_edits,
-        group_child_paragraph_alignment_edits=(
-            edits.group_child_paragraph_alignment_edits
-        ),
+        group_child_paragraph_alignment_edits=(edits.group_child_paragraph_alignment_edits),
         group_child_paragraph_clear_edits=edits.group_child_paragraph_clear_edits,
         group_child_paragraph_font_edits=edits.group_child_paragraph_font_edits,
-        group_child_paragraph_line_break_edits=(
-            edits.group_child_paragraph_line_break_edits
-        ),
+        group_child_paragraph_line_break_edits=(edits.group_child_paragraph_line_break_edits),
         group_child_paragraph_level_edits=edits.group_child_paragraph_level_edits,
         group_child_paragraph_spacing_edits=edits.group_child_paragraph_spacing_edits,
         group_child_text_frame_margin_edits=edits.group_child_text_frame_margin_edits,
@@ -66,9 +64,7 @@ def apply_simple_package_fast_path(
         group_child_text_frame_vertical_anchor_edits=(
             edits.group_child_text_frame_vertical_anchor_edits
         ),
-        group_child_text_frame_auto_size_edits=(
-            edits.group_child_text_frame_auto_size_edits
-        ),
+        group_child_text_frame_auto_size_edits=(edits.group_child_text_frame_auto_size_edits),
         group_child_text_frame_fit_edits=edits.group_child_text_frame_fit_edits,
         geometry_edits=edits.geometry_edits,
         group_child_geometry_edits=edits.group_child_geometry_edits,
@@ -91,6 +87,7 @@ def apply_simple_package_fast_path(
             edits.table_column_width_edits,
             edits.table_cell_margin_edits,
             edits.table_cell_vertical_anchor_edits,
+            edits.table_cell_border_edits,
             edits.table_cell_text_frame_margin_edits,
             edits.table_cell_text_frame_vertical_anchor_edits,
             edits.table_cell_text_frame_content_edits,
@@ -118,6 +115,7 @@ def apply_simple_package_fast_path(
             edits.paragraph_level_edits,
             edits.paragraph_spacing_edits,
             edits.paragraph_font_edits,
+            edits.paragraph_bullet_edits,
             edits.text_frame_margin_edits,
             edits.text_frame_word_wrap_edits,
             edits.text_frame_vertical_anchor_edits,
@@ -127,6 +125,11 @@ def apply_simple_package_fast_path(
             edits.part_paragraph_level_edits,
             edits.part_paragraph_spacing_edits,
             edits.part_paragraph_font_edits,
+            edits.part_paragraph_bullet_edits,
+            edits.part_paragraph_text_edits,
+            edits.part_paragraph_clear_edits,
+            edits.part_paragraph_line_break_edits,
+            edits.part_run_text_edits,
             edits.part_run_font_edits,
             edits.part_text_frame_margin_edits,
             edits.part_text_frame_word_wrap_edits,
@@ -152,6 +155,7 @@ def apply_simple_package_fast_path(
             edits.group_child_paragraph_line_break_edits,
             edits.group_child_paragraph_level_edits,
             edits.group_child_paragraph_spacing_edits,
+            edits.group_child_paragraph_bullet_edits,
             edits.fill_solid_edits,
             edits.fill_background_edits,
             edits.fill_pattern_edits,
@@ -167,26 +171,41 @@ def apply_simple_package_fast_path(
             edits.line_color_edits,
             edits.line_width_edits,
             edits.line_dash_edits,
+            edits.shape_line_end_edits,
+            edits.shape_z_order_edits,
             edits.connector_connection_edits,
             edits.shadow_inherit_edits,
+            edits.shape_effect_edits,
+            edits.shape_glow_edits,
+            bool(getattr(edits, "shape_lock_edits", None)),
+            bool(getattr(edits, "slide_layout_changes", None)),
             edits.hyperlink_edits,
             edits.target_slide_edits,
             edits.rotation_edits,
             edits.name_edits,
             edits.adjustment_edits,
+            edits.shape_preset_edits,
             edits.line_element_edits,
             edits.picture_crop_edits,
             edits.picture_replace_edits,
+            bool(getattr(edits, "picture_transparency_edits", None)),
+            bool(edits.picture_correction_edits),
+            bool(edits.picture_recolor_edits),
             edits.slide_name_edits,
+            edits.slide_transition_edits,
+            bool(getattr(edits, "slide_animation_edits", None)),
+            bool(getattr(edits, "media_playback_edits", None)),
+            bool(getattr(edits, "chart_trendline_edits", None)),
+            bool(getattr(edits, "chart_error_bar_edits", None)),
             edits.presentation_size_edits,
             edits.core_properties_edits is not None,
+            edits.custom_properties_edits is not None,
+            getattr(edits, "extended_properties_edits", None) is not None,
+            getattr(edits, "section_edits", None) is not None,
+            bool(getattr(edits, "table_style_id_edits", None)),
         )
     )
-    step = (
-        tmp_dir / f"step-{step_index}.pptx"
-        if remaining_after_simple_fast_path
-        else final_output
-    )
+    step = tmp_dir / f"step-{step_index}.pptx" if remaining_after_simple_fast_path else final_output
     ops._apply_simple_text_table_chart_replacements(
         current,
         step,
@@ -194,9 +213,7 @@ def apply_simple_package_fast_path(
         edits.part_shape_text_edits,
         edits.text_edits,
         edits.table_cell_edits,
-        slide_payloads=[
-            slide._payload for slide in owner._slides
-        ]
+        slide_payloads=[slide._payload for slide in owner._slides]
         if not (edits.slide_creations or edits.shape_adds)
         else None,
         part_shape_payloads=owner._part_shape_payload_cache,

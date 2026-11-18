@@ -1,7 +1,9 @@
 """Chart package edit helpers for presentation saves."""
+# ruff: noqa: F401
 
 from __future__ import annotations
 
+import warnings
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -10,30 +12,109 @@ from xml.etree import ElementTree as ET
 from .chart_adds import (
     _apply_chart_add,
     _apply_chart_adds,
-    _normalize_chart_add_data,
     _normalize_category_chart_data,
+    _normalize_chart_add_data,
+)
+from .chart_xml import (
+    ChartDataRefusal,
 )
 from .chart_xml import (
     replace_chart_root_title as _replace_chart_root_title,
+)
+from .chart_xml import (
     replace_chart_xml_axis_property_groups as _replace_chart_xml_axis_property_groups,
+)
+from .chart_xml import (
     replace_chart_xml_axis_title_groups as _replace_chart_xml_axis_title_groups,
+)
+from .chart_xml import (
     replace_chart_xml_data as _replace_chart_xml_data,
+)
+from .chart_xml import (
     replace_chart_xml_data_labels as _replace_chart_xml_data_labels,
+)
+from .chart_xml import (
     replace_chart_xml_font as _replace_chart_xml_font,
+)
+from .chart_xml import (
     replace_chart_xml_legend as _replace_chart_xml_legend,
+)
+from .chart_xml import (
     replace_chart_xml_plot_properties as _replace_chart_xml_plot_properties,
+)
+from .chart_xml import (
     replace_chart_xml_style as _replace_chart_xml_style,
+)
+from .chart_xml import (
     replace_chart_xml_title as _replace_chart_xml_title,
 )
-from .chart_workbook import update_chart_workbook_blob as _update_chart_workbook_blob
 from .package_parts import (
     copy_package_with_replacements as _copy_package_with_replacements,
+)
+from .package_parts import (
     rels_part_for_package_part as _rels_part_for_package_part,
+)
+from .package_parts import (
     resolve_package_target as _resolve_package_target,
 )
 from .slide_payloads import load_slide_payloads as _load_slide_payloads
 
 PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+
+
+class ChartWorkbookNotUpdatedWarning(UserWarning):
+    """A chart cache was edited without updating an embedded workbook."""
+
+
+def _replace_chart_xml_data_table(chart_xml: bytes, state: dict[str, Any]) -> bytes:
+    root = ET.fromstring(chart_xml)
+    chart = root.find(f"{{{C_NS}}}chart")
+    if chart is None:
+        raise AttributeError("chart element is unavailable")
+    plot_area = chart.find(f"{{{C_NS}}}plotArea")
+    if plot_area is None:
+        raise AttributeError("chart plot area is unavailable")
+
+    data_table = plot_area.find(f"{{{C_NS}}}dTable")
+    if not bool(state.get("has_data_table")):
+        if data_table is None:
+            return chart_xml
+        plot_area.remove(data_table)
+        return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+    if data_table is None:
+        data_table = ET.Element(f"{{{C_NS}}}dTable")
+        insert_at = len(plot_area)
+        for index, child in enumerate(plot_area):
+            if child.tag in {
+                f"{{{C_NS}}}spPr",
+                f"{{{C_NS}}}extLst",
+            }:
+                insert_at = index
+                break
+        plot_area.insert(insert_at, data_table)
+
+    for name in ("showHorzBorder", "showVertBorder", "showOutline", "showKeys"):
+        element = data_table.find(f"{{{C_NS}}}{name}")
+        if element is not None:
+            data_table.remove(element)
+    for index, (name, key) in enumerate(
+        (
+            ("showHorzBorder", "show_horz_border"),
+            ("showVertBorder", "show_vert_border"),
+            ("showOutline", "show_outline"),
+            ("showKeys", "show_keys"),
+        )
+    ):
+        data_table.insert(
+            index,
+            ET.Element(
+                f"{{{C_NS}}}{name}",
+                {"val": "1" if bool(state.get(key)) else "0"},
+            ),
+        )
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
 def _apply_chart_data_replace(
@@ -88,22 +169,26 @@ def _chart_data_replacements_from_package(
             shape_index,
         )
         chart_part = _chart_part_for_shape_payload(package, slide_payload, shape_payload)
-    embedded_workbook_part = _chart_embedded_workbook_part_in_package(
-        package,
-        chart_part,
-    )
-    chart_xml = package.read(chart_part)
     replacement_chart_xml = chart_data.get("_chart_xml")
     if not isinstance(replacement_chart_xml, bytes):
+        chart_xml = package.read(chart_part)
         replacement_chart_xml = _replace_chart_xml_data(chart_xml, chart_data)
-    replacements = {
-        chart_part: replacement_chart_xml,
-        embedded_workbook_part: _update_chart_workbook_blob(
-            package.read(embedded_workbook_part),
-            chart_data["xlsx_blob"],
-            chart_xml,
-        ),
-    }
+    replacements = {chart_part: replacement_chart_xml}
+    # Cache-only charts keep all relationships and externalData unchanged.
+    workbook_blob = chart_data.get("xlsx_blob")
+    if workbook_blob is not None:
+        embedded_workbook_part = _chart_embedded_workbook_part_in_package(
+            package,
+            chart_part,
+        )
+        if embedded_workbook_part is not None:
+            replacements[embedded_workbook_part] = workbook_blob
+        elif not chart_data.get("_cache_only"):
+            warnings.warn(
+                f"{chart_part}: cache only; no embedded workbook was updated",
+                ChartWorkbookNotUpdatedWarning,
+                stacklevel=2,
+            )
     return _drop_unchanged_replacements(package, replacements)
 
 
@@ -242,6 +327,8 @@ def _apply_chart_plot_property_edits(
     output_path: Path,
     plot_property_edits: list[tuple[tuple[int, int], dict[str, Any]]],
 ) -> None:
+    from .chart_gap_xml import materialize_picture_fills
+
     slides: list[dict[str, Any]] | None = None
     replacements: dict[str, bytes] = {}
     chart_part_cache: dict[tuple[str, tuple[str, ...]], str] = {}
@@ -259,10 +346,22 @@ def _apply_chart_plot_property_edits(
             chart_xml = replacements.get(chart_part)
             if chart_xml is None:
                 chart_xml = package.read(chart_part)
-            replacements[chart_part] = _replace_chart_xml_plot_properties(
-                chart_xml,
-                properties,
-            )
+            data_table = properties.get("_data_table")
+            regular_properties = {
+                name: value
+                for name, value in properties.items()
+                if not name.startswith("_") and name != "picture_fills"
+            }
+            if regular_properties:
+                chart_xml = _replace_chart_xml_plot_properties(chart_xml, regular_properties)
+            if isinstance(data_table, dict):
+                chart_xml = _replace_chart_xml_data_table(chart_xml, data_table)
+            picture_fills = properties.get("picture_fills")
+            if picture_fills:
+                chart_xml = materialize_picture_fills(
+                    package, replacements, chart_part, chart_xml, picture_fills
+                )
+            replacements[chart_part] = chart_xml
     _copy_package_with_replacements(input_path, output_path, replacements)
 
 
@@ -273,11 +372,7 @@ def _apply_chart_axis_title_edits(
     *,
     slide_payloads: list[dict[str, Any]] | None = None,
 ) -> None:
-    slides = (
-        slide_payloads
-        if slide_payloads is not None
-        else _load_slide_payloads(input_path)
-    )
+    slides = slide_payloads if slide_payloads is not None else _load_slide_payloads(input_path)
     grouped_edits: dict[str, list[tuple[str, dict[str, Any]]]] = {}
     chart_part_cache: dict[tuple[str, tuple[str, ...]], str] = {}
     with zipfile.ZipFile(input_path) as package:
@@ -357,11 +452,7 @@ def _apply_chart_style_edits(
     *,
     slide_payloads: list[dict[str, Any]] | None = None,
 ) -> None:
-    slides = (
-        slide_payloads
-        if slide_payloads is not None
-        else _load_slide_payloads(input_path)
-    )
+    slides = slide_payloads if slide_payloads is not None else _load_slide_payloads(input_path)
     replacements: dict[str, bytes] = {}
     chart_part_cache: dict[tuple[str, tuple[str, ...]], str] = {}
     with zipfile.ZipFile(input_path) as package:
@@ -405,6 +496,31 @@ def _chart_slide_and_shape_payload(
     return slide_payload, shape_payload
 
 
+def _chart_part_for_group_path(package: zipfile.ZipFile, slide_part: str, path: list[int]) -> str:
+    from .chart_adds import _direct_group_child_group, _slide_group_shape
+
+    root = ET.fromstring(package.read(slide_part))
+    p_ns = "http://schemas.openxmlformats.org/presentationml/2006/main"
+    r_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    tree = root.find(f"{{{p_ns}}}cSld/{{{p_ns}}}spTree")
+    if tree is None or len(path) < 2:
+        raise AttributeError("group chart ancestry is unavailable")
+    group = _slide_group_shape(tree, path[0])
+    for child_index in path[1:-1]:
+        group = _direct_group_child_group(group, child_index)
+    children = [
+        child
+        for child in group
+        if child.tag.rsplit("}", 1)[-1] in {"sp", "pic", "graphicFrame", "cxnSp", "grpSp"}
+    ]
+    if path[-1] < 0 or path[-1] >= len(children):
+        raise IndexError("group chart child index out of range")
+    chart = children[path[-1]].find(f".//{{{C_NS}}}chart")
+    if chart is None or not chart.get(f"{{{r_ns}}}id"):
+        raise AttributeError("group child chart relationship is unavailable")
+    return _chart_part_for_slide_shape_in_package(package, slide_part, [chart.get(f"{{{r_ns}}}id")])
+
+
 def _chart_part_for_edit(
     input_path: Path,
     package: zipfile.ZipFile,
@@ -419,6 +535,13 @@ def _chart_part_for_edit(
         return hinted_part, slides
     if slides is None:
         slides = _load_slide_payloads(input_path)
+    group_path = edit.get("_chart_group_path")
+    if isinstance(group_path, list):
+        try:
+            slide_part = str(slides[slide_index]["part"])
+        except IndexError as exc:
+            raise IndexError("chart slide index out of range") from exc
+        return _chart_part_for_group_path(package, slide_part, group_path), slides
     try:
         slide_payload = slides[slide_index]
         shape_payload = slide_payload["shapes"][shape_index]
@@ -455,9 +578,7 @@ def _chart_part_for_shape_payload(
     chart_part_cache: dict[tuple[str, tuple[str, ...]], str] | None = None,
 ) -> str:
     slide_part = str(slide_payload["part"])
-    relationship_ids = tuple(
-        str(rel_id) for rel_id in shape_payload.get("relationship_ids") or []
-    )
+    relationship_ids = tuple(str(rel_id) for rel_id in shape_payload.get("relationship_ids") or [])
     cache_key = (slide_part, relationship_ids)
     if chart_part_cache is not None and cache_key in chart_part_cache:
         return chart_part_cache[cache_key]
@@ -489,7 +610,7 @@ def _chart_part_for_slide_shape_in_package(
     raise AttributeError("shape chart relationship is unavailable")
 
 
-def _chart_embedded_workbook_part(path: Path, chart_part: str) -> str:
+def _chart_embedded_workbook_part(path: Path, chart_part: str) -> str | None:
     with zipfile.ZipFile(path) as package:
         return _chart_embedded_workbook_part_in_package(package, chart_part)
 
@@ -497,11 +618,27 @@ def _chart_embedded_workbook_part(path: Path, chart_part: str) -> str:
 def _chart_embedded_workbook_part_in_package(
     package: zipfile.ZipFile,
     chart_part: str,
-) -> str:
+) -> str | None:
     rels_part = _rels_part_for_package_part(chart_part)
+    if rels_part not in package.namelist():
+        return None
     root = ET.fromstring(package.read(rels_part))
+    chart_root = ET.fromstring(package.read(chart_part))
+    external_data = chart_root.find(f"{{{C_NS}}}externalData")
+    workbook_id = (
+        external_data.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
+        if external_data is not None
+        else None
+    )
     for rel in root.findall(f"{{{PKG_REL_NS}}}Relationship"):
-        if not rel.attrib.get("Type", "").endswith("/package"):
+        if workbook_id is not None and rel.get("Id") != workbook_id:
             continue
-        return _resolve_package_target(chart_part, rel.attrib.get("Target", ""))
-    raise AttributeError("chart embedded workbook relationship is unavailable")
+        if not rel.get("Type", "").endswith("/package"):
+            continue
+        if rel.get("TargetMode") == "External":
+            continue
+        part = _resolve_package_target(chart_part, rel.get("Target", ""))
+        if part not in package.namelist():
+            raise ChartDataRefusal(f"{chart_part}: missing embedded workbook part {part}")
+        return part
+    return None

@@ -30,17 +30,23 @@ from . import benchmark_dropin_text_operations as _benchmark_dropin_text_operati
 from .adapters import available_tools
 from .adapters import apache_poi as _apache_poi_adapter
 from .adapters import external_command as _external_command_adapter
+from .adapters import libreoffice as _libreoffice_adapter
 from .adapters import openxml_sdk as _openxml_sdk_adapter
 from .adapters import pptxgenjs as _pptxgenjs_adapter
 from .adapters import rust_core as _rust_core_adapter
 from .benchmark_fit_text_fonts import find_fit_text_font
+from .benchmark_libreoffice_resave import libreoffice_resave_runs
 from .benchmark_models import (
     BenchmarkAdapter,
     BenchmarkResult,
     BenchmarkRun,
     BenchmarkSample,
 )
-from .benchmark_registry import build_benchmark_adapters, default_benchmark_adapter_names
+from .benchmark_registry import (
+    BENCHMARK_ADAPTER_SPECS,
+    build_benchmark_adapters,
+    default_benchmark_adapter_names,
+)
 from .benchmark_runtime import (
     always_available as _always_available,
     max_rss_mb as _max_rss_mb,
@@ -207,7 +213,9 @@ def _run_adapter_benchmark(
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             for _ in range(warmup):
-                adapter.run(fixture_id, fixture_path, expected_path, tmp_path, validate_openxml)
+                adapter.run(
+                    fixture_id, fixture_path, expected_path, tmp_path, validate_openxml
+                )
                 gc.collect()
             for iteration in range(1, iterations + 1):
                 elapsed_ms, details = adapter.run(
@@ -261,7 +269,9 @@ def _resolve_adapters(adapter_names: list[str] | None) -> list[BenchmarkAdapter]
     missing = [name for name in names if name not in by_name]
     if missing:
         known = ", ".join(sorted(by_name))
-        raise ValueError(f"unknown benchmark adapter(s): {', '.join(missing)}; known adapters: {known}")
+        raise ValueError(
+            f"unknown benchmark adapter(s): {', '.join(missing)}; known adapters: {known}"
+        )
     return [by_name[name] for name in names]
 
 
@@ -287,9 +297,8 @@ def _resolve_fixtures(fixture_ids: list[str] | None) -> list[dict[str, object]]:
     items = fixture_manifest(MANIFEST_PATH)
     if fixture_ids is None:
         return items
-    needs_private = (
-        PRIVATE_DECKS_SENTINEL in fixture_ids
-        or any(fixture_id.startswith("private/") for fixture_id in fixture_ids)
+    needs_private = PRIVATE_DECKS_SENTINEL in fixture_ids or any(
+        fixture_id.startswith("private/") for fixture_id in fixture_ids
     )
     private_items = discover_private_decks() if needs_private else []
     wanted = set(fixture_ids)
@@ -304,7 +313,9 @@ def _resolve_fixtures(fixture_ids: list[str] | None) -> list[dict[str, object]]:
     if missing:
         known_items = [*items, *private_items]
         known = ", ".join(str(item["id"]) for item in known_items)
-        raise ValueError(f"unknown fixture id(s): {', '.join(missing)}; known fixtures: {known}")
+        raise ValueError(
+            f"unknown fixture id(s): {', '.join(missing)}; known fixtures: {known}"
+        )
     return selected
 
 
@@ -329,7 +340,10 @@ def _append_benchmark_results(run_id: str, result: BenchmarkResult) -> None:
                 adapter=result.adapter,
                 operation=f"benchmark:{result.operation}",
                 status="skip",
-                metadata={"reason": result.skip_reason, "latency_ms": result.latency_stats()},
+                metadata={
+                    "reason": result.skip_reason,
+                    "latency_ms": result.latency_stats(),
+                },
             )
         )
         return
@@ -360,7 +374,9 @@ def _benchmark_environment() -> dict[str, Any]:
 def _git_environment() -> dict[str, Any]:
     env_head = os.environ.get("WOLFPPT_BENCHMARK_GIT_HEAD")
     if env_head:
-        env_short_head = os.environ.get("WOLFPPT_BENCHMARK_GIT_SHORT_HEAD") or env_head[:7]
+        env_short_head = (
+            os.environ.get("WOLFPPT_BENCHMARK_GIT_SHORT_HEAD") or env_head[:7]
+        )
         env_dirty = os.environ.get("WOLFPPT_BENCHMARK_GIT_DIRTY", "false").lower()
         env_sync_status = os.environ.get("WOLFPPT_BENCHMARK_GIT_SYNC_STATUS")
         git_info: dict[str, Any] = {
@@ -456,6 +472,12 @@ def _benchmark_adapter_namespace() -> dict[str, Any]:
             "external_command_roundtrip_unavailable_reason": (
                 _external_command_adapter.external_command_roundtrip_unavailable_reason
             ),
+            "libreoffice_resave_available": (
+                _libreoffice_adapter.libreoffice_resave_available
+            ),
+            "libreoffice_resave_unavailable_reason": (
+                _libreoffice_adapter.libreoffice_resave_unavailable_reason
+            ),
             "openxml_sdk_roundtrip_available": (
                 _openxml_sdk_adapter.openxml_sdk_roundtrip_available
             ),
@@ -469,6 +491,7 @@ def _benchmark_adapter_namespace() -> dict[str, Any]:
             for name, value in vars(module).items()
             if name.startswith("_bench_")
         )
+    namespace.update(libreoffice_resave_runs(BENCHMARK_ADAPTER_SPECS, namespace))
     return namespace
 
 

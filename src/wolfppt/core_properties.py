@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
+from xml.parsers import expat
 
-from .package_parts import package_part_content_type
-
+from .package_parts import (
+    InMemoryPackageSource,
+    open_package_source,
+    package_part_content_type,
+)
 
 CP_NS = "http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
 DC_NS = "http://purl.org/dc/elements/1.1/"
@@ -35,6 +39,7 @@ _CORE_PROPERTY_TEXT_TAGS = {
     "last_modified_by": (CP_NS, "lastModifiedBy"),
     "category": (CP_NS, "category"),
     "content_status": (CP_NS, "contentStatus"),
+    "content_type_value": (CP_NS, "contentType"),
     "identifier": (DC_NS, "identifier"),
     "language": (DC_NS, "language"),
     "version": (CP_NS, "version"),
@@ -51,7 +56,7 @@ class CoreProperties:
 
     def __init__(self, presentation: Any) -> None:
         self._presentation = presentation
-        self._values = read_core_properties(presentation.path)
+        self._values = read_core_properties(presentation._source_path)
 
     @property
     def partname(self) -> str:
@@ -59,7 +64,7 @@ class CoreProperties:
 
     @property
     def content_type(self) -> str:
-        content_type = package_part_content_type(self._presentation.path, self.partname)
+        content_type = package_part_content_type(self._presentation._source_path, self.partname)
         return content_type or _CORE_PROPERTIES_CONTENT_TYPE
 
     @property
@@ -67,7 +72,7 @@ class CoreProperties:
         return serialize_core_properties(self._values)
 
     @property
-    def part(self) -> "CoreProperties":
+    def part(self) -> CoreProperties:
         return self
 
     @property
@@ -139,6 +144,15 @@ class CoreProperties:
         self._set_text_property("content_status", value)
 
     @property
+    def content_type_value(self) -> str:
+        """The ``cp:contentType`` value, distinct from the part's MIME type."""
+        return self._text_property("content_type_value")
+
+    @content_type_value.setter
+    def content_type_value(self, value: Any) -> None:
+        self._set_text_property("content_type_value", value)
+
+    @property
     def identifier(self) -> str:
         return self._text_property("identifier")
 
@@ -180,7 +194,7 @@ class CoreProperties:
         return _core_property_datetime_value(self._values.get("created"))
 
     @created.setter
-    def created(self, value: datetime) -> None:
+    def created(self, value: datetime | None) -> None:
         self._set_datetime_property("created", value)
 
     @property
@@ -188,7 +202,7 @@ class CoreProperties:
         return _core_property_datetime_value(self._values.get("modified"))
 
     @modified.setter
-    def modified(self, value: datetime) -> None:
+    def modified(self, value: datetime | None) -> None:
         self._set_datetime_property("modified", value)
 
     @property
@@ -196,31 +210,30 @@ class CoreProperties:
         return _core_property_datetime_value(self._values.get("last_printed"))
 
     @last_printed.setter
-    def last_printed(self, value: datetime) -> None:
+    def last_printed(self, value: datetime | None) -> None:
         self._set_datetime_property("last_printed", value)
 
     def _text_property(self, name: str) -> str:
         return str(self._values.get(name) or "")
 
     def _set_text_property(self, name: str, value: Any) -> None:
-        text = str(value)
+        text = "" if value is None else str(value)
         if len(text) > _CORE_PROPERTY_STRING_LIMIT:
-            raise ValueError(
-                "exceeded 255 char limit for property, got:\n\n"
-                f"{text!r}"
-            )
+            raise ValueError(f"exceeded 255 char limit for property, got:\n\n{text!r}")
         if text == self._text_property(name):
             return
         self._values[name] = text
         self._queue_edit()
 
-    def _set_datetime_property(self, name: str, value: datetime) -> None:
-        if not isinstance(value, datetime):
+    def _set_datetime_property(self, name: str, value: datetime | None) -> None:
+        if value is None:
+            normalized = None
+        elif isinstance(value, datetime):
+            normalized = _naive_utc_datetime(value)
+        else:
             raise ValueError(
-                "property requires <type 'datetime.datetime'> object, "
-                f"got {type(value)!r}"
+                f"property requires <type 'datetime.datetime'> object, got {type(value)!r}"
             )
-        normalized = _naive_utc_datetime(value)
         if normalized == self._values.get(name):
             return
         self._values[name] = normalized
@@ -230,16 +243,14 @@ class CoreProperties:
         self._presentation._queue_core_properties(self._values)
 
 
-def read_core_properties(path: Path) -> dict[str, Any]:
+def read_core_properties(source: Path | InMemoryPackageSource) -> dict[str, Any]:
     try:
-        with zipfile.ZipFile(path) as package:
-            root = ET.fromstring(package.read(CORE_PROPERTIES_PARTNAME))
-    except (
-        FileNotFoundError,
-        KeyError,
-        ET.ParseError,
-        zipfile.BadZipFile,
-    ):
+        with open_package_source(source) as package:
+            source_xml = package.read(CORE_PROPERTIES_PARTNAME)
+            root = ET.fromstring(source_xml)
+    except ET.ParseError as exc:
+        raise ValueError("core properties part is malformed XML") from exc
+    except (FileNotFoundError, KeyError, zipfile.BadZipFile):
         return _default_core_properties()
     values = _default_core_properties()
     for name, (namespace, local_name) in _CORE_PROPERTY_TEXT_TAGS.items():
@@ -249,13 +260,15 @@ def read_core_properties(path: Path) -> dict[str, Any]:
     if revision is not None and revision.text:
         try:
             values["revision"] = int(revision.text)
-        except ValueError:
-            values["revision"] = 0
+        except ValueError as exc:
+            raise ValueError(
+                f"core property revision is not an integer: {revision.text!r}"
+            ) from exc
     for name, (namespace, local_name) in _CORE_PROPERTY_DATETIME_TAGS.items():
         element = root.find(f"{{{namespace}}}{local_name}")
-        values[name] = _parse_core_property_datetime(
-            None if element is None else element.text
-        )
+        values[name] = _parse_core_property_datetime(None if element is None else element.text)
+    values["_original_values"] = dict(values)
+    values["_source_xml"] = source_xml
     return values
 
 
@@ -273,6 +286,7 @@ def serialize_core_properties(values: dict[str, Any]) -> bytes:
         "modified",
         "category",
         "content_status",
+        "content_type_value",
         "identifier",
         "language",
         "version",
@@ -286,6 +300,7 @@ def serialize_core_properties(values: dict[str, Any]) -> bytes:
             text = str(values.get(name) or "")
             if not text and name in {
                 "content_status",
+                "content_type_value",
                 "identifier",
                 "language",
                 "version",
@@ -304,7 +319,107 @@ def serialize_core_properties(values: dict[str, Any]) -> bytes:
             if name in {"created", "modified"}:
                 element.set(f"{{{XSI_NS}}}type", "dcterms:W3CDTF")
             element.text = _format_core_property_datetime(value)
+    if "_source_xml" in values:
+        return _patch_core_properties(values, root)
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def _patch_core_properties(values: dict[str, Any], root: ET.Element) -> bytes:
+    """Splice edited fields only, retaining unedited XML and namespace bindings."""
+    source = values["_source_xml"]
+    original = values["_original_values"]
+    tags = {**_CORE_PROPERTY_TEXT_TAGS, **_CORE_PROPERTY_DATETIME_TAGS}
+    tags["revision"] = (CP_NS, "revision")
+    changed = {
+        f"{namespace}}}{local_name}"
+        for name, (namespace, local_name) in tags.items()
+        if values.get(name) != original.get(name)
+    }
+    if not changed:
+        return source
+    # OPC XML permits UTF-8 and UTF-16. Keep the source encoding and lexical
+    # spelling of every untouched element, including entities and CDATA.
+    encoding = "utf-8"
+    if source.startswith((b"\xff\xfe", b"<\x00")):
+        encoding = "utf-16-le"
+    elif source.startswith((b"\xfe\xff", b"\x00<")):
+        encoding = "utf-16-be"
+    width = 2 if encoding.startswith("utf-16") else 1
+    quotes = {token.encode(encoding) for token in ('"', "'")}
+    close = ">".encode(encoding)
+
+    def tag_end(start: int) -> int:
+        quote = None
+        for offset in range(start, len(source), width):
+            token = source[offset : offset + width]
+            if quote is not None:
+                if token == quote:
+                    quote = None
+            elif token in quotes:
+                quote = token
+            elif token == close:
+                return offset + width
+        raise ValueError("unterminated core-property XML tag")
+
+    serialized = {
+        child.tag[1:]: ET.tostring(child, encoding="unicode")
+        for child in root
+        if child.tag[1:] in changed
+    }
+    pending = {}
+    root_namespaces = {}
+    edits = []
+    stack = []
+    parser = expat.ParserCreate(namespace_separator="}")
+    root_name = ""
+
+    def namespace(prefix: str | None, uri: str) -> None:
+        if not stack:
+            root_namespaces[prefix] = uri
+
+    def start(name: str, _attributes: dict[str, str]) -> None:
+        nonlocal root_name
+        if not stack:
+            begin = parser.CurrentByteIndex
+            opening = source[begin : tag_end(begin)].decode(encoding)
+            root_name = opening[1:].split()[0].rstrip("/>")
+            for tag, xml in serialized.items():
+                opening, remainder = xml.split(">", 1)
+                for prefix, uri in root_namespaces.items():
+                    suffix = f":{prefix}" if prefix else ""
+                    declaration = f' xmlns{suffix}="{uri}"'
+                    opening = opening.replace(declaration, "")
+                pending[tag] = (opening + ">" + remainder).encode(encoding)
+        stack.append((name, parser.CurrentByteIndex))
+
+    def end(_name: str) -> None:
+        name, begin = stack.pop()
+        opening_end = tag_end(begin)
+        self_closing = source[begin:opening_end].decode(encoding).endswith("/>")
+        if len(stack) == 1 and name in changed:
+            finish = opening_end if self_closing else tag_end(parser.CurrentByteIndex)
+            edits.append((begin, finish, pending.pop(name, b"")))
+            changed.remove(name)
+        elif not stack and pending:
+            addition = b"".join(pending.values())
+            if self_closing:
+                edits.append(
+                    (
+                        opening_end - 2 * width,
+                        opening_end,
+                        (">".encode(encoding) + addition + f"</{root_name}>".encode(encoding)),
+                    )
+                )
+            else:
+                edits.append((parser.CurrentByteIndex, parser.CurrentByteIndex, addition))
+
+    parser.StartElementHandler = start
+    parser.EndElementHandler = end
+    parser.StartNamespaceDeclHandler = namespace
+    parser.Parse(source, True)
+    for begin, finish, replacement in sorted(edits, reverse=True):
+        source = source[:begin] + replacement + source[finish:]
+    return source
 
 
 def _default_core_properties() -> dict[str, Any]:
@@ -338,7 +453,7 @@ def _core_property_datetime_value(value: Any) -> datetime | None:
 def _naive_utc_datetime(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(microsecond=0)
-    return value.astimezone(timezone.utc).replace(tzinfo=None, microsecond=0)
+    return value.astimezone(UTC).replace(tzinfo=None, microsecond=0)
 
 
 def _format_core_property_datetime(value: datetime) -> str:

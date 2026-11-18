@@ -79,6 +79,16 @@ is on wolfppt.com.
   CPython 3.11-3.14 on Linux x86_64/aarch64 and macOS arm64. Check the
   [compatibility matrix](docs/compatibility/compatibility-matrix.md) for each
   call a script relies on, and keep python-pptx for APIs it does not list.
+- **Import alias:** call `wolfppt.pptx_alias.install()` before importing
+  `pptx` and imports of the implemented python-pptx surface resolve to
+  WolfPPT, so existing scripts can run unchanged. It covers a documented subset
+  of python-pptx; namespaces it does not implement fail to import, and no
+  python-pptx installation is consulted as a fallback. The alias is
+  process-wide, so compare against python-pptx in a separate process.
+- **Editions:** this package is the MIT Community edition. Features that need
+  the Commercial edition (legacy `.ppt` and `.odp` files, native rendering,
+  reporting refresh, and deck assembly) raise `wolfppt.CommercialFeatureError`
+  naming the feature.
 
 ## Quickstart
 

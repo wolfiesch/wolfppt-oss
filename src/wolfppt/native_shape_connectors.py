@@ -2,11 +2,58 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
+import zipfile
 from pathlib import Path
 
 from .native_binding import NATIVE_INSTALL_HINT
 from .native_results import NativeConnectorAddResult
+from .package_parts import copy_package_with_replacements
+
+# Connector presets the native connector writer does not emit, keyed to the writer preset of
+# the same family. Both carry an empty ``a:avLst``, so the written ``p:cxnSp`` differs only in
+# ``a:prstGeom/@prst``, which is retagged on the native output.
+CONNECTOR_PRESET_WRITER_BASE = {
+    "straightConnector1": "line",
+    "bentConnector2": "bentConnector3",
+    "bentConnector4": "bentConnector3",
+    "bentConnector5": "bentConnector3",
+    "curvedConnector2": "curvedConnector3",
+    "curvedConnector4": "curvedConnector3",
+    "curvedConnector5": "curvedConnector3",
+}
+
+
+def _retag_connector_preset(
+    output_path: str | Path,
+    result: NativeConnectorAddResult,
+    preset_geometry: str,
+) -> NativeConnectorAddResult:
+    """Rewrite the added connector's ``prst`` from its writer base to ``preset_geometry``."""
+    base = CONNECTOR_PRESET_WRITER_BASE.get(preset_geometry)
+    if base is None:
+        return result
+    slide_part = result.slide_part.lstrip("/")
+    with zipfile.ZipFile(output_path) as package:
+        slide_xml = package.read(slide_part)
+    opener = f'<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="{result.shape_id}" '.encode()
+    geometry = f'<a:prstGeom prst="{base}">'.encode()
+    start = slide_xml.find(opener)
+    end = slide_xml.find(b"</p:cxnSp>", start) if start >= 0 else -1
+    at = slide_xml.find(geometry, start, end) if end >= 0 else -1
+    if at < 0:
+        raise RuntimeError(
+            f"native connector {result.shape_id} in {slide_part} has no "
+            f"prst={base} geometry to retag as {preset_geometry}"
+        )
+    retagged = (
+        slide_xml[:at]
+        + f'<a:prstGeom prst="{preset_geometry}">'.encode()
+        + slide_xml[at + len(geometry) :]
+    )
+    copy_package_with_replacements(Path(output_path), Path(output_path), {slide_part: retagged})
+    return dataclasses.replace(result, preset_geometry=preset_geometry)
 
 
 def add_group_connector(
@@ -305,14 +352,14 @@ def add_connector(
             str(input_path),
             str(output_path),
             slide_index,
-            preset_geometry,
+            CONNECTOR_PRESET_WRITER_BASE.get(preset_geometry, preset_geometry),
             begin_x_emu,
             begin_y_emu,
             end_x_emu,
             end_y_emu,
         )
     )
-    return NativeConnectorAddResult(
+    result = NativeConnectorAddResult(
         path=payload["path"],
         slide_index=int(payload["slide_index"]),
         slide_part=payload["slide_part"],
@@ -321,6 +368,7 @@ def add_connector(
         part_count=int(payload["part_count"]),
         has_vba=bool(payload["has_vba"]),
     )
+    return _retag_connector_preset(output_path, result, preset_geometry)
 
 
 def add_connected_connector(
@@ -345,7 +393,7 @@ def add_connected_connector(
             str(input_path),
             str(output_path),
             slide_index,
-            preset_geometry,
+            CONNECTOR_PRESET_WRITER_BASE.get(preset_geometry, preset_geometry),
             begin_x_emu,
             begin_y_emu,
             end_x_emu,
@@ -356,7 +404,7 @@ def add_connected_connector(
             None if end_connection is None else end_connection[1],
         )
     )
-    return NativeConnectorAddResult(
+    result = NativeConnectorAddResult(
         path=payload["path"],
         slide_index=int(payload["slide_index"]),
         slide_part=payload["slide_part"],
@@ -365,6 +413,7 @@ def add_connected_connector(
         part_count=int(payload["part_count"]),
         has_vba=bool(payload["has_vba"]),
     )
+    return _retag_connector_preset(output_path, result, preset_geometry)
 
 
 def add_connected_connector_with_auto_shapes(
@@ -409,7 +458,7 @@ def add_connected_connector_with_auto_shapes(
             end_y_emu,
             end_cx_emu,
             end_cy_emu,
-            connector_preset_geometry,
+            CONNECTOR_PRESET_WRITER_BASE.get(connector_preset_geometry, connector_preset_geometry),
             connector_begin_x_emu,
             connector_begin_y_emu,
             connector_end_x_emu,
@@ -418,7 +467,7 @@ def add_connected_connector_with_auto_shapes(
             end_cxn_pt_idx,
         )
     )
-    return NativeConnectorAddResult(
+    result = NativeConnectorAddResult(
         path=payload["path"],
         slide_index=int(payload["slide_index"]),
         slide_part=payload["slide_part"],
@@ -427,3 +476,4 @@ def add_connected_connector_with_auto_shapes(
         part_count=int(payload["part_count"]),
         has_vba=bool(payload["has_vba"]),
     )
+    return _retag_connector_preset(output_path, result, connector_preset_geometry)

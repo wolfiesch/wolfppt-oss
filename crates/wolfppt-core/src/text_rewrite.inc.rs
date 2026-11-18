@@ -1,40 +1,66 @@
+// A DrawingML text node can span Text, GeneralRef and CDATA events. Match and
+// index the logical node, not each parser event; retain its original bytes when
+// no edit applies.
+fn read_xml_text_node<'a>(
+    reader: &mut Reader<&'a [u8]>,
+    text: &mut String,
+) -> Result<BytesEnd<'a>, WolfPptError> {
+    text.clear();
+    loop {
+        match reader.read_event()? {
+            Event::Text(event) => text.push_str(&event.xml10_content()),
+            Event::CData(event) => text.push_str(&event.xml10_content()),
+            Event::GeneralRef(event) => {
+                if let Some(character) = event
+                    .resolve_char_ref()
+                    .map_err(|err| WolfPptError::XmlText(err.to_string()))?
+                {
+                    text.push(character);
+                } else if let Some(entity) = quick_xml::escape::resolve_xml_entity(event.as_ref()) {
+                    text.push_str(entity);
+                } else {
+                    // Preserve the summary reader's literal unknown-entity contract.
+                    text.push('&');
+                    text.push_str(event.as_ref());
+                    text.push(';');
+                }
+            }
+            Event::End(event) => return Ok(event),
+            Event::Eof => {
+                return Err(WolfPptError::XmlText(
+                    "unexpected EOF while reading text node".to_string(),
+                ));
+            }
+            _ => {}
+        }
+    }
+}
+
 fn replace_text_nodes(
     xml: &[u8],
     search: &str,
     replacement: &str,
 ) -> Result<(Vec<u8>, usize), WolfPptError> {
+    let bom = utf8_bom_offset(xml);
     let mut reader = Reader::from_reader(xml);
     reader.config_mut().trim_text(false);
     let mut writer = Writer::new(Vec::with_capacity(xml.len()));
-    let mut in_text = false;
+    let mut text = String::new();
     let mut replacements = 0;
 
     loop {
         match reader.read_event()? {
-            Event::Start(event) => {
-                if local_name(event.name().as_ref()) == b"t" {
-                    in_text = true;
-                }
+            Event::Start(event) if local_name(event.name().as_ref().as_bytes()) == b"t" => {
                 writer.write_event(Event::Start(event))?;
-            }
-            Event::End(event) => {
-                if local_name(event.name().as_ref()) == b"t" {
-                    in_text = false;
-                }
-                writer.write_event(Event::End(event))?;
-            }
-            Event::Text(event) if in_text => {
-                let text = event
-                    .decode()
-                    .map_err(|err| WolfPptError::XmlText(err.to_string()))?
-                    .into_owned();
+                let start = bom + reader.buffer_position() as usize;
+                let end = read_xml_text_node(&mut reader, &mut text)?;
                 let count = text.matches(search).count();
                 if count == 0 {
-                    writer.write_event(Event::Text(event))?;
+                    writer.get_mut().extend_from_slice(&xml[start..bom + reader.buffer_position() as usize]);
                 } else {
                     replacements += count;
-                    let replaced = text.replace(search, replacement);
-                    writer.write_event(Event::Text(BytesText::new(&replaced)))?;
+                    writer.write_event(Event::Text(BytesText::new(&text.replace(search, replacement))))?;
+                    writer.write_event(Event::End(end))?;
                 }
             }
             Event::Eof => break,
@@ -44,41 +70,62 @@ fn replace_text_nodes(
 
     Ok((writer.into_inner(), replacements))
 }
-/// Replace the text of the `target_run_index`-th `a:r` run in a slide.
-///
-/// Runs are counted the same way as `extract_paragraph_runs` and the run
-/// formatting writers: every run element, including runs with empty text,
-/// and never `a:fld` fields.
+
 fn replace_text_run_at_index_in_slide(
     xml: &[u8],
     target_run_index: usize,
     replacement: &str,
 ) -> Result<(Vec<u8>, usize), WolfPptError> {
+    let bom = utf8_bom_offset(xml);
     let mut reader = Reader::from_reader(xml);
     reader.config_mut().trim_text(false);
     let mut writer = Writer::new(Vec::with_capacity(xml.len()));
     let mut run_index = 0;
     let mut replacements = 0;
+    let mut in_run = false;
 
     loop {
         match reader.read_event()? {
-            Event::Start(event) if local_name(event.name().as_ref()) == b"r" => {
-                let is_target = run_index == target_run_index;
-                run_index += 1;
+            Event::Start(event) if local_name(event.name().as_ref().as_bytes()) == b"r" => {
+                in_run = true;
+                writer.write_event(Event::Start(event))?;
+            }
+            Event::End(event) if local_name(event.name().as_ref().as_bytes()) == b"r" => {
+                in_run = false;
+                writer.write_event(Event::End(event))?;
+            }
+            Event::Start(event) if local_name(event.name().as_ref().as_bytes()) == b"t" => {
+                let name = event.name();
+                let start = bom + reader.buffer_position() as usize;
+                let content = reader.read_to_end(name)?;
+                // Empty DrawingML runs retain their position after queued edits.
+                // Orphan text nodes keep the legacy nonempty-node index contract.
+                let indexed = in_run || !content.is_empty();
                 writer.write_event(Event::Start(event.borrow()))?;
-                if is_target {
-                    write_replaced_run_body(&mut reader, &mut writer, &event, replacement)?;
+                if indexed && run_index == target_run_index {
+                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
+                    writer.write_event(Event::End(event.to_end()))?;
                     replacements += 1;
+                } else {
+                    writer.get_mut().extend_from_slice(&xml[start..bom + reader.buffer_position() as usize]);
+                }
+                if indexed {
+                    run_index += 1;
                 }
             }
-            Event::Empty(event) if local_name(event.name().as_ref()) == b"r" => {
-                if run_index == target_run_index {
-                    write_text_only_run(&mut writer, &event, replacement)?;
+            Event::Empty(event) if local_name(event.name().as_ref().as_bytes()) == b"t" => {
+                if in_run && run_index == target_run_index {
+                    let end = event.to_end().into_owned();
+                    writer.write_event(Event::Start(event))?;
+                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
+                    writer.write_event(Event::End(end))?;
                     replacements += 1;
                 } else {
                     writer.write_event(Event::Empty(event))?;
                 }
-                run_index += 1;
+                if in_run {
+                    run_index += 1;
+                }
             }
             Event::Eof => break,
             event => writer.write_event(event)?,
@@ -86,89 +133,6 @@ fn replace_text_run_at_index_in_slide(
     }
 
     Ok((writer.into_inner(), replacements))
-}
-
-/// Stream the body of a run whose start tag was already written, replacing
-/// the content of its `a:t` with `replacement` and keeping everything else.
-/// Consumes events through the run's end tag. A run without `a:t` gets one.
-fn write_replaced_run_body(
-    reader: &mut Reader<&[u8]>,
-    writer: &mut Writer<Vec<u8>>,
-    run: &BytesStart<'_>,
-    replacement: &str,
-) -> Result<(), WolfPptError> {
-    let mut depth = 0usize;
-    let mut in_text = false;
-    let mut wrote_text = false;
-
-    loop {
-        match reader.read_event()? {
-            Event::Start(event) => {
-                if depth == 0 && !wrote_text && local_name(event.name().as_ref()) == b"t" {
-                    in_text = true;
-                }
-                depth += 1;
-                writer.write_event(Event::Start(event))?;
-            }
-            Event::Empty(event) => {
-                if depth == 0 && !wrote_text && local_name(event.name().as_ref()) == b"t" {
-                    writer.write_event(Event::Start(event.borrow()))?;
-                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
-                    writer.write_event(Event::End(event.to_end()))?;
-                    wrote_text = true;
-                } else {
-                    writer.write_event(Event::Empty(event))?;
-                }
-            }
-            Event::End(event) => {
-                if depth == 0 {
-                    if !wrote_text {
-                        write_run_text_element(writer, run, replacement)?;
-                    }
-                    writer.write_event(Event::End(event))?;
-                    return Ok(());
-                }
-                depth -= 1;
-                if in_text && depth == 0 {
-                    writer.write_event(Event::Text(BytesText::new(replacement)))?;
-                    in_text = false;
-                    wrote_text = true;
-                }
-                writer.write_event(Event::End(event))?;
-            }
-            Event::Text(_) | Event::GeneralRef(_) | Event::CData(_) if in_text => {}
-            Event::Eof => return Ok(()),
-            event => writer.write_event(event)?,
-        }
-    }
-}
-
-/// Expand a self-closing `<a:r/>` into a run holding only `replacement`.
-fn write_text_only_run(
-    writer: &mut Writer<Vec<u8>>,
-    run: &BytesStart<'_>,
-    replacement: &str,
-) -> Result<(), WolfPptError> {
-    writer.write_event(Event::Start(run.borrow()))?;
-    write_run_text_element(writer, run, replacement)?;
-    writer.write_event(Event::End(run.to_end()))?;
-    Ok(())
-}
-
-/// Write `<prefix:t>replacement</prefix:t>` using the run element's prefix.
-fn write_run_text_element(
-    writer: &mut Writer<Vec<u8>>,
-    run: &BytesStart<'_>,
-    replacement: &str,
-) -> Result<(), WolfPptError> {
-    let tag = match run.name().prefix() {
-        Some(prefix) => format!("{}:t", String::from_utf8_lossy(prefix.as_ref())),
-        None => "t".to_string(),
-    };
-    writer.write_event(Event::Start(BytesStart::new(tag.as_str())))?;
-    writer.write_event(Event::Text(BytesText::new(replacement)))?;
-    writer.write_event(Event::End(BytesEnd::new(tag.as_str())))?;
-    Ok(())
 }
 
 fn set_text_run_bold_at_index_in_slide(
@@ -190,16 +154,25 @@ fn set_text_run_italic_at_index_in_slide(
 fn set_text_run_underline_at_index_in_slide(
     xml: &[u8],
     target_run_index: usize,
-    underline: Option<bool>,
+    underline: Option<TextUnderline>,
 ) -> Result<(Vec<u8>, usize), WolfPptError> {
-    let value = underline.map(|value| {
+    let value = underline.map(|value| value.token().to_string());
+    set_text_run_optional_attribute_at_index_in_slide(xml, target_run_index, "u", value)
+}
+
+fn set_text_run_strike_at_index_in_slide(
+    xml: &[u8],
+    target_run_index: usize,
+    strike: Option<bool>,
+) -> Result<(Vec<u8>, usize), WolfPptError> {
+    let value = strike.map(|value| {
         if value {
-            "sng".to_string()
+            "sngStrike".to_string()
         } else {
-            "none".to_string()
+            "noStrike".to_string()
         }
     });
-    set_text_run_optional_attribute_at_index_in_slide(xml, target_run_index, "u", value)
+    set_text_run_optional_attribute_at_index_in_slide(xml, target_run_index, "strike", value)
 }
 
 fn set_text_run_font_size_at_index_in_slide(
@@ -230,7 +203,7 @@ fn set_text_run_font_name_at_index_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if skip_latin_depth > 0 {
                     skip_latin_depth += 1;
                     continue;
@@ -276,7 +249,7 @@ fn set_text_run_font_name_at_index_in_slide(
                 }
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if skip_latin_depth > 0 {
                     continue;
                 }
@@ -311,7 +284,7 @@ fn set_text_run_font_name_at_index_in_slide(
                     skip_latin_depth = skip_latin_depth.saturating_sub(1);
                     continue;
                 }
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_run {
                     if target_depth == 1 && name == b"r" && !handled_run_properties {
                         write_run_properties_font_name(&mut writer, font_name)?;
@@ -345,10 +318,60 @@ fn set_text_run_font_name_at_index_in_slide(
 struct TextRunFormattingPatch<'a> {
     bold: Option<Option<bool>>,
     italic: Option<Option<bool>>,
-    underline: Option<Option<bool>>,
+    underline: Option<Option<TextUnderline>>,
+    strike: Option<Option<bool>>,
     size: Option<Option<i64>>,
     name: Option<Option<&'a str>>,
-    color: Option<Option<&'a str>>,
+    color: Option<Option<RunFillColor<'a>>>,
+}
+
+/// The target run index and validated patch of a `SetTextRunFormatting`
+/// edit; `None` for any other operation.
+fn text_run_formatting_edit(
+    operation: &EditOperation,
+) -> Option<Result<(usize, TextRunFormattingPatch<'_>), WolfPptError>> {
+    let EditOperation::SetTextRunFormatting {
+        run_index,
+        set_bold,
+        bold,
+        set_italic,
+        italic,
+        set_underline,
+        underline,
+        set_strike,
+        strike,
+        set_size,
+        size,
+        set_name,
+        name,
+        set_color,
+        color,
+        color_model,
+        ..
+    } = operation
+    else {
+        return None;
+    };
+    let color = if *set_color {
+        match RunFillColor::from_request(color.as_deref(), color_model.as_ref()) {
+            Ok(color) => Some(color),
+            Err(error) => return Some(Err(error)),
+        }
+    } else {
+        None
+    };
+    Some(Ok((
+        *run_index,
+        TextRunFormattingPatch {
+            bold: set_bold.then_some(*bold),
+            italic: set_italic.then_some(*italic),
+            underline: set_underline.then_some(*underline),
+            strike: set_strike.then_some(*strike),
+            size: set_size.then_some(*size),
+            name: set_name.then_some(name.as_deref()),
+            color,
+        },
+    )))
 }
 
 impl<'a> TextRunFormattingPatch<'a> {
@@ -361,6 +384,9 @@ impl<'a> TextRunFormattingPatch<'a> {
         }
         if patch.underline.is_some() {
             self.underline = patch.underline;
+        }
+        if patch.strike.is_some() {
+            self.strike = patch.strike;
         }
         if patch.size.is_some() {
             self.size = patch.size;
@@ -388,13 +414,16 @@ impl<'a> TextRunFormattingPatch<'a> {
             ));
         }
         if let Some(underline) = self.underline {
+            replacements.push(("u", underline.map(|value| value.token().to_string())));
+        }
+        if let Some(strike) = self.strike {
             replacements.push((
-                "u",
-                underline.map(|value| {
+                "strike",
+                strike.map(|value| {
                     if value {
-                        "sng".to_string()
+                        "sngStrike".to_string()
                     } else {
-                        "none".to_string()
+                        "noStrike".to_string()
                     }
                 }),
             ));
@@ -409,6 +438,7 @@ impl<'a> TextRunFormattingPatch<'a> {
         usize::from(self.bold.is_some())
             + usize::from(self.italic.is_some())
             + usize::from(self.underline.is_some())
+            + usize::from(self.strike.is_some())
             + usize::from(self.size.is_some())
             + usize::from(self.name.is_some())
             + usize::from(self.color.is_some())
@@ -418,7 +448,8 @@ impl<'a> TextRunFormattingPatch<'a> {
 struct ParagraphFontPatch<'a> {
     bold: Option<Option<bool>>,
     italic: Option<Option<bool>>,
-    underline: Option<Option<bool>>,
+    underline: Option<Option<TextUnderline>>,
+    strike: Option<Option<bool>>,
     size: Option<Option<i64>>,
     name: Option<Option<&'a str>>,
     color: Option<Option<&'a str>>,
@@ -442,13 +473,16 @@ impl<'a> ParagraphFontPatch<'a> {
             ));
         }
         if let Some(underline) = self.underline {
+            replacements.push(("u", underline.map(|value| value.token().to_string())));
+        }
+        if let Some(strike) = self.strike {
             replacements.push((
-                "u",
-                underline.map(|value| {
+                "strike",
+                strike.map(|value| {
                     if value {
-                        "sng".to_string()
+                        "sngStrike".to_string()
                     } else {
-                        "none".to_string()
+                        "noStrike".to_string()
                     }
                 }),
             ));
@@ -470,6 +504,7 @@ impl<'a> ParagraphFontPatch<'a> {
         usize::from(self.bold.is_some())
             + usize::from(self.italic.is_some())
             + usize::from(self.underline.is_some())
+            + usize::from(self.strike.is_some())
             + usize::from(self.size.is_some())
             + usize::from(self.name.is_some())
             + usize::from(self.color.is_some())
@@ -514,7 +549,7 @@ fn set_text_run_formatting_batch_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if skip_latin_depth > 0 {
                     skip_latin_depth += 1;
                     continue;
@@ -584,7 +619,7 @@ fn set_text_run_formatting_batch_in_slide(
                 }
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if skip_latin_depth > 0 {
                     continue;
                 }
@@ -620,9 +655,10 @@ fn set_text_run_formatting_batch_in_slide(
                         }
                         handled_run_properties = true;
                         replacements += patch.replacement_count();
-                    } else if rpr_depth > 0 && name == b"latin" && patch.name.is_some() {
-                        continue;
-                    } else if rpr_depth > 0 && is_fill_property(&name) && patch.color.is_some() {
+                    } else if rpr_depth > 0
+                        && ((name == b"latin" && patch.name.is_some())
+                            || (is_fill_property(&name) && patch.color.is_some()))
+                    {
                         continue;
                     } else {
                         writer.write_event(Event::Empty(event))?;
@@ -640,7 +676,7 @@ fn set_text_run_formatting_batch_in_slide(
                     skip_fill_depth = skip_fill_depth.saturating_sub(1);
                     continue;
                 }
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_run {
                     let patch = active_patch.expect("target run has an active formatting patch");
                     if target_depth == 1 && name == b"r" && !handled_run_properties {
@@ -710,7 +746,7 @@ fn set_text_run_optional_attribute_at_index_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"r" && !in_target_run {
                     in_target_run = run_index == target_run_index;
                     run_index += 1;
@@ -748,7 +784,7 @@ fn set_text_run_optional_attribute_at_index_in_slide(
                 }
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_run {
                     if target_depth == 1 && name != b"rPr" && !handled_run_properties {
                         write_run_properties_optional_attribute(
@@ -774,7 +810,7 @@ fn set_text_run_optional_attribute_at_index_in_slide(
                 }
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_target_run {
                     if target_depth == 1 && name == b"r" && !handled_run_properties {
                         write_run_properties_optional_attribute(

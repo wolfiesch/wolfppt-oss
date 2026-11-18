@@ -57,14 +57,17 @@ fn add_slide_layout_placeholders_json(
     serde_json::to_string_pretty(&summary).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
+// Preserve the exposed Python shape signature, including the preset and separate
+// EMU geometry arguments, rather than require a new geometry wrapper object.
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn add_slide_auto_shape_json(
     input: &str,
     output: &str,
     slide_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
 ) -> PyResult<String> {
@@ -82,14 +85,17 @@ fn add_slide_auto_shape_json(
     serde_json::to_string_pretty(&summary).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
+// Preserve the exposed Python shape-with-text signature and its positional/
+// keyword arguments; the optional-options sibling uses the same flat contract.
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn add_slide_auto_shape_with_text_json(
     input: &str,
     output: &str,
     slide_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: &str,
@@ -116,8 +122,8 @@ fn add_slide_auto_shape_with_options_json(
     output: &str,
     slide_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: Option<&str>,
@@ -141,16 +147,19 @@ fn add_slide_auto_shape_with_options_json(
     serde_json::to_string_pretty(&summary).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
+// Preserve the exposed Python connector signature: both signed EMU endpoints
+// remain separate positional/keyword arguments instead of a new endpoint object.
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn add_slide_connector_json(
     input: &str,
     output: &str,
     slide_index: usize,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
 ) -> PyResult<String> {
     let summary = add_slide_connector(
         input,
@@ -173,10 +182,10 @@ fn add_slide_connected_connector_json(
     output: &str,
     slide_index: usize,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     begin_shape_id: Option<u64>,
     begin_cxn_pt_idx: Option<u64>,
     end_shape_id: Option<u64>,
@@ -207,20 +216,20 @@ fn add_slide_connected_connector_with_auto_shapes_json(
     output: &str,
     slide_index: usize,
     begin_preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
     begin_cx_emu: u64,
     begin_cy_emu: u64,
     end_preset_geometry: &str,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     end_cx_emu: u64,
     end_cy_emu: u64,
     connector_preset_geometry: &str,
-    connector_begin_x_emu: u64,
-    connector_begin_y_emu: u64,
-    connector_end_x_emu: u64,
-    connector_end_y_emu: u64,
+    connector_begin_x_emu: i64,
+    connector_begin_y_emu: i64,
+    connector_end_x_emu: i64,
+    connector_end_y_emu: i64,
     begin_cxn_pt_idx: u64,
     end_cxn_pt_idx: u64,
 ) -> PyResult<String> {

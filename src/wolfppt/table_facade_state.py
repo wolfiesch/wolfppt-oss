@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import zipfile
 from typing import TYPE_CHECKING, Any
 
@@ -11,18 +12,47 @@ from xml.etree import ElementTree as ET
 
 from .facade_values import (
     centipoints_to_emu as _centipoints_to_emu,
+)
+from .facade_values import (
     centipoints_value as _centipoints_value,
+)
+from .facade_values import (
     emu_to_centipoints as _emu_to_centipoints,
+)
+from .facade_values import (
     paragraph_spacing_xml_tag as _paragraph_spacing_xml_tag,
 )
+from .shape_xml import queued_hyperlink_address, saved_hyperlink_color_source
 from .slide_relationships import slide_relationship_target as _slide_relationship_target
+
+# Names marked F401 are re-exported for the table facade modules.
+from .table_facade_cell_state import (
+    _read_table_cell_properties_for_table,
+    _set_table_cell_margin,  # noqa: F401
+    _set_table_cell_text_frame_margin,  # noqa: F401
+    _table_cell_fill_pattern,  # noqa: F401
+    _table_cell_fill_type,  # noqa: F401
+    _table_cell_gradient_fill_payload,  # noqa: F401
+    _table_cell_margin,  # noqa: F401
+    _table_cell_pattern_rgb,  # noqa: F401
+    _table_cell_pattern_theme_color,  # noqa: F401
+    _table_cell_property_payload,
+    _table_cell_solid_rgb,  # noqa: F401
+    _table_cell_solid_theme_color,  # noqa: F401
+    _table_cell_span,  # noqa: F401
+    _table_cell_text_frame_auto_size,  # noqa: F401
+    _table_cell_text_frame_margin,  # noqa: F401
+    _table_cell_text_frame_vertical_anchor,  # noqa: F401
+    _table_cell_text_frame_word_wrap,  # noqa: F401
+    _table_cell_vertical_anchor,  # noqa: F401
+)
 from .table_facade_layout_state import (
-    _set_table_column_width,
-    _set_table_row_height,
-    _set_table_style_flag,
+    _set_table_column_width,  # noqa: F401
+    _set_table_row_height,  # noqa: F401
+    _set_table_style_flag,  # noqa: F401
     _table_column_widths,
     _table_row_heights,
-    _table_style_flag,
+    _table_style_flag,  # noqa: F401
 )
 from .table_facade_property_lists import (
     _fit_dict_property_list,
@@ -31,30 +61,10 @@ from .table_facade_property_lists import (
     _fit_run_optional_string_property_list,
 )
 from .table_facade_text_content_state import (
-    _set_table_cell_text_frame_paragraph_line_break,
-    _set_table_cell_text_frame_paragraph_runs,
+    _set_table_cell_text_frame_paragraph_line_break,  # noqa: F401
+    _set_table_cell_text_frame_paragraph_runs,  # noqa: F401
     _table_cell_text_frame_paragraph_runs,
     _table_cell_text_frame_paragraph_texts,
-)
-from .table_facade_cell_state import (
-    _read_table_cell_properties_for_table,
-    _set_table_cell_margin,
-    _set_table_cell_text_frame_margin,
-    _table_cell_fill_pattern,
-    _table_cell_fill_type,
-    _table_cell_gradient_fill_payload,
-    _table_cell_margin,
-    _table_cell_pattern_rgb,
-    _table_cell_pattern_theme_color,
-    _table_cell_property_payload,
-    _table_cell_solid_rgb,
-    _table_cell_solid_theme_color,
-    _table_cell_span,
-    _table_cell_text_frame_auto_size,
-    _table_cell_text_frame_margin,
-    _table_cell_text_frame_vertical_anchor,
-    _table_cell_text_frame_word_wrap,
-    _table_cell_vertical_anchor,
 )
 from .table_xml import _table_cell_xml_element
 
@@ -365,18 +375,96 @@ def _set_table_cell_text_frame_paragraph_run_hyperlink_address(
     if hyperlinks[paragraph_index][run_index] == normalized:
         return
     hyperlinks[paragraph_index][run_index] = normalized
-    _table_cell_property_payload(cell)["text_frame_paragraph_run_hyperlinks"] = (
-        hyperlinks
+    _table_cell_property_payload(cell)["text_frame_paragraph_run_hyperlinks"] = hyperlinks
+    # Retargeting keeps a pending color source; removing the link drops it.
+    presentation = cell._table._slide._presentation
+    pending = presentation._table_cell_text_frame_paragraph_run_hyperlink_edits
+    key = _table_run_hyperlink_key(cell, paragraph_index, run_index)
+    color_edit = getattr(pending.get(key), "color_source_edit", None) if normalized else None
+    presentation._queue_table_cell_text_frame_paragraph_run_hyperlink(
+        *key, queued_hyperlink_address(normalized, None, color_edit)
     )
-    cell._table._slide._presentation._queue_table_cell_text_frame_paragraph_run_hyperlink(
+
+
+def _table_run_hyperlink_key(
+    cell: TableCell, paragraph_index: int, run_index: int
+) -> tuple[int, int, int, int, int, int]:
+    return (
         cell._table._slide._index,
         cell._table._table_index,
         cell._row_idx,
         cell._col_idx,
         paragraph_index,
         run_index,
-        normalized,
     )
+
+
+def _table_cell_text_frame_paragraph_run_hyperlink_color_source(
+    cell: TableCell,
+    paragraph_index: int,
+    run_index: int,
+) -> str | None:
+    """Pending or saved ``hlinkClr/@val`` of a table cell run hyperlink."""
+    if (
+        _table_cell_text_frame_paragraph_run_hyperlink_address(cell, paragraph_index, run_index)
+        is None
+    ):
+        return None
+    pending = cell._table._slide._presentation._table_cell_text_frame_paragraph_run_hyperlink_edits
+    key = _table_run_hyperlink_key(cell, paragraph_index, run_index)
+    edit = getattr(pending.get(key), "color_source_edit", None)
+    if edit is not None:
+        return edit[0]
+    return saved_hyperlink_color_source(
+        _saved_table_run_hyperlink(cell, paragraph_index, run_index)
+    )
+
+
+def _set_table_cell_text_frame_paragraph_run_hyperlink_color_source(
+    cell: TableCell,
+    paragraph_index: int,
+    run_index: int,
+    color_source: str | None,
+) -> None:
+    """Queue a color source edit; the saved tooltip rides along unchanged."""
+    address = _table_cell_text_frame_paragraph_run_hyperlink_address(
+        cell, paragraph_index, run_index
+    )
+    if address is None:
+        raise ValueError("table cell run has no hyperlink address")
+    saved = _saved_table_run_hyperlink(cell, paragraph_index, run_index)
+    screen_tip = None if saved is None else saved.get("tooltip")
+    cell._table._slide._presentation._queue_table_cell_text_frame_paragraph_run_hyperlink(
+        *_table_run_hyperlink_key(cell, paragraph_index, run_index),
+        queued_hyperlink_address(address, screen_tip, (color_source,)),
+    )
+
+
+def _saved_table_run_hyperlink(
+    cell: TableCell, paragraph_index: int, run_index: int
+) -> ET.Element | None:
+    """The saved ``a:hlinkClick`` of a table cell run, if any."""
+    slide_part = cell._table._slide.partname
+    if not slide_part:
+        return None
+    try:
+        with zipfile.ZipFile(cell._table._slide._presentation.path) as package:
+            root = ET.fromstring(package.read(slide_part))
+        cell_element = _table_cell_xml_element(
+            root, cell._table._table_index, cell._row_idx, cell._col_idx
+        )
+        paragraph = cell_element.findall(f"{{{A_NS}}}txBody/{{{A_NS}}}p")[paragraph_index]
+        run = paragraph.findall(f"{{{A_NS}}}r")[run_index]
+    except (
+        AttributeError,
+        FileNotFoundError,
+        IndexError,
+        KeyError,
+        ET.ParseError,
+        zipfile.BadZipFile,
+    ):
+        return None
+    return run.find(f"{{{A_NS}}}rPr/{{{A_NS}}}hlinkClick")
 
 
 def _table_cell_text_frame_paragraph_fonts(
@@ -467,10 +555,7 @@ def _table_cell_text_frame_paragraph_run_hyperlinks(
         hyperlinks = _fit_run_optional_string_property_list(hyperlinks, paragraph_runs)
         payload["text_frame_paragraph_run_hyperlinks"] = hyperlinks
     return [
-        [
-            str(address) if address else None
-            for address in paragraph_hyperlinks
-        ]
+        [str(address) if address else None for address in paragraph_hyperlinks]
         if isinstance(paragraph_hyperlinks, list)
         else []
         for paragraph_hyperlinks in hyperlinks
@@ -503,10 +588,7 @@ def _read_table_cell_text_frame_paragraph_run_hyperlinks(
             text_body = None
         if text_body is not None:
             return [
-                [
-                    _run_hyperlink_address(cell, run)
-                    for run in paragraph.findall(f"{{{A_NS}}}r")
-                ]
+                [_run_hyperlink_address(cell, run) for run in paragraph.findall(f"{{{A_NS}}}r")]
                 for paragraph in text_body.findall(f"{{{A_NS}}}p")
             ]
     return [
@@ -582,12 +664,13 @@ def _font_from_run_properties(run_properties: ET.Element) -> dict[str, Any]:
     underline = run_properties.attrib.get("u")
     if underline is not None:
         font["underline"] = underline != "none"
+    strike = run_properties.attrib.get("strike")
+    if strike is not None:
+        font["strike"] = strike != "noStrike"
     size = run_properties.attrib.get("sz")
     if size is not None:
-        try:
+        with contextlib.suppress(ValueError):
             font["size"] = _centipoints_to_emu(int(size))
-        except ValueError:
-            pass
     if run_properties.attrib.get("lang"):
         font["language_id"] = run_properties.attrib["lang"]
     latin = run_properties.find(f"{{{A_NS}}}latin")
@@ -874,6 +957,7 @@ _CELL_EDIT_ATTRS = (
     "_table_cell_edits",
     "_table_cell_margin_edits",
     "_table_cell_vertical_anchor_edits",
+    "_table_cell_border_edits",
     "_table_cell_text_frame_margin_edits",
     "_table_cell_text_frame_vertical_anchor_edits",
     "_table_cell_text_frame_content_edits",
@@ -1084,6 +1168,7 @@ def _col_has_merged_cells(table: Table, col_idx: int) -> bool:
         ):
             return True
     return False
+
 
 def _row_insert_intersects_merge(table: Table, row_idx: int) -> bool:
     _ensure_table_cell_properties_loaded(table)

@@ -1,6 +1,6 @@
 [package]
 name = "wolfppt-core"
-version = "0.1.6"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 description = "Rust core for WolfPPT package inspection and mutation."
@@ -9,11 +9,14 @@ keywords = ["pptx", "powerpoint", "openxml", "presentation"]
 categories = ["development-tools", "parser-implementations"]
 
 [dependencies]
-quick-xml = "0.38"
+quick-xml = "0.42"
 serde = { version = "1.0", features = ["derive"] }
-sha2 = "0.10"
+base16ct = { version = "1", features = ["alloc"] }
+sha2 = "0.11"
 thiserror = "2.0"
-zip = { version = "2.2", default-features = false, features = ["deflate"] }
+# Keep zip 2's miniz_oxide backend; zip 8's "deflate" selects zlib-rs.
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+zip = { version = "9", default-features = false, features = ["deflate-flate2", "deflate-zopfli", "unreserved"] }
 
 [dev-dependencies]
 tempfile = "3.14"

@@ -4,26 +4,60 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import Any
+from xml.etree import ElementTree as ET
 
 from .chart_data_label_run_xml import (
     data_label_run_fill_type as _data_label_run_fill_type,
+)
+from .chart_data_label_run_xml import (
     data_label_run_font_name as _data_label_run_font_name,
+)
+from .chart_data_label_run_xml import (
     data_label_run_gradient_payload as _data_label_run_gradient_payload,
+)
+from .chart_data_label_run_xml import (
     data_label_run_pattern as _data_label_run_pattern,
+)
+from .chart_data_label_run_xml import (
     data_label_run_pattern_rgb as _data_label_run_pattern_rgb,
+)
+from .chart_data_label_run_xml import (
     data_label_run_properties as _data_label_run_properties,
+)
+from .chart_data_label_run_xml import (
+    data_label_run_properties_element as _data_label_run_properties_element,
+)
+from .chart_data_label_run_xml import (
     data_label_run_rgb as _data_label_run_rgb,
+)
+from .chart_data_label_run_xml import (
     set_data_label_run_font as _set_data_label_run_font,
 )
+from .chart_font_format_facade import _set_portion_color_element
+from .dml.color import ColorTextAndTransforms, fill_color_element
 from .dml_fill import default_gradient_payload as _default_gradient_payload
 from .facade_values import (
     centipoints_value as _centipoints_value,
+)
+from .facade_values import (
     fill_type_value as _fill_type_value,
+)
+from .facade_values import (
     language_id_value as _language_id_value,
+)
+from .facade_values import (
     normalize_language_id as _normalize_language_id,
+)
+from .facade_values import (
     normalize_pattern_type as _normalize_pattern_type,
+)
+from .facade_values import (
     normalize_rgb as _normalize_rgb,
+)
+from .facade_values import (
     pattern_type_value as _pattern_type_value,
+)
+from .facade_values import (
     rgb_value as _rgb_value,
 )
 from .shape_format_facade import GradientStops as _GradientStops
@@ -136,11 +170,11 @@ class DataLabelRunFont:
         self._run._queue_font({"size": size})
 
     @property
-    def color(self) -> "DataLabelRunColorFormat":
+    def color(self) -> DataLabelRunColorFormat:
         return DataLabelRunColorFormat(self._run)
 
     @property
-    def fill(self) -> "DataLabelRunFontFillFormat":
+    def fill(self) -> DataLabelRunFontFillFormat:
         payload = self._run._label.__dict__.setdefault(
             "_run_font_fill_payloads",
             {},
@@ -192,9 +226,19 @@ class DataLabelRunFont:
         self._run._queue_font({"language_id": language_id})
 
 
-class DataLabelRunColorFormat:
+class DataLabelRunColorFormat(ColorTextAndTransforms):
     def __init__(self, run: Any) -> None:
         self._run = run
+
+    def _color_element(self) -> ET.Element | None:
+        return fill_color_element(
+            _data_label_run_properties_element(
+                self._run._label, self._run._paragraph_index, self._run._index, create=False
+            )
+        )
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        _set_portion_color_element(self._run.portion_format, color)
 
     @property
     def rgb(self) -> Any:
@@ -208,11 +252,14 @@ class DataLabelRunColorFormat:
     @rgb.setter
     def rgb(self, value: Any) -> None:
         rgb = _normalize_rgb(value)
-        if _data_label_run_rgb(
-            self._run._label,
-            self._run._paragraph_index,
-            self._run._index,
-        ) == rgb:
+        if (
+            _data_label_run_rgb(
+                self._run._label,
+                self._run._paragraph_index,
+                self._run._index,
+            )
+            == rgb
+        ):
             return
         _set_data_label_run_font(
             self._run._label,
@@ -229,11 +276,14 @@ class DataLabelRunFontFillFormat:
         self._payload = payload
 
     def solid(self) -> None:
-        if _data_label_run_fill_type(
-            self._run._label,
-            self._run._paragraph_index,
-            self._run._index,
-        ) == "solid":
+        if (
+            _data_label_run_fill_type(
+                self._run._label,
+                self._run._paragraph_index,
+                self._run._index,
+            )
+            == "solid"
+        ):
             return
         _set_data_label_run_font(
             self._run._label,
@@ -244,11 +294,14 @@ class DataLabelRunFontFillFormat:
         self._run._queue_font({"fill_type": "solid"})
 
     def background(self) -> None:
-        if _data_label_run_fill_type(
-            self._run._label,
-            self._run._paragraph_index,
-            self._run._index,
-        ) == "background":
+        if (
+            _data_label_run_fill_type(
+                self._run._label,
+                self._run._paragraph_index,
+                self._run._index,
+            )
+            == "background"
+        ):
             return
         _set_data_label_run_font(
             self._run._label,
@@ -259,25 +312,29 @@ class DataLabelRunFontFillFormat:
         self._run._queue_font({"fill_type": "background"})
 
     def patterned(self) -> None:
-        if _data_label_run_fill_type(
-            self._run._label,
-            self._run._paragraph_index,
-            self._run._index,
-        ) == "patterned":
+        if (
+            _data_label_run_fill_type(
+                self._run._label,
+                self._run._paragraph_index,
+                self._run._index,
+            )
+            == "patterned"
+        ):
             return
         self._queue_fill({"fill_type": "patterned"})
 
     def gradient(self) -> None:
-        if _data_label_run_fill_type(
-            self._run._label,
-            self._run._paragraph_index,
-            self._run._index,
-        ) == "gradient":
+        if (
+            _data_label_run_fill_type(
+                self._run._label,
+                self._run._paragraph_index,
+                self._run._index,
+            )
+            == "gradient"
+        ):
             return
         self._payload["gradient"] = _default_gradient_payload()
-        self._queue_fill(
-            {"fill_type": "gradient", "gradient": self._payload["gradient"]}
-        )
+        self._queue_fill({"fill_type": "gradient", "gradient": self._payload["gradient"]})
 
     @property
     def type(self) -> Any:
@@ -290,11 +347,11 @@ class DataLabelRunFontFillFormat:
         )
 
     @property
-    def fore_color(self) -> "DataLabelRunFontFillColorFormat":
+    def fore_color(self) -> DataLabelRunFontFillColorFormat:
         return DataLabelRunFontFillColorFormat(self._run, "fore")
 
     @property
-    def back_color(self) -> "DataLabelRunFontFillColorFormat":
+    def back_color(self) -> DataLabelRunFontFillColorFormat:
         return DataLabelRunFontFillColorFormat(self._run, "back")
 
     @property
@@ -413,10 +470,21 @@ class DataLabelRunFontFillFormat:
         self._run._queue_font(queued)
 
 
-class DataLabelRunFontFillColorFormat:
+class DataLabelRunFontFillColorFormat(ColorTextAndTransforms):
     def __init__(self, run: Any, target: str) -> None:
         self._run = run
         self._target = target
+
+    def _color_element(self) -> ET.Element | None:
+        return fill_color_element(
+            _data_label_run_properties_element(
+                self._run._label, self._run._paragraph_index, self._run._index, create=False
+            ),
+            self._target,
+        )
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        _set_portion_color_element(self._run.portion_format, color, self._target)
 
     @property
     def rgb(self) -> Any:
@@ -457,11 +525,7 @@ class DataLabelRunFontFillColorFormat:
                 self._run._index,
                 color_tag,
             ):
-                key = (
-                    "pattern_back_rgb"
-                    if self._target == "back"
-                    else "pattern_fore_rgb"
-                )
+                key = "pattern_back_rgb" if self._target == "back" else "pattern_fore_rgb"
                 _set_data_label_run_font(
                     self._run._label,
                     self._run._paragraph_index,

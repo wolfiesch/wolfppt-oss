@@ -3,22 +3,49 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any, overload
+
+if TYPE_CHECKING:
+    from .presentation_slides import Slide
 
 from .facade_values import (
     centipoints_to_emu as _centipoints_to_emu,
+)
+from .facade_values import (
     coerce_paragraph_level as _coerce_paragraph_level,
+)
+from .facade_values import (
     emu_value as _emu_value,
+)
+from .facade_values import (
     normalize_line_spacing as _normalize_line_spacing,
+)
+from .facade_values import (
     normalize_paragraph_alignment as _normalize_paragraph_alignment,
+)
+from .facade_values import (
+    normalize_paragraph_indent as _normalize_paragraph_indent,
+)
+from .facade_values import (
     normalize_paragraph_spacing_length as _normalize_paragraph_spacing_length,
+)
+from .facade_values import (
     normalize_text_frame_auto_size as _normalize_text_frame_auto_size,
+)
+from .facade_values import (
     normalize_text_frame_vertical_anchor as _normalize_text_frame_vertical_anchor,
+)
+from .facade_values import (
     normalize_text_frame_word_wrap as _normalize_text_frame_word_wrap,
+)
+from .facade_values import (
     paragraph_alignment_value as _paragraph_alignment_value,
+)
+from .facade_values import (
     text_frame_vertical_anchor_value as _text_frame_vertical_anchor_value,
 )
 from .package_parts import PackagePart
+from .table_adds import table_grid_extents
 from .table_cell_fill_facade import (
     TableCellColorFormat,
     TableCellFillFormat,
@@ -26,6 +53,8 @@ from .table_cell_fill_facade import (
     TableCellGradientStopColorFormat,
     TableCellGradientStops,
 )
+from .table_facade_cell_state import _table_cell_text_frame_autofit_scale
+from .table_facade_layout_state import _table_is_unsaved
 from .table_facade_state import (
     _delete_table_column,
     _delete_table_row,
@@ -46,7 +75,6 @@ from .table_facade_state import (
     _set_table_row_height,
     _set_table_style_flag,
     _split_table_cell,
-    _table_column_widths,
     _table_cell_fill_pattern,
     _table_cell_fill_type,
     _table_cell_margin,
@@ -55,17 +83,32 @@ from .table_facade_state import (
     _table_cell_solid_rgb,
     _table_cell_span,
     _table_cell_text_frame_auto_size,
+    _table_cell_text_frame_margin,
     _table_cell_text_frame_paragraph_alignment,
     _table_cell_text_frame_paragraph_level,
     _table_cell_text_frame_paragraph_runs,
     _table_cell_text_frame_paragraph_spacing,
-    _table_cell_text_frame_margin,
     _table_cell_text_frame_paragraph_texts,
     _table_cell_text_frame_vertical_anchor,
     _table_cell_text_frame_word_wrap,
     _table_cell_vertical_anchor,
+    _table_column_widths,
     _table_row_heights,
     _table_style_flag,
+)
+from .table_facade_text_content_state import (
+    _set_table_cell_text_frame_paragraph_attribute,
+    _table_cell_text_frame_paragraph_attribute,
+)
+from .table_style_presets import (
+    _set_table_style_id,
+    _set_table_style_name,
+    _table_style_id,
+    _table_style_name,
+    available_table_styles,
+    lookup_table_style_id,
+    lookup_table_style_name,
+    normalize_table_style_id,
 )
 from .table_text_font_facade import (
     TableCellTextParagraphFont,
@@ -76,6 +119,41 @@ from .table_text_font_facade import (
     TableCellTextRunFontFillFormat,
     TableCellTextRunHyperlink,
 )
+from .text_autofit import TextAutofitScale
+from .text_facade_inspection import _best_fit_font_size
+
+__all__ = [
+    "Table",
+    "TableCell",
+    "TableCellColorFormat",
+    "TableCellFillFormat",
+    "TableCellGradientStop",
+    "TableCellGradientStopColorFormat",
+    "TableCellGradientStops",
+    "TableCellParagraphCollection",
+    "TableCellTextFrame",
+    "TableCellTextParagraph",
+    "TableCellTextParagraphFont",
+    "TableCellTextParagraphFontColorFormat",
+    "TableCellTextParagraphFontFillFormat",
+    "TableCellTextRun",
+    "TableCellTextRunCollection",
+    "TableCellTextRunFont",
+    "TableCellTextRunFontColorFormat",
+    "TableCellTextRunFontFillFormat",
+    "TableCellTextRunHyperlink",
+    "TableColumn",
+    "TableColumnCollection",
+    "TableRow",
+    "TableRowCollection",
+    "_table_cell_fill_pattern",
+    "_table_cell_fill_type",
+    "_table_cell_pattern_rgb",
+    "_table_cell_solid_rgb",
+    "available_table_styles",
+    "lookup_table_style_id",
+    "lookup_table_style_name",
+]
 
 
 class Table:
@@ -84,17 +162,18 @@ class Table:
         self._table_index = table_index
         self._payload = payload
         self._rows = _normalize_table_rows(payload)
+        _seed_queued_table_grid(self)
 
     @property
     def part(self) -> PackagePart:
         return self._slide.part
 
     @property
-    def rows(self) -> "TableRowCollection":
+    def rows(self) -> TableRowCollection:
         return TableRowCollection(self)
 
     @property
-    def columns(self) -> "TableColumnCollection":
+    def columns(self) -> TableColumnCollection:
         return TableColumnCollection(self)
 
     @property
@@ -145,11 +224,61 @@ class Table:
     def vert_banding(self, value: Any) -> None:
         _set_table_style_flag(self, "vert_banding", value)
 
-    def cell(self, row_idx: int, col_idx: int) -> "TableCell":
+    @property
+    def right_to_left(self) -> bool:
+        """Whether the table displays its logical columns right-to-left."""
+        return _table_style_flag(self, "right_to_left")
+
+    @right_to_left.setter
+    def right_to_left(self, value: Any) -> None:
+        _set_table_style_flag(self, "right_to_left", value)
+
+    @property
+    def style_id(self) -> str | None:
+        return _table_style_id(self)
+
+    @style_id.setter
+    def style_id(self, value: Any) -> None:
+        _set_table_style_id(self, value)
+
+    @property
+    def style_name(self) -> str | None:
+        return _table_style_name(self)
+
+    @style_name.setter
+    def style_name(self, value: Any) -> None:
+        _set_table_style_name(self, value)
+
+    def apply_style(self, style: str) -> None:
+        """Apply a built-in or package table style by GUID or style name.
+
+        A GUID may omit its braces and is stored as the canonical uppercase
+        ``{GUID}``. Any other string is resolved case-insensitively against the
+        built-in and package ``tableStyles`` names. An unknown name or
+        malformed GUID raises ``ValueError`` and leaves the table unchanged.
+        """
+        if not isinstance(style, str):
+            raise TypeError(
+                f"table style must be a GUID or style name string, got {type(style).__name__}"
+            )
+        cleaned = style.strip()
+        try:
+            style_id = normalize_table_style_id(cleaned)
+        except ValueError:
+            if cleaned.startswith("{") or cleaned.endswith("}"):
+                raise
+            style_id = lookup_table_style_id(cleaned, getattr(self._slide, "_presentation", None))
+            if style_id is None:
+                raise ValueError(
+                    f"table style {style!r} is neither a style GUID nor a known style name"
+                ) from None
+        _set_table_style_id(self, style_id)
+
+    def cell(self, row_idx: int, col_idx: int) -> TableCell:
         self._validate_cell(row_idx, col_idx)
         return TableCell(self, row_idx, col_idx)
 
-    def iter_cells(self) -> Iterator["TableCell"]:
+    def iter_cells(self) -> Iterator[TableCell]:
         for row_idx, row in enumerate(self._rows):
             for col_idx in range(len(row)):
                 yield TableCell(self, row_idx, col_idx)
@@ -167,6 +296,32 @@ class Table:
             raise IndexError("table column index out of range")
 
 
+def _seed_queued_table_grid(table: Table) -> None:
+    """Seed an unsaved ``add_table`` grid with the extents save will write.
+
+    The table is absent from the saved package until save, so the layout
+    helpers' disk read would report zeros (or another table's grid). The
+    queued add, not the frame transform, carries the writer's source extents:
+    resizing the unsaved frame leaves the written grid unchanged.
+    """
+    payload = table._payload
+    if "_column_widths" in payload and "_row_heights" in payload:
+        return
+    slide = table._slide
+    slide_index = getattr(slide, "_index", None)
+    presentation = getattr(slide, "_presentation", None)
+    for kind, args in getattr(presentation, "_shape_adds", ()):
+        if kind != "table" or args[:2] != (slide_index, table._table_index):
+            continue
+        if not _table_is_unsaved(table):
+            return
+        _slide_index, _table_index, rows, cols, _x, _y, cx, cy = args
+        # Mirrors the writer's python-pptx split of the queued frame extents.
+        payload.setdefault("_column_widths", table_grid_extents(cx, cols))
+        payload.setdefault("_row_heights", table_grid_extents(cy, rows))
+        return
+
+
 class TableRowCollection(Sequence["TableRow"]):
     def __init__(self, table: Table) -> None:
         self._table = table
@@ -175,18 +330,23 @@ class TableRowCollection(Sequence["TableRow"]):
     def part(self) -> PackagePart:
         return self._table.part
 
-    def __getitem__(self, index: int | slice) -> "TableRow | list[TableRow]":
+    @overload
+    def __getitem__(self, index: int) -> TableRow: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[TableRow]: ...
+
+    def __getitem__(self, index: int | slice) -> TableRow | list[TableRow]:
         if isinstance(index, slice):
             return [
-                TableRow(self._table, row_index)
-                for row_index in range(*index.indices(len(self)))
+                TableRow(self._table, row_index) for row_index in range(*index.indices(len(self)))
             ]
         if index < 0:
             index += len(self)
         self._table._validate_cell(index, 0)
         return TableRow(self._table, index)
 
-    def __iter__(self) -> Iterator["TableRow"]:
+    def __iter__(self) -> Iterator[TableRow]:
         for index in range(len(self)):
             yield TableRow(self._table, index)
 
@@ -196,7 +356,7 @@ class TableRowCollection(Sequence["TableRow"]):
     def notify_height_changed(self) -> None:
         return None
 
-    def insert(self, index: int) -> "TableRow":
+    def insert(self, index: int) -> TableRow:
         return _insert_table_row(self._table, index)
 
     def remove(self, index: int) -> None:
@@ -217,7 +377,13 @@ class TableColumnCollection(Sequence["TableColumn"]):
     def part(self) -> PackagePart:
         return self._table.part
 
-    def __getitem__(self, index: int | slice) -> "TableColumn | list[TableColumn]":
+    @overload
+    def __getitem__(self, index: int) -> TableColumn: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[TableColumn]: ...
+
+    def __getitem__(self, index: int | slice) -> TableColumn | list[TableColumn]:
         if isinstance(index, slice):
             return [
                 TableColumn(self._table, column_index)
@@ -229,7 +395,7 @@ class TableColumnCollection(Sequence["TableColumn"]):
             raise IndexError("table column index out of range")
         return TableColumn(self._table, index)
 
-    def __iter__(self) -> Iterator["TableColumn"]:
+    def __iter__(self) -> Iterator[TableColumn]:
         for index in range(len(self)):
             yield TableColumn(self._table, index)
 
@@ -239,7 +405,7 @@ class TableColumnCollection(Sequence["TableColumn"]):
     def notify_width_changed(self) -> None:
         return None
 
-    def insert(self, index: int) -> "TableColumn":
+    def insert(self, index: int) -> TableColumn:
         return _insert_table_column(self._table, index)
 
     def remove(self, index: int) -> None:
@@ -252,7 +418,9 @@ class TableColumnCollection(Sequence["TableColumn"]):
         _delete_table_column(self._table, index)
 
 
-class TableRow:
+class TableRow(Sequence["TableCell"]):
+    """A table row; indexing, iteration, and ``len`` cover its cells."""
+
     def __init__(self, table: Table, index: int) -> None:
         self._table = table
         self._index = index
@@ -262,11 +430,37 @@ class TableRow:
         return self._table.part
 
     @property
-    def cells(self) -> list["TableCell"]:
+    def cells(self) -> list[TableCell]:
         return [
             TableCell(self._table, self._index, col_idx)
             for col_idx in range(len(self._table._rows[self._index]))
         ]
+
+    @overload
+    def __getitem__(self, index: int) -> TableCell: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[TableCell]: ...
+
+    def __getitem__(self, index: int | slice) -> TableCell | list[TableCell]:
+        if isinstance(index, slice):
+            return [
+                TableCell(self._table, self._index, col_idx)
+                for col_idx in range(*index.indices(len(self)))
+            ]
+        count = len(self)
+        if index < 0:
+            index += count
+        if index < 0 or index >= count:
+            raise IndexError("table row cell index out of range")
+        return TableCell(self._table, self._index, index)
+
+    def __iter__(self) -> Iterator[TableCell]:
+        for col_idx in range(len(self)):
+            yield TableCell(self._table, self._index, col_idx)
+
+    def __len__(self) -> int:
+        return len(self._table._rows[self._index])
 
     @property
     def height(self) -> int:
@@ -277,7 +471,9 @@ class TableRow:
         _set_table_row_height(self, value)
 
 
-class TableColumn:
+class TableColumn(Sequence["TableCell"]):
+    """A table column; indexing, iteration, and ``len`` cover its cells."""
+
     def __init__(self, table: Table, index: int) -> None:
         self._table = table
         self._index = index
@@ -287,12 +483,29 @@ class TableColumn:
         return self._table.part
 
     @property
-    def cells(self) -> list["TableCell"]:
+    def cells(self) -> list[TableCell]:
         return [
             TableCell(self._table, row_idx, self._index)
             for row_idx, row in enumerate(self._table._rows)
             if self._index < len(row)
         ]
+
+    @overload
+    def __getitem__(self, index: int) -> TableCell: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[TableCell]: ...
+
+    def __getitem__(self, index: int | slice) -> TableCell | list[TableCell]:
+        return self.cells[index]
+
+    def __iter__(self) -> Iterator[TableCell]:
+        for row_idx, row in enumerate(self._table._rows):
+            if self._index < len(row):
+                yield TableCell(self._table, row_idx, self._index)
+
+    def __len__(self) -> int:
+        return sum(1 for row in self._table._rows if self._index < len(row))
 
     @property
     def width(self) -> int:
@@ -303,37 +516,63 @@ class TableColumn:
         _set_table_column_width(self, value)
 
 
-class TableCell:
-    def __init__(self, table: Table, row_idx: int, col_idx: int) -> None:
-        self._table = table
-        self._row_idx = row_idx
-        self._col_idx = col_idx
+class _Cell:
+    """OOXML cell identity and merge/span inspection, without an upstream engine.
 
-    @property
-    def part(self) -> PackagePart:
-        return self._table.part
+    Standalone element construction qualifies these read contracts only. Editing
+    and package ownership are provided by the presentation-backed TableCell.
+    """
 
-    @property
-    def text_frame(self) -> "TableCellTextFrame":
-        return TableCellTextFrame(self)
+    def __init__(self, tc: Any, parent: Any) -> None:
+        self._tc = tc
+        self._parent = parent
 
-    @property
-    def fill(self) -> "TableCellFillFormat":
-        return TableCellFillFormat(self)
+    def _merge_properties(self) -> dict[str, Any]:
+        from .table_facade_cell_state import _table_cell_properties_from_xml
+
+        return _table_cell_properties_from_xml(self._tc)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _Cell):
+            return NotImplemented
+        if isinstance(self, TableCell) or isinstance(other, TableCell):
+            return (
+                isinstance(self, TableCell)
+                and isinstance(other, TableCell)
+                and self._table is other._table
+                and self._row_idx == other._row_idx
+                and self._col_idx == other._col_idx
+            )
+        return self._tc is other._tc
 
     @property
     def is_merge_origin(self) -> bool:
-        payload = _table_cell_property_payload(self)
+        properties = self._merge_properties()
         return (
-            not bool(payload.get("h_merge"))
-            and not bool(payload.get("v_merge"))
+            not properties.get("h_merge", False)
+            and not properties.get("v_merge", False)
             and (self.span_width > 1 or self.span_height > 1)
         )
 
     @property
     def is_spanned(self) -> bool:
-        payload = _table_cell_property_payload(self)
-        return bool(payload.get("h_merge")) or bool(payload.get("v_merge"))
+        properties = self._merge_properties()
+        return bool(properties.get("h_merge") or properties.get("v_merge"))
+
+    @property
+    def span_width(self) -> int:
+        return int(self._merge_properties().get("grid_span", 1))
+
+    @property
+    def span_height(self) -> int:
+        return int(self._merge_properties().get("row_span", 1))
+
+
+class TableCell(_Cell):
+    def __init__(self, table: Table, row_idx: int, col_idx: int) -> None:
+        self._table = table
+        self._row_idx = row_idx
+        self._col_idx = col_idx
 
     @property
     def span_width(self) -> int:
@@ -343,6 +582,37 @@ class TableCell:
     def span_height(self) -> int:
         return _table_cell_span(self, "row_span")
 
+    def get_effective(self) -> Any:
+        """Return this cell's effective fill and text formatting and their
+        sources (commercial edition; see
+        :func:`wolfppt.effective_format_readback.table_cell_effective`)."""
+        from .editions import commercial_module
+
+        readback = commercial_module("effective_format_readback", "Reading effective formatting")
+        return readback.table_cell_effective(self)
+
+    @property
+    def part(self) -> PackagePart:
+        return self._table.part
+
+    @property
+    def text_frame(self) -> TableCellTextFrame:
+        return TableCellTextFrame(self)
+
+    @property
+    def fill(self) -> TableCellFillFormat:
+        return TableCellFillFormat(self)
+
+    @property
+    def borders(self) -> Any:
+        """Return the public rectangular and diagonal cell-border facade."""
+        from .table_cell_border_edits import TableCellBorders
+
+        return TableCellBorders(self)
+
+    def _merge_properties(self) -> dict[str, Any]:
+        return _table_cell_property_payload(self)
+
     @property
     def text(self) -> str:
         return self._table._rows[self._row_idx][self._col_idx]
@@ -350,7 +620,14 @@ class TableCell:
     @text.setter
     def text(self, value: str) -> None:
         text = str(value)
-        if text == self.text:
+        current = self.text
+        if text == current:
+            return
+        # The scalar queue preserves one-paragraph structure and native edit
+        # batching. Changes to paragraph/soft-break topology need the existing
+        # structured text-frame writer, including when removing old breaks.
+        if any(mark in text or mark in current for mark in ("\n", "\v")):
+            _set_table_cell_text_frame_text(self, text)
             return
         self._table._rows[self._row_idx][self._col_idx] = text
         self._table._payload["rows"] = self._table._rows
@@ -412,7 +689,7 @@ class TableCell:
             anchor,
         )
 
-    def merge(self, other_cell: "TableCell") -> None:
+    def merge(self, other_cell: TableCell) -> None:
         _merge_table_cells(self, other_cell)
 
     def split(self) -> None:
@@ -436,7 +713,7 @@ class TableCellTextFrame:
         _set_table_cell_text_frame_text(self._cell, str(value))
 
     @property
-    def paragraphs(self) -> "TableCellParagraphCollection":
+    def paragraphs(self) -> TableCellParagraphCollection:
         return TableCellParagraphCollection(self._cell)
 
     @property
@@ -473,9 +750,7 @@ class TableCellTextFrame:
 
     @property
     def vertical_anchor(self) -> Any:
-        return _text_frame_vertical_anchor_value(
-            _table_cell_text_frame_vertical_anchor(self._cell)
-        )
+        return _text_frame_vertical_anchor_value(_table_cell_text_frame_vertical_anchor(self._cell))
 
     @vertical_anchor.setter
     def vertical_anchor(self, value: Any) -> None:
@@ -520,12 +795,60 @@ class TableCellTextFrame:
         if auto_size == payload.get("text_frame_auto_size"):
             return
         payload["text_frame_auto_size"] = auto_size
+        payload["text_frame_autofit_scale"] = None
         self._cell._table._slide._presentation._queue_table_cell_text_frame_auto_size(
             self._cell._table._slide._index,
             self._cell._table._table_index,
             self._cell._row_idx,
             self._cell._col_idx,
             auto_size,
+        )
+
+    @property
+    def autofit_scale(self) -> TextAutofitScale | None:
+        return _table_cell_text_frame_autofit_scale(self._cell)
+
+    def set_autofit_scale(
+        self,
+        font_scale: float,
+        line_spacing_reduction: float = 0.0,
+    ) -> None:
+        scale = TextAutofitScale(font_scale, line_spacing_reduction)
+        current_scale = _table_cell_text_frame_autofit_scale(self._cell)
+        current_mode = _table_cell_text_frame_auto_size(self._cell)
+        if current_mode == "normAutofit" and current_scale == scale:
+            return
+        payload = _table_cell_property_payload(self._cell)
+        payload["text_frame_auto_size"] = "normAutofit"
+        payload["text_frame_autofit_scale"] = scale
+        scale_dict = {
+            "font_scale": scale.font_scale,
+            "line_spacing_reduction": scale.line_spacing_reduction,
+        }
+        self._cell._table._slide._presentation._queue_table_cell_text_frame_auto_size(
+            self._cell._table._slide._index,
+            self._cell._table._table_index,
+            self._cell._row_idx,
+            self._cell._col_idx,
+            "normAutofit",
+            autofit_scale=scale_dict,
+        )
+
+    def clear_autofit_scale(self) -> None:
+        current_scale = _table_cell_text_frame_autofit_scale(self._cell)
+        if current_scale is None:
+            return
+        payload = _table_cell_property_payload(self._cell)
+        current_mode = payload.get("text_frame_auto_size")
+        payload["text_frame_autofit_scale"] = None
+        clear_dict = {"font_scale": None, "line_spacing_reduction": None}
+        self._cell._table._slide._presentation._queue_table_cell_text_frame_auto_size(
+            self._cell._table._slide._index,
+            self._cell._table._table_index,
+            self._cell._row_idx,
+            self._cell._col_idx,
+            current_mode,
+            autofit_scale=clear_dict,
         )
 
     def fit_text(
@@ -538,13 +861,16 @@ class TableCellTextFrame:
     ) -> None:
         if self.text == "":
             return
-        try:
-            max_point_size = int(max_size)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"max_size must be an integer, got {max_size!r}") from exc
-        if max_point_size < 1:
-            raise ValueError("max_size must be greater than zero")
-        size_emu = _centipoints_to_emu(max_point_size * 100)
+        point_size = _best_fit_font_size(
+            self.text,
+            _table_cell_text_frame_extents(self._cell),
+            font_family,
+            max_size,
+            bool(bold),
+            bool(italic),
+            font_file,
+        )
+        size_emu = _centipoints_to_emu(point_size * 100)
         payload = _table_cell_property_payload(self._cell)
         payload["text_frame_word_wrap"] = True
         payload["text_frame_auto_size"] = "noAutofit"
@@ -565,21 +891,52 @@ class TableCellTextFrame:
     def clear(self) -> None:
         _set_table_cell_text_frame_paragraphs(self._cell, [""])
 
-    def add_paragraph(self) -> "TableCellTextParagraph":
+    def add_paragraph(self) -> TableCellTextParagraph:
         paragraphs = list(_table_cell_text_frame_paragraph_texts(self._cell))
         paragraphs.append("")
         _set_table_cell_text_frame_paragraphs(self._cell, paragraphs)
         return TableCellTextParagraph(self._cell, len(paragraphs) - 1)
 
 
+def _table_cell_text_frame_extents(cell: TableCell) -> tuple[int, int]:
+    """Return the available cell rectangle, excluding the cell text margins."""
+    widths = _table_column_widths(cell._table)
+    heights = _table_row_heights(cell._table)
+    try:
+        width = widths[cell._col_idx]
+        height = heights[cell._row_idx]
+    except IndexError as exc:
+        raise RuntimeError("table cell dimensions are unavailable for text fitting") from exc
+    return (
+        max(
+            0,
+            width
+            - _table_cell_text_frame_margin(cell, "lIns")
+            - _table_cell_text_frame_margin(cell, "rIns"),
+        ),
+        max(
+            0,
+            height
+            - _table_cell_text_frame_margin(cell, "tIns")
+            - _table_cell_text_frame_margin(cell, "bIns"),
+        ),
+    )
+
+
 class TableCellParagraphCollection(Sequence["TableCellTextParagraph"]):
     def __init__(self, cell: TableCell) -> None:
         self._cell = cell
 
+    @overload
+    def __getitem__(self, index: int) -> TableCellTextParagraph: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[TableCellTextParagraph]: ...
+
     def __getitem__(
         self,
         index: int | slice,
-    ) -> "TableCellTextParagraph | list[TableCellTextParagraph]":
+    ) -> TableCellTextParagraph | list[TableCellTextParagraph]:
         paragraphs = _table_cell_text_frame_paragraph_texts(self._cell)
         if isinstance(index, slice):
             return [
@@ -592,7 +949,7 @@ class TableCellParagraphCollection(Sequence["TableCellTextParagraph"]):
             raise IndexError("paragraph index out of range")
         return TableCellTextParagraph(self._cell, index)
 
-    def __iter__(self) -> Iterator["TableCellTextParagraph"]:
+    def __iter__(self) -> Iterator[TableCellTextParagraph]:
         for index in range(len(self)):
             yield TableCellTextParagraph(self._cell, index)
 
@@ -610,6 +967,11 @@ class TableCellTextParagraph:
         self._cell = cell
         self._index = index
 
+    def get_effective(self) -> Any:
+        """Return this cell paragraph's effective formatting and its sources
+        (commercial edition)."""
+        return self._cell.get_effective().text_frame.paragraphs[self._index]
+
     @property
     def part(self) -> PackagePart:
         return self._cell.part
@@ -625,14 +987,14 @@ class TableCellTextParagraph:
         _set_table_cell_text_frame_paragraphs(self._cell, paragraphs)
 
     @property
-    def font(self) -> "TableCellTextParagraphFont":
+    def font(self) -> TableCellTextParagraphFont:
         return TableCellTextParagraphFont(self)
 
     @property
-    def runs(self) -> "TableCellTextRunCollection":
+    def runs(self) -> TableCellTextRunCollection:
         return TableCellTextRunCollection(self)
 
-    def add_run(self) -> "TableCellTextRun":
+    def add_run(self) -> TableCellTextRun:
         paragraph_runs = _table_cell_text_frame_paragraph_runs(self._cell)
         if self._index < 0 or self._index >= len(paragraph_runs):
             raise IndexError("paragraph index out of range")
@@ -671,6 +1033,62 @@ class TableCellTextParagraph:
         if level == self.level:
             return
         _set_table_cell_text_frame_paragraph_level(self._cell, self._index, level)
+
+    @property
+    def rtl(self) -> bool | None:
+        """Right-to-left paragraph direction (``a:pPr/@rtl``); None when inherited."""
+        return _table_cell_text_frame_paragraph_attribute(
+            self._cell,
+            self._index,
+            "rtl",
+        )
+
+    @rtl.setter
+    def rtl(self, value: bool | None) -> None:
+        if value is not None and not isinstance(value, bool):
+            raise TypeError(f"rtl must be bool or None, got {type(value).__name__}")
+        _set_table_cell_text_frame_paragraph_attribute(
+            self._cell,
+            self._index,
+            "rtl",
+            value,
+        )
+
+    @property
+    def margin_left(self) -> Any:
+        value = _table_cell_text_frame_paragraph_attribute(
+            self._cell,
+            self._index,
+            "margin_left",
+        )
+        return None if value is None else _emu_value(int(value))
+
+    @margin_left.setter
+    def margin_left(self, value: Any) -> None:
+        _set_table_cell_text_frame_paragraph_attribute(
+            self._cell,
+            self._index,
+            "margin_left",
+            _normalize_paragraph_indent(value, "margin_left"),
+        )
+
+    @property
+    def margin_right(self) -> Any:
+        value = _table_cell_text_frame_paragraph_attribute(
+            self._cell,
+            self._index,
+            "margin_right",
+        )
+        return None if value is None else _emu_value(int(value))
+
+    @margin_right.setter
+    def margin_right(self, value: Any) -> None:
+        _set_table_cell_text_frame_paragraph_attribute(
+            self._cell,
+            self._index,
+            "margin_right",
+            _normalize_paragraph_indent(value, "margin_right"),
+        )
 
     @property
     def space_before(self) -> Any:
@@ -726,7 +1144,7 @@ class TableCellTextParagraph:
             spacing,
         )
 
-    def clear(self) -> "TableCellTextParagraph":
+    def clear(self) -> TableCellTextParagraph:
         self.text = ""
         return self
 
@@ -745,13 +1163,17 @@ class TableCellTextRunCollection(Sequence["TableCellTextRun"]):
     def __init__(self, paragraph: TableCellTextParagraph) -> None:
         self._paragraph = paragraph
 
+    @overload
+    def __getitem__(self, index: int) -> TableCellTextRun: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[TableCellTextRun]: ...
+
     def __getitem__(
         self,
         index: int | slice,
-    ) -> "TableCellTextRun | list[TableCellTextRun]":
-        runs = _table_cell_text_frame_paragraph_runs(self._paragraph._cell)[
-            self._paragraph._index
-        ]
+    ) -> TableCellTextRun | list[TableCellTextRun]:
+        runs = _table_cell_text_frame_paragraph_runs(self._paragraph._cell)[self._paragraph._index]
         if isinstance(index, slice):
             return [
                 TableCellTextRun(self._paragraph, run_index)
@@ -763,15 +1185,13 @@ class TableCellTextRunCollection(Sequence["TableCellTextRun"]):
             raise IndexError("run index out of range")
         return TableCellTextRun(self._paragraph, index)
 
-    def __iter__(self) -> Iterator["TableCellTextRun"]:
+    def __iter__(self) -> Iterator[TableCellTextRun]:
         for index in range(len(self)):
             yield TableCellTextRun(self._paragraph, index)
 
     def __len__(self) -> int:
         return len(
-            _table_cell_text_frame_paragraph_runs(self._paragraph._cell)[
-                self._paragraph._index
-            ]
+            _table_cell_text_frame_paragraph_runs(self._paragraph._cell)[self._paragraph._index]
         )
 
     def __eq__(self, other: object) -> bool:
@@ -785,23 +1205,32 @@ class TableCellTextRun:
         self._paragraph = paragraph
         self._index = index
 
+    def get_effective(self) -> Any:
+        """Return this cell run's effective character formatting and its
+        sources (commercial edition; see
+        :func:`wolfppt.effective_format_readback.table_cell_run_effective`)."""
+        from .editions import commercial_module
+
+        readback = commercial_module("effective_format_readback", "Reading effective formatting")
+        return readback.table_cell_run_effective(self)
+
     @property
     def part(self) -> PackagePart:
         return self._paragraph.part
 
     @property
-    def font(self) -> "TableCellTextRunFont":
+    def font(self) -> TableCellTextRunFont:
         return TableCellTextRunFont(self)
 
     @property
-    def hyperlink(self) -> "TableCellTextRunHyperlink":
+    def hyperlink(self) -> TableCellTextRunHyperlink:
         return TableCellTextRunHyperlink(self)
 
     @property
     def text(self) -> str:
-        return _table_cell_text_frame_paragraph_runs(self._paragraph._cell)[
-            self._paragraph._index
-        ][self._index]
+        return _table_cell_text_frame_paragraph_runs(self._paragraph._cell)[self._paragraph._index][
+            self._index
+        ]
 
     @text.setter
     def text(self, value: str) -> None:

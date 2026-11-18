@@ -5,10 +5,10 @@ fn inspect_archive<R: Read + std::io::Seek>(
     let mut parts = Vec::with_capacity(archive.len());
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         let mut payload = Vec::new();
         file.read_to_end(&mut payload)?;
-        let sha256 = format!("{:x}", Sha256::digest(&payload));
+        let sha256 = base16ct::lower::encode_string(&Sha256::digest(&payload));
         parts.push(PartRecord {
             kind: part_kind(&name),
             name,
@@ -33,7 +33,7 @@ fn presentation_part_facts<R: Read + std::io::Seek>(
     let slides = slide_parts(archive)?;
     let mut has_vba = false;
     for index in 0..archive.len() {
-        let name = archive.by_index(index)?.name().to_string();
+        let name = archive.by_index(index)?.name()?.into_owned();
         if part_kind(&name) == PartKind::Vba {
             has_vba = true;
         }

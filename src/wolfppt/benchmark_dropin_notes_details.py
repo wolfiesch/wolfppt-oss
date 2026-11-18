@@ -286,11 +286,20 @@ def _dropin_create_notes_slide_details(
             "ppt/theme/theme2.xml",
         ]
         and package_diff.changed_parts
-        == [
-            "[Content_Types].xml",
-            "ppt/_rels/presentation.xml.rels",
-            "ppt/slides/_rels/slide1.xml.rels",
-        ]
+        in (
+            [
+                "[Content_Types].xml",
+                "ppt/_rels/presentation.xml.rels",
+                "ppt/slides/_rels/slide1.xml.rels",
+            ],
+            # The notes master is also registered in p:notesMasterIdLst.
+            [
+                "[Content_Types].xml",
+                "ppt/_rels/presentation.xml.rels",
+                "ppt/presentation.xml",
+                "ppt/slides/_rels/slide1.xml.rels",
+            ],
+        )
         and package_diff.removed_parts == []
     )
     notes_pass = summary.slides[0].notes == [CREATE_NOTES_SLIDE_EXPECTED]

@@ -10,46 +10,31 @@ def native_batch_edits(
     table_cell_merge_edits: list[dict[str, Any]],
     table_style_edits: list[tuple[tuple[int, int], dict[str, bool]]],
     text_run_edits: list[tuple[tuple[int, int], tuple[int, int, str]]],
-    text_run_bold_edits: list[
-        tuple[tuple[int, int], tuple[int, int, int, bool | None]]
-    ],
-    text_run_italic_edits: list[
-        tuple[tuple[int, int], tuple[int, int, int, bool | None]]
-    ],
-    text_run_underline_edits: list[
-        tuple[tuple[int, int], tuple[int, int, int, bool | None]]
-    ],
-    text_run_font_size_edits: list[
-        tuple[tuple[int, int], tuple[int, int, int, int | None]]
-    ],
-    text_run_font_name_edits: list[
-        tuple[tuple[int, int], tuple[int, int, int, str | None]]
-    ],
-    text_run_font_color_edits: list[
-        tuple[tuple[int, int, int, int], tuple[int, str]]
-    ],
+    text_run_bold_edits: list[tuple[tuple[int, int], tuple[int, int, int, bool | None]]],
+    text_run_italic_edits: list[tuple[tuple[int, int], tuple[int, int, int, bool | None]]],
+    text_run_underline_edits: list[tuple[tuple[int, int], tuple[int, int, int, bool | str | None]]],
+    text_run_strike_edits: list[tuple[tuple[int, int], tuple[int, int, int, bool | None]]],
+    text_run_font_size_edits: list[tuple[tuple[int, int], tuple[int, int, int, int | None]]],
+    text_run_font_name_edits: list[tuple[tuple[int, int], tuple[int, int, int, str | None]]],
+    text_run_font_color_edits: list[tuple[tuple[int, int, int, int], tuple[int, str]]],
     text_run_appends: list[tuple[tuple[int, int, int, int], str]],
     paragraph_line_break_edits: list[tuple[int, int, int, int]],
     paragraph_text_edits: list[tuple[tuple[int, int, int], str]],
     paragraph_appends: list[tuple[tuple[int, int, int], str]],
     paragraph_alignment_edits: list[tuple[tuple[int, int, int], str | None]],
     paragraph_level_edits: list[tuple[tuple[int, int, int], int]],
-    paragraph_spacing_edits: list[
-        tuple[tuple[int, int, int], dict[str, int | float | None]]
-    ],
+    paragraph_spacing_edits: list[tuple[tuple[int, int, int], dict[str, int | float | None]]],
     paragraph_font_edits: list[tuple[tuple[int, int, int], dict[str, Any]]],
     text_frame_margin_edits: list[tuple[tuple[int, int], dict[str, int]]],
     text_frame_word_wrap_edits: list[tuple[tuple[int, int], bool | None]],
     text_frame_vertical_anchor_edits: list[tuple[tuple[int, int], str | None]],
-    text_frame_auto_size_edits: list[tuple[tuple[int, int], str | None]],
+    text_frame_auto_size_edits: list[tuple[tuple[int, int], Any]],
     text_edits: list[tuple[tuple[int, int], str]],
     group_child_text_edits: list[tuple[tuple[int, int, int], str]],
     group_child_paragraph_text_edits: list[tuple[tuple[int, int, int, int], str]],
     group_child_run_text_edits: list[tuple[tuple[int, int, int, int, int], str]],
     geometry_edits: list[tuple[tuple[int, int], tuple[int, int, int, int]]],
-    group_child_geometry_edits: list[
-        tuple[tuple[int, int, int], tuple[int, int, int, int]]
-    ],
+    group_child_geometry_edits: list[tuple[tuple[int, int, int], tuple[int, int, int, int]]],
     shape_deletes: list[tuple[int, int]] | None = None,
     slide_order: list[int] | None = None,
     table_row_column_edits: list[dict[str, Any]] | None = None,
@@ -109,12 +94,45 @@ def native_batch_edits(
         run_formatting_edits.setdefault((slide_index, run_index), {})["italic"] = italic
     for (slide_index, run_index), (_, _, _, underline) in text_run_underline_edits:
         run_formatting_edits.setdefault((slide_index, run_index), {})["underline"] = underline
+    for (slide_index, run_index), (_, _, _, strike) in text_run_strike_edits:
+        run_formatting_edits.setdefault((slide_index, run_index), {})["strike"] = strike
     for (slide_index, run_index), (_, _, _, size) in text_run_font_size_edits:
         run_formatting_edits.setdefault((slide_index, run_index), {})["size"] = size
     for (slide_index, run_index), (_, _, _, name) in text_run_font_name_edits:
         run_formatting_edits.setdefault((slide_index, run_index), {})["name"] = name
     for (slide_index, _, _, _), (run_index, rgb) in text_run_font_color_edits:
         run_formatting_edits.setdefault((slide_index, run_index), {})["color"] = rgb
+    # Apply whole-shape and paragraph text, and append new paragraphs, before
+    # run appends and line breaks so runs and breaks added after them land in
+    # the rewritten or appended paragraphs instead of being discarded or merged.
+    for (slide_index, shape_index), text in text_edits:
+        edits.append(
+            {
+                "type": "set_shape_text",
+                "slide_index": slide_index,
+                "shape_index": shape_index,
+                "replacement": text,
+            }
+        )
+    for (slide_index, shape_index, paragraph_index), text in paragraph_text_edits:
+        edits.append(
+            {
+                "type": "set_paragraph_text",
+                "slide_index": slide_index,
+                "shape_index": shape_index,
+                "paragraph_index": paragraph_index,
+                "replacement": text,
+            }
+        )
+    for (slide_index, shape_index, _), text in paragraph_appends:
+        edits.append(
+            {
+                "type": "append_paragraph_text",
+                "slide_index": slide_index,
+                "shape_index": shape_index,
+                "text": text,
+            }
+        )
     for (slide_index, shape_index, paragraph_index, _), text in text_run_appends:
         edits.append(
             {
@@ -125,7 +143,12 @@ def native_batch_edits(
                 "text": text,
             }
         )
-    for slide_index, shape_index, paragraph_index, run_slot in paragraph_line_break_edits:
+    for (
+        slide_index,
+        shape_index,
+        paragraph_index,
+        run_slot,
+    ) in paragraph_line_break_edits:
         edits.append(
             {
                 "type": "insert_paragraph_line_break",
@@ -133,15 +156,6 @@ def native_batch_edits(
                 "shape_index": shape_index,
                 "paragraph_index": paragraph_index,
                 "run_slot": run_slot,
-            }
-        )
-    for (slide_index, shape_index), text in text_edits:
-        edits.append(
-            {
-                "type": "set_shape_text",
-                "slide_index": slide_index,
-                "shape_index": shape_index,
-                "replacement": text,
             }
         )
     for (slide_index, group_index, child_index), text in group_child_text_edits:
@@ -188,31 +202,16 @@ def native_batch_edits(
                 "replacement": text,
             }
         )
-    for (slide_index, shape_index, paragraph_index), text in paragraph_text_edits:
-        edits.append(
-            {
-                "type": "set_paragraph_text",
-                "slide_index": slide_index,
-                "shape_index": shape_index,
-                "paragraph_index": paragraph_index,
-                "replacement": text,
-            }
-        )
-    for (slide_index, shape_index, _), text in paragraph_appends:
-        edits.append(
-            {
-                "type": "append_paragraph_text",
-                "slide_index": slide_index,
-                "shape_index": shape_index,
-                "text": text,
-            }
-        )
     paragraph_property_edits = _paragraph_property_edits(
         paragraph_alignment_edits,
         paragraph_level_edits,
         paragraph_spacing_edits,
     )
-    for (slide_index, shape_index, paragraph_index), properties in paragraph_property_edits:
+    for (
+        slide_index,
+        shape_index,
+        paragraph_index,
+    ), properties in paragraph_property_edits:
         edits.append(
             {
                 "type": "set_paragraph_properties",
@@ -239,6 +238,8 @@ def native_batch_edits(
                 "italic": font.get("italic"),
                 "set_underline": "underline" in font,
                 "underline": font.get("underline"),
+                "set_strike": "strike" in font,
+                "strike": font.get("strike"),
                 "set_size": "size" in font,
                 "size": font.get("size"),
                 "set_name": "name" in font,
@@ -279,6 +280,8 @@ def native_batch_edits(
             "italic": formatting.get("italic"),
             "set_underline": "underline" in formatting,
             "underline": formatting.get("underline"),
+            "set_strike": "strike" in formatting,
+            "strike": formatting.get("strike"),
             "set_size": "size" in formatting,
             "size": formatting.get("size"),
             "set_name": "name" in formatting,
@@ -380,6 +383,16 @@ def _append_single_run_formatting_edit(
             }
         )
         return
+    if "strike" in formatting:
+        edits.append(
+            {
+                "type": "set_text_run_strike",
+                "slide_index": slide_index,
+                "run_index": run_index,
+                "strike": formatting["strike"],
+            }
+        )
+        return
     if "size" in formatting:
         edits.append(
             {
@@ -403,9 +416,7 @@ def _append_single_run_formatting_edit(
 def _paragraph_property_edits(
     paragraph_alignment_edits: list[tuple[tuple[int, int, int], str | None]],
     paragraph_level_edits: list[tuple[tuple[int, int, int], int]],
-    paragraph_spacing_edits: list[
-        tuple[tuple[int, int, int], dict[str, int | float | None]]
-    ],
+    paragraph_spacing_edits: list[tuple[tuple[int, int, int], dict[str, int | float | None]]],
 ) -> list[tuple[tuple[int, int, int], dict[str, Any]]]:
     edits: dict[tuple[int, int, int], dict[str, Any]] = {}
     for key, alignment in paragraph_alignment_edits:
@@ -432,7 +443,7 @@ def _paragraph_spacing_patch(
 
 
 def _text_frame_property_edits(
-    text_frame_margin_edits: list[tuple[tuple[int, int], dict[str, int]]],
+    text_frame_margin_edits: list[tuple[tuple[int, int], dict[str, int | None]]],
     text_frame_word_wrap_edits: list[tuple[tuple[int, int], bool | None]],
     text_frame_vertical_anchor_edits: list[tuple[tuple[int, int], str | None]],
     text_frame_auto_size_edits: list[tuple[tuple[int, int], str | None]],
@@ -440,7 +451,7 @@ def _text_frame_property_edits(
     edits: dict[tuple[int, int], dict[str, Any]] = {}
     for key, margins in text_frame_margin_edits:
         edits.setdefault(key, {})["margins"] = {
-            str(attr): int(value) for attr, value in margins.items()
+            str(attr): None if value is None else int(value) for attr, value in margins.items()
         }
     for key, value in text_frame_word_wrap_edits:
         edits.setdefault(key, {})["set_word_wrap"] = True
@@ -448,9 +459,18 @@ def _text_frame_property_edits(
     for key, value in text_frame_vertical_anchor_edits:
         edits.setdefault(key, {})["set_vertical_anchor"] = True
         edits[key]["vertical_anchor"] = value
-    for key, value in text_frame_auto_size_edits:
-        edits.setdefault(key, {})["set_auto_size"] = True
-        edits[key]["auto_size"] = value
+    for key, payload in text_frame_auto_size_edits:
+        if isinstance(payload, tuple) and len(payload) == 2:
+            auto_size, autofit_scale = payload
+        else:
+            auto_size, autofit_scale = payload, None
+        target = edits.setdefault(key, {})
+        target["set_auto_size"] = True
+        target["auto_size"] = auto_size
+        if autofit_scale is not None:
+            target["set_autofit_scale"] = True
+            target["font_scale"] = autofit_scale.get("font_scale")
+            target["line_spacing_reduction"] = autofit_scale.get("line_spacing_reduction")
     return list(edits.items())
 
 

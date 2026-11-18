@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import zipfile
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from xml.etree import ElementTree as ET
 
 from .dml_fill import (
@@ -11,14 +11,24 @@ from .dml_fill import (
 )
 from .facade_values import (
     coerce_emu as _coerce_emu,
+)
+from .facade_values import (
     text_frame_auto_size_value as _text_frame_auto_size_value,
 )
 from .table_xml import _table_cell_xml_element, _table_xml_element
+from .text_autofit import TextAutofitScale
 from .xml_helpers import (
     xml_bool_attr as _xml_bool_attr,
+)
+from .xml_helpers import (
     xml_int_attr as _xml_int_attr,
+)
+from .xml_helpers import (
     xml_local_name as _xml_local_name,
 )
+
+if TYPE_CHECKING:
+    from .table_facade import Table, TableCell
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
@@ -131,6 +141,7 @@ def _table_cell_properties_from_xml(cell_element: ET.Element | None) -> dict[str
     text_frame_vertical_anchor = None
     text_frame_word_wrap = None
     text_frame_auto_size = None
+    text_frame_autofit_scale = None
     fill_type = None
     fill_rgb = None
     fill_theme_color = None
@@ -191,6 +202,20 @@ def _table_cell_properties_from_xml(cell_element: ET.Element | None) -> dict[str
                 local_name = _xml_local_name(child.tag)
                 if local_name in _TEXT_FRAME_AUTO_SIZE_TAGS:
                     text_frame_auto_size = local_name
+                    if local_name == "normAutofit":
+                        font_scale_raw = child.attrib.get("fontScale")
+                        if font_scale_raw is not None:
+                            try:
+                                fs = int(font_scale_raw) / 100000.0
+                                lsr_raw = child.attrib.get("lnSpcReduction")
+                                lsr = (
+                                    int(lsr_raw) / 100000.0
+                                    if lsr_raw is not None
+                                    else 0.0
+                                )
+                                text_frame_autofit_scale = TextAutofitScale(fs, lsr)
+                            except (ValueError, TypeError):
+                                text_frame_autofit_scale = None
                     break
     return {
         "margins": margins,
@@ -199,6 +224,7 @@ def _table_cell_properties_from_xml(cell_element: ET.Element | None) -> dict[str
         "text_frame_vertical_anchor": text_frame_vertical_anchor,
         "text_frame_word_wrap": text_frame_word_wrap,
         "text_frame_auto_size": text_frame_auto_size,
+        "text_frame_autofit_scale": text_frame_autofit_scale,
         "fill_type": fill_type,
         "fill_rgb": fill_rgb,
         "fill_theme_color": fill_theme_color,
@@ -297,6 +323,13 @@ def _table_cell_text_frame_auto_size(cell: TableCell) -> Any:
     )
 
 
+def _table_cell_text_frame_autofit_scale(cell: TableCell) -> TextAutofitScale | None:
+    payload = _table_cell_property_payload(cell)
+    if payload.get("text_frame_auto_size") != "normAutofit":
+        return None
+    return payload.get("text_frame_autofit_scale")
+
+
 def _table_cell_fill_payload(
     cell_properties: ET.Element,
 ) -> tuple[
@@ -314,9 +347,7 @@ def _table_cell_fill_payload(
             rgb_color = child.find(f"{{{A_NS}}}srgbClr")
             theme_color = child.find(f"{{{A_NS}}}schemeClr")
             rgb = None if rgb_color is None else rgb_color.attrib.get("val")
-            theme = (
-                None if theme_color is None else theme_color.attrib.get("val")
-            )
+            theme = None if theme_color is None else theme_color.attrib.get("val")
             return (
                 "solid",
                 rgb.upper() if rgb else None,
