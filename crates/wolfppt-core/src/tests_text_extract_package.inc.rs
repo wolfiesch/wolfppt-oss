@@ -109,98 +109,6 @@
         assert_eq!(extract_paragraph_line_breaks(xml), vec![vec![1]]);
     }
 
-    const EMPTY_RUN_AND_FIELD_SLIDE: &[u8] = br#"<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree>
-        <p:sp><p:txBody>
-          <a:p><a:fld type="slidenum"><a:t>3</a:t></a:fld><a:r><a:t>Header</a:t></a:r></a:p>
-        </p:txBody></p:sp>
-        <p:sp><p:txBody>
-          <a:p><a:r><a:rPr b="1"/><a:t/></a:r><a:br/><a:r><a:rPr i="1"/><a:t>Title</a:t></a:r><a:r><a:t>Q&amp;A</a:t></a:r><a:fld type="datetime"><a:t>Today</a:t></a:fld><a:br/></a:p>
-        </p:txBody></p:sp>
-    </p:spTree></p:cSld></p:sld>"#;
-
-    #[test]
-    fn counts_every_run_element_and_never_fields() {
-        let xml = EMPTY_RUN_AND_FIELD_SLIDE;
-        assert_eq!(
-            extract_paragraph_runs(xml),
-            vec![
-                vec!["Header".to_string()],
-                vec![String::new(), "Title".to_string(), "Q&A".to_string()],
-            ]
-        );
-        assert_eq!(extract_paragraph_line_breaks(xml), vec![vec![], vec![1, 3]]);
-        assert_eq!(
-            extract_paragraph_run_bold(xml),
-            vec![vec![None], vec![Some(true), None, None]]
-        );
-        assert_eq!(
-            extract_paragraph_run_italic(xml),
-            vec![vec![None], vec![None, Some(true), None]]
-        );
-        assert_eq!(
-            extract_paragraph_fields(xml),
-            vec![
-                vec![ParagraphFieldSummary {
-                    run_slot: 0,
-                    line_breaks_before: 0,
-                    text: "3".to_string(),
-                }],
-                vec![ParagraphFieldSummary {
-                    run_slot: 3,
-                    line_breaks_before: 1,
-                    text: "Today".to_string(),
-                }],
-            ]
-        );
-    }
-
-    #[test]
-    fn replaces_slide_run_text_by_run_element_index() {
-        let replace = |run_index: usize| {
-            let (xml, count) =
-                replace_text_run_at_index_in_slide(EMPTY_RUN_AND_FIELD_SLIDE, run_index, "New")
-                    .unwrap();
-            assert_eq!(count, 1);
-            extract_paragraph_runs(&xml)
-        };
-
-        // Index 1 is the empty run of the second shape: the field before it is
-        // not a run and the empty `<a:t/>` is expanded to hold the new text.
-        assert_eq!(
-            replace(1),
-            vec![
-                vec!["Header".to_string()],
-                vec!["New".to_string(), "Title".to_string(), "Q&A".to_string()],
-            ]
-        );
-        // A run whose text is split by an entity reference is still one run.
-        assert_eq!(
-            replace(3),
-            vec![
-                vec!["Header".to_string()],
-                vec![String::new(), "Title".to_string(), "New".to_string()],
-            ]
-        );
-
-        let (xml, _) =
-            replace_text_run_at_index_in_slide(EMPTY_RUN_AND_FIELD_SLIDE, 1, "New").unwrap();
-        let xml = String::from_utf8(xml).unwrap();
-        assert!(xml.contains(r#"<a:r><a:rPr b="1"/><a:t>New</a:t></a:r><a:br/>"#));
-        assert!(xml.contains(r#"<a:fld type="datetime"><a:t>Today</a:t></a:fld>"#));
-    }
-
-    #[test]
-    fn replaces_group_child_run_text_in_empty_run() {
-        let xml = br#"<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:grpSp><p:grpSpPr/><p:sp><p:txBody><a:p><a:r><a:t/></a:r><a:r><a:t>Kept</a:t></a:r></a:p></p:txBody></p:sp></p:grpSp></p:spTree></p:cSld></p:sld>"#;
-        let (rewritten, count) =
-            set_group_shape_child_run_text_in_slide(xml, 0, 0, 0, 0, "New").unwrap();
-        assert_eq!(count, 1);
-        assert_eq!(
-            extract_paragraph_runs(&rewritten),
-            vec![vec!["New".to_string(), "Kept".to_string()]]
-        );
-    }
-
     #[test]
     fn inspects_fixture_package() {
         let manifest =
@@ -368,4 +276,41 @@
             .iter()
             .filter(|part| part.name != "ppt/slides/slide1.xml")
             .all(|part| rewritten.parts.contains(part)));
+    }
+
+    #[test]
+    fn selects_effective_mc_branches_for_native_text_and_shapes() {
+        let xml = br#"
+            <p:spTree xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+                      xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+                      xmlns:compat="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                      xmlns:base="http://schemas.openxmlformats.org/presentationml/2006/main"
+                      xmlns:drawing="http://schemas.openxmlformats.org/drawingml/2006/main">
+              <p:sp><p:nvSpPr><p:cNvPr id="1" name="Plain"/></p:nvSpPr><p:txBody><a:p><a:r><a:t>PLAIN</a:t></a:r></a:p></p:txBody></p:sp>
+              <compat:AlternateContent>
+                <compat:Choice Requires="base drawing">
+                  <p:sp><p:nvSpPr><p:cNvPr id="2" name="Supported"/></p:nvSpPr><p:txBody><a:p><a:r><a:t>SUPPORTED</a:t></a:r></a:p></p:txBody></p:sp>
+                  <compat:AlternateContent>
+                    <compat:Choice xmlns:base="urn:unsupported" Requires="base"><p:sp><p:nvSpPr><p:cNvPr id="3" name="Suppressed"/></p:nvSpPr><p:txBody><a:p><a:r><a:t>SUPPRESSED</a:t></a:r></a:p></p:txBody></p:sp></compat:Choice>
+                    <compat:Fallback><p:sp><p:nvSpPr><p:cNvPr id="4" name="Nested fallback"/></p:nvSpPr><p:txBody><a:p><a:r><a:t>NESTED_FALLBACK</a:t></a:r></a:p></p:txBody></p:sp></compat:Fallback>
+                  </compat:AlternateContent>
+                </compat:Choice>
+                <compat:Fallback><p:sp><p:nvSpPr><p:cNvPr id="5" name="Outer fallback"/></p:nvSpPr><p:txBody><a:p><a:r><a:t>OUTER_FALLBACK</a:t></a:r></a:p></p:txBody></p:sp></compat:Fallback>
+              </compat:AlternateContent>
+            </p:spTree>
+        "#;
+
+        let shapes = extract_shapes(xml);
+        assert_eq!(shapes.len(), 3);
+        assert_eq!(shapes[0].name.as_deref(), Some("Plain"));
+        assert_eq!(shapes[1].name.as_deref(), Some("Supported"));
+        assert_eq!(shapes[2].name.as_deref(), Some("Nested fallback"));
+        assert_eq!(
+            extract_text_runs(xml),
+            vec![
+                "PLAIN".to_string(),
+                "SUPPORTED".to_string(),
+                "NESTED_FALLBACK".to_string(),
+            ]
+        );
     }

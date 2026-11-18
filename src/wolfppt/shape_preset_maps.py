@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import enum
+
+from .shape_preset_guides import PRESET_ADJUSTMENT_DEFAULTS
+
 _AUTO_SHAPE_PRESET_BY_ID = {
     1: "rect",
     2: "parallelogram",
@@ -376,10 +380,10 @@ _AUTO_SHAPE_TYPE_BY_PRESET = {
     preset: shape_id for shape_id, preset in _AUTO_SHAPE_PRESET_BY_ID.items()
 }
 
+# Source defaults for adjustable presets; otherwise retain inspection of authored avLst.
 _AUTO_SHAPE_ADJUSTMENT_DEFAULTS = {
-    preset: () for preset in _AUTO_SHAPE_PRESET_BY_ID.values()
+    preset: guides for preset, guides in PRESET_ADJUSTMENT_DEFAULTS.items() if guides
 }
-_AUTO_SHAPE_ADJUSTMENT_DEFAULTS["roundRect"] = (("adj", 16667),)
 
 _CONNECTOR_PRESET_BY_ID = {
     1: "line",
@@ -392,3 +396,30 @@ _CONNECTOR_PRESET_BY_NAME = {
     "ELBOW": "bentConnector3",
     "CURVE": "curvedConnector3",
 }
+
+
+class ConnectorPreset(enum.StrEnum):
+    """Connector ``ST_ShapeType`` preset authored on a ``p:sp``, read by ``auto_shape_type``.
+
+    No ``MSO_AUTO_SHAPE_TYPE`` member names these presets. Each member equals its preset
+    name, so it is accepted by ``add_connector``; assigning one to ``auto_shape_type``
+    raises ``NotImplementedError``.
+    """
+
+    LINE = "line"
+    STRAIGHT_CONNECTOR_1 = "straightConnector1"
+    BENT_CONNECTOR_2 = "bentConnector2"
+    BENT_CONNECTOR_3 = "bentConnector3"
+    BENT_CONNECTOR_4 = "bentConnector4"
+    BENT_CONNECTOR_5 = "bentConnector5"
+    CURVED_CONNECTOR_2 = "curvedConnector2"
+    CURVED_CONNECTOR_3 = "curvedConnector3"
+    CURVED_CONNECTOR_4 = "curvedConnector4"
+    CURVED_CONNECTOR_5 = "curvedConnector5"
+
+    @property
+    def xml_value(self) -> str:
+        return self.value
+
+
+_CONNECTOR_PRESET_BY_PRESET = {member.value: member for member in ConnectorPreset}

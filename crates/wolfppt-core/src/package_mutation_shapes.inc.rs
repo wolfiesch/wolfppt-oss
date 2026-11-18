@@ -11,7 +11,7 @@ fn write_package_with_replaced_part<R: Read + std::io::Seek>(
 
     for index in 0..archive.len() {
         let file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         update_package_facts(&name, &mut part_count, &mut has_vba);
         if name == target_part {
             let options = SimpleFileOptions::default().compression_method(file.compression());
@@ -471,8 +471,12 @@ pub fn add_slide_nested_group_freeform_shape_in_new_group_with_text(
         Some(text),
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
 
     Ok(FreeformShapeAddSummary {
         path: output_path.to_path_buf(),
@@ -544,8 +548,8 @@ pub fn add_slide_auto_shape(
     output_path: impl AsRef<Path>,
     slide_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
 ) -> Result<AutoShapeAddSummary, WolfPptError> {
@@ -569,8 +573,8 @@ pub fn add_slide_auto_shape_with_text(
     output_path: impl AsRef<Path>,
     slide_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: &str,
@@ -596,8 +600,8 @@ pub fn add_slide_group_auto_shape_with_text(
     slide_index: usize,
     group_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: &str,
@@ -636,8 +640,12 @@ pub fn add_slide_group_auto_shape_with_text(
         &[],
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
     Ok(AutoShapeAddSummary {
         path: output_path.to_path_buf(),
         slide_index,
@@ -657,8 +665,8 @@ pub fn add_slide_nested_group_auto_shape_with_text(
     group_index: usize,
     nested_group_child_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: &str,
@@ -698,8 +706,12 @@ pub fn add_slide_nested_group_auto_shape_with_text(
         &[],
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
     Ok(AutoShapeAddSummary {
         path: output_path.to_path_buf(),
         slide_index,
@@ -720,8 +732,8 @@ pub fn add_slide_deeper_nested_group_auto_shape_with_text(
     nested_group_child_index: usize,
     deeper_group_child_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: &str,
@@ -762,8 +774,12 @@ pub fn add_slide_deeper_nested_group_auto_shape_with_text(
         &[],
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
     Ok(AutoShapeAddSummary {
         path: output_path.to_path_buf(),
         slide_index,
@@ -782,8 +798,8 @@ pub fn add_slide_nested_group_auto_shape_in_new_group_with_text(
     slide_index: usize,
     group_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: &str,
@@ -823,8 +839,12 @@ pub fn add_slide_nested_group_auto_shape_in_new_group_with_text(
         text,
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
     Ok(AutoShapeAddSummary {
         path: output_path.to_path_buf(),
         slide_index,
@@ -842,8 +862,8 @@ fn add_slide_auto_shape_impl(
     output_path: impl AsRef<Path>,
     slide_index: usize,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: Option<&str>,
@@ -882,8 +902,12 @@ fn add_slide_auto_shape_impl(
         adjustment_guides,
     )?;
 
-    let (part_count, has_vba) =
-        write_package_with_replaced_part(&mut archive, output_path, &slide_part, slide_xml.as_bytes())?;
+    let (part_count, has_vba) = write_package_with_replaced_part(
+        &mut archive,
+        output_path,
+        &slide_part,
+        slide_xml.as_bytes(),
+    )?;
     Ok(AutoShapeAddSummary {
         path: output_path.to_path_buf(),
         slide_index,
@@ -899,6 +923,16 @@ fn delete_shape_at_index_in_slide(
     xml: &[u8],
     target_shape_index: usize,
 ) -> Result<(Vec<u8>, usize, std::collections::BTreeSet<String>), WolfPptError> {
+    // Match the reader's selected MC branch, but delete the complete wrapper.
+    // A wrapper exposing several shapes cannot be removed as one facade shape.
+    let mut alternate_counts = Vec::new();
+    if !mc_round_trip_is_identity(xml) {
+        let nodes = parse_mc_xml(xml).ok_or_else(|| {
+            WolfPptError::XmlText("invalid markup compatibility XML while deleting shape".into())
+        })?;
+        collect_alternate_shape_counts(&nodes, &mut alternate_counts);
+    }
+    let mut alternate_counts = alternate_counts.into_iter();
     let mut reader = Reader::from_reader(xml);
     let mut writer = Writer::new(Cursor::new(Vec::new()));
     let mut in_shape_tree = false;
@@ -907,24 +941,27 @@ fn delete_shape_at_index_in_slide(
     let mut shape_index = 0usize;
     let mut deleted = false;
     let mut removed_relationship_ids = std::collections::BTreeSet::new();
+    let mut removed_shape_ids = std::collections::BTreeSet::new();
 
     loop {
         let event = reader.read_event()?;
         if skipping_depth > 0 {
+            if let Event::Start(element) | Event::Empty(element) = &event {
+                if let Some(id) = extract_shape_id_from_event(
+                    element.name().as_ref().as_bytes(),
+                    element.attributes(),
+                ) {
+                    removed_shape_ids.insert(id);
+                }
+            }
             match event {
                 Event::Start(start) => {
-                    collect_relationship_ids(
-                        &start,
-                        reader.decoder(),
-                        &mut removed_relationship_ids,
-                    );
+                    collect_relationship_ids(&start, &mut removed_relationship_ids);
                     skipping_depth += 1;
                 }
-                Event::Empty(empty) => collect_relationship_ids(
-                    &empty,
-                    reader.decoder(),
-                    &mut removed_relationship_ids,
-                ),
+                Event::Empty(empty) => {
+                    collect_relationship_ids(&empty, &mut removed_relationship_ids)
+                }
                 Event::End(_) => skipping_depth -= 1,
                 Event::Eof => {
                     return Err(WolfPptError::XmlText(
@@ -939,28 +976,35 @@ fn delete_shape_at_index_in_slide(
         match event {
             Event::Start(start) => {
                 let qname = start.name();
-                let name = local_name(qname.as_ref());
+                let name = local_name(qname.as_ref().as_bytes());
                 if !in_shape_tree && name == b"spTree" {
                     in_shape_tree = true;
                     shape_tree_depth = 1;
                     writer.write_event(Event::Start(start.into_owned()))?;
                 } else if in_shape_tree
                     && shape_tree_depth == 1
-                    && is_shape_tree_shape(name)
+                    && (is_shape_tree_shape(name) || name == b"AlternateContent")
                 {
-                    if shape_index == target_shape_index {
-                        collect_relationship_ids(
-                            &start,
-                            reader.decoder(),
-                            &mut removed_relationship_ids,
-                        );
+                    let width = if name == b"AlternateContent" {
+                        alternate_counts.next().unwrap_or(0)
+                    } else {
+                        1
+                    };
+                    if width > 1 && (shape_index..shape_index + width).contains(&target_shape_index)
+                    {
+                        return Err(WolfPptError::InvalidInput(
+                            "cannot delete one shape from a multi-shape AlternateContent".into(),
+                        ));
+                    }
+                    if width == 1 && shape_index == target_shape_index {
+                        collect_relationship_ids(&start, &mut removed_relationship_ids);
                         skipping_depth = 1;
                         deleted = true;
                     } else {
                         writer.write_event(Event::Start(start.into_owned()))?;
                         shape_tree_depth += 1;
                     }
-                    shape_index += 1;
+                    shape_index += width;
                 } else {
                     if in_shape_tree {
                         shape_tree_depth += 1;
@@ -970,14 +1014,10 @@ fn delete_shape_at_index_in_slide(
             }
             Event::Empty(empty) => {
                 let qname = empty.name();
-                let name = local_name(qname.as_ref());
+                let name = local_name(qname.as_ref().as_bytes());
                 if in_shape_tree && shape_tree_depth == 1 && is_shape_tree_shape(name) {
                     if shape_index == target_shape_index {
-                        collect_relationship_ids(
-                            &empty,
-                            reader.decoder(),
-                            &mut removed_relationship_ids,
-                        );
+                        collect_relationship_ids(&empty, &mut removed_relationship_ids);
                         deleted = true;
                     } else {
                         writer.write_event(Event::Empty(empty.into_owned()))?;
@@ -989,7 +1029,7 @@ fn delete_shape_at_index_in_slide(
             }
             Event::End(end) => {
                 let qname = end.name();
-                let name = local_name(qname.as_ref());
+                let name = local_name(qname.as_ref().as_bytes());
                 if in_shape_tree && shape_tree_depth == 1 && name == b"spTree" {
                     in_shape_tree = false;
                     shape_tree_depth = 0;
@@ -1008,30 +1048,70 @@ fn delete_shape_at_index_in_slide(
             "shape index {target_shape_index} was not found"
         )));
     }
-    let rewritten = writer.into_inner().into_inner();
+    let rewritten =
+        detach_deleted_shape_connections(&writer.into_inner().into_inner(), &removed_shape_ids)?;
     let surviving_relationship_ids = relationship_ids_in_xml(&rewritten);
     removed_relationship_ids.retain(|id| !surviving_relationship_ids.contains(id));
     Ok((rewritten, 1, removed_relationship_ids))
 }
 
-fn is_shape_tree_shape(name: &[u8]) -> bool {
-    matches!(
-        name,
-        b"sp" | b"grpSp" | b"graphicFrame" | b"cxnSp" | b"pic"
-    )
+fn effective_mc_shape_count(nodes: &[McXmlNode]) -> usize {
+    nodes
+        .iter()
+        .map(|node| match node {
+            McXmlNode::Element(element) if is_mc_element(element, b"AlternateContent") => {
+                selected_mc_branch(element)
+                    .map(|branch| effective_mc_shape_count(&branch.children))
+                    .unwrap_or(0)
+            }
+            McXmlNode::Element(element) => usize::from(is_shape_tree_shape(local_name(
+                element.start.name().as_ref().as_bytes(),
+            ))),
+            McXmlNode::Event(Event::Empty(element)) => usize::from(is_shape_tree_shape(
+                local_name(element.name().as_ref().as_bytes()),
+            )),
+            _ => 0,
+        })
+        .sum()
 }
 
-fn collect_relationship_ids(
-    event: &BytesStart<'_>,
-    decoder: quick_xml::encoding::Decoder,
-    ids: &mut std::collections::BTreeSet<String>,
-) {
+fn collect_alternate_shape_counts(nodes: &[McXmlNode], counts: &mut Vec<usize>) {
+    for node in nodes {
+        let McXmlNode::Element(element) = node else {
+            continue;
+        };
+        if local_name(element.start.name().as_ref().as_bytes()) == b"spTree" {
+            for child in &element.children {
+                if let McXmlNode::Element(alternate) = child {
+                    if local_name(alternate.start.name().as_ref().as_bytes()) == b"AlternateContent"
+                    {
+                        counts.push(if is_mc_element(alternate, b"AlternateContent") {
+                            selected_mc_branch(alternate)
+                                .map(|branch| effective_mc_shape_count(&branch.children))
+                                .unwrap_or(0)
+                        } else {
+                            0
+                        });
+                    }
+                }
+            }
+        } else {
+            collect_alternate_shape_counts(&element.children, counts);
+        }
+    }
+}
+
+fn is_shape_tree_shape(name: &[u8]) -> bool {
+    matches!(name, b"sp" | b"grpSp" | b"graphicFrame" | b"cxnSp" | b"pic")
+}
+
+fn collect_relationship_ids(event: &BytesStart<'_>, ids: &mut std::collections::BTreeSet<String>) {
     for attr in event.attributes().flatten() {
-        let key = attr.key.as_ref();
+        let key = attr.key.as_ref().as_bytes();
         if !key.contains(&b':') || !matches!(local_name(key), b"id" | b"embed" | b"link") {
             continue;
         }
-        if let Ok(value) = attr.decode_and_unescape_value(decoder) {
+        if let Ok(value) = attr.normalized_value(quick_xml::XmlVersion::Implicit1_0) {
             ids.insert(value.into_owned());
         }
     }
@@ -1043,7 +1123,7 @@ fn relationship_ids_in_xml(xml: &[u8]) -> std::collections::BTreeSet<String> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(event)) | Ok(Event::Empty(event)) => {
-                collect_relationship_ids(&event, reader.decoder(), &mut ids);
+                collect_relationship_ids(&event, &mut ids);
             }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}
@@ -1079,16 +1159,20 @@ fn remove_relationships_by_id(
             continue;
         }
         match event {
-            Event::Start(start) if local_name(start.name().as_ref()) == b"Relationship" => {
-                if relationship_ids.contains(&relationship_id(&start, reader.decoder())) {
+            Event::Start(start)
+                if local_name(start.name().as_ref().as_bytes()) == b"Relationship" =>
+            {
+                if relationship_ids.contains(&relationship_id(&start)) {
                     skipping_depth = 1;
                     removed += 1;
                 } else {
                     writer.write_event(Event::Start(start.into_owned()))?;
                 }
             }
-            Event::Empty(empty) if local_name(empty.name().as_ref()) == b"Relationship" => {
-                if relationship_ids.contains(&relationship_id(&empty, reader.decoder())) {
+            Event::Empty(empty)
+                if local_name(empty.name().as_ref().as_bytes()) == b"Relationship" =>
+            {
+                if relationship_ids.contains(&relationship_id(&empty)) {
                     removed += 1;
                 } else {
                     writer.write_event(Event::Empty(empty.into_owned()))?;
@@ -1101,12 +1185,15 @@ fn remove_relationships_by_id(
     Ok((writer.into_inner().into_inner(), removed))
 }
 
-fn relationship_id(event: &BytesStart<'_>, decoder: quick_xml::encoding::Decoder) -> String {
+fn relationship_id(event: &BytesStart<'_>) -> String {
     event
         .attributes()
         .flatten()
-        .find(|attr| local_name(attr.key.as_ref()) == b"Id")
-        .and_then(|attr| attr.decode_and_unescape_value(decoder).ok())
+        .find(|attr| local_name(attr.key.as_ref().as_bytes()) == b"Id")
+        .and_then(|attr| {
+            attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                .ok()
+        })
         .map(|value| value.into_owned())
         .unwrap_or_default()
 }

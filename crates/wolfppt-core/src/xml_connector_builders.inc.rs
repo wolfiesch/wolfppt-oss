@@ -4,10 +4,10 @@ fn add_connector_to_group_shape_xml(
     group_index: usize,
     shape_id: u64,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     begin_connection: Option<ConnectorConnectionSpec>,
     end_connection: Option<ConnectorConnectionSpec>,
 ) -> Result<String, WolfPptError> {
@@ -20,12 +20,6 @@ fn add_connector_to_group_shape_xml(
         if tag == "p:grpSp" {
             if current_group_index == group_index {
                 let block = &xml[start..end];
-                let Some(relative_end) = block.rfind("</p:grpSp>") else {
-                    return Err(WolfPptError::InvalidInput(
-                        "group shape XML is missing </p:grpSp>".to_string(),
-                    ));
-                };
-                let insert_at = start + relative_end;
                 let connector = connector_shape_xml(
                     shape_id,
                     preset_geometry,
@@ -36,7 +30,8 @@ fn add_connector_to_group_shape_xml(
                     begin_connection,
                     end_connection,
                 )?;
-                return Ok(format!("{}{}{}", &xml[..insert_at], connector, &xml[insert_at..]));
+                let rewritten_group = append_group_children_xml(block, &connector)?;
+                return replace_group_subtree_xml(xml, start, end, &rewritten_group);
             }
             current_group_index += 1;
         }
@@ -55,10 +50,10 @@ fn add_group_shape_with_connector_to_group_shape_xml(
     group_shape_id: u64,
     connector_shape_id: u64,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
 ) -> Result<String, WolfPptError> {
     let mut offset = 0;
     let mut current_group_index = 0;
@@ -85,13 +80,9 @@ fn add_group_shape_with_connector_to_group_shape_xml(
                     None,
                     None,
                 )?;
-                let group_shape = group_shape_with_child_xml(group_shape_id, &connector);
-                return Ok(format!(
-                    "{}{}{}",
-                    &xml[..insert_at],
-                    group_shape,
-                    &xml[insert_at..]
-                ));
+                let group_shape =
+                    group_shape_with_child_xml(group_shape_id, &connector)?;
+                return replace_group_subtree_xml(xml, insert_at, insert_at, &group_shape);
             }
             current_group_index += 1;
         }
@@ -110,23 +101,23 @@ fn add_connected_connector_with_auto_shapes_to_group_shape_xml(
     begin_shape_id: u64,
     begin_display_name: &str,
     begin_preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
     begin_cx_emu: u64,
     begin_cy_emu: u64,
     end_shape_id: u64,
     end_display_name: &str,
     end_preset_geometry: &str,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     end_cx_emu: u64,
     end_cy_emu: u64,
     connector_shape_id: u64,
     connector_preset_geometry: &str,
-    connector_begin_x_emu: u64,
-    connector_begin_y_emu: u64,
-    connector_end_x_emu: u64,
-    connector_end_y_emu: u64,
+    connector_begin_x_emu: i64,
+    connector_begin_y_emu: i64,
+    connector_end_x_emu: i64,
+    connector_end_y_emu: i64,
     begin_cxn_pt_idx: u64,
     end_cxn_pt_idx: u64,
 ) -> Result<String, WolfPptError> {
@@ -139,12 +130,6 @@ fn add_connected_connector_with_auto_shapes_to_group_shape_xml(
         if tag == "p:grpSp" {
             if current_group_index == group_index {
                 let block = &xml[start..end];
-                let Some(relative_end) = block.rfind("</p:grpSp>") else {
-                    return Err(WolfPptError::InvalidInput(
-                        "group shape XML is missing </p:grpSp>".to_string(),
-                    ));
-                };
-                let insert_at = start + relative_end;
                 let begin_shape = auto_shape_xml(
                     begin_shape_id,
                     begin_display_name,
@@ -183,14 +168,9 @@ fn add_connected_connector_with_auto_shapes_to_group_shape_xml(
                         cxn_pt_idx: end_cxn_pt_idx,
                     }),
                 )?;
-                return Ok(format!(
-                    "{}{}{}{}{}",
-                    &xml[..insert_at],
-                    begin_shape,
-                    end_shape,
-                    connector,
-                    &xml[insert_at..]
-                ));
+                let children = format!("{begin_shape}{end_shape}{connector}");
+                let rewritten_group = append_group_children_xml(block, &children)?;
+                return replace_group_subtree_xml(xml, start, end, &rewritten_group);
             }
             current_group_index += 1;
         }
@@ -209,20 +189,14 @@ fn add_connector_to_nested_group_shape_xml(
     nested_group_child_index: usize,
     shape_id: u64,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
 ) -> Result<String, WolfPptError> {
     let (nested_start, nested_end) =
         nested_group_child_bounds(xml, group_index, nested_group_child_index)?;
     let block = &xml[nested_start..nested_end];
-    let Some(relative_end) = block.rfind("</p:grpSp>") else {
-        return Err(WolfPptError::InvalidInput(
-            "nested group shape XML is missing </p:grpSp>".to_string(),
-        ));
-    };
-    let insert_at = nested_start + relative_end;
     let connector = connector_shape_xml(
         shape_id,
         preset_geometry,
@@ -233,7 +207,8 @@ fn add_connector_to_nested_group_shape_xml(
         None,
         None,
     )?;
-    Ok(format!("{}{}{}", &xml[..insert_at], connector, &xml[insert_at..]))
+    let rewritten_group = append_group_children_xml(block, &connector)?;
+    replace_group_subtree_xml(xml, nested_start, nested_end, &rewritten_group)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -244,10 +219,10 @@ fn add_connector_to_deeper_nested_group_shape_xml(
     deeper_group_child_index: usize,
     shape_id: u64,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
 ) -> Result<String, WolfPptError> {
     let (nested_start, nested_end) =
         nested_group_child_bounds(xml, group_index, nested_group_child_index)?;
@@ -265,12 +240,6 @@ fn add_connector_to_deeper_nested_group_shape_xml(
         )));
     }
     let deeper_block = &nested_block[deeper_start..deeper_end];
-    let Some(relative_end) = deeper_block.rfind("</p:grpSp>") else {
-        return Err(WolfPptError::InvalidInput(
-            "deeper nested group shape XML is missing </p:grpSp>".to_string(),
-        ));
-    };
-    let insert_at = nested_start + deeper_start + relative_end;
     let connector = connector_shape_xml(
         shape_id,
         preset_geometry,
@@ -281,17 +250,20 @@ fn add_connector_to_deeper_nested_group_shape_xml(
         None,
         None,
     )?;
-    Ok(format!("{}{}{}", &xml[..insert_at], connector, &xml[insert_at..]))
+    let rewritten_group = append_group_children_xml(deeper_block, &connector)?;
+    let deeper_absolute_start = nested_start + deeper_start;
+    let deeper_absolute_end = nested_start + deeper_end;
+    replace_group_subtree_xml(xml, deeper_absolute_start, deeper_absolute_end, &rewritten_group)
 }
 
 fn add_connector_to_slide_xml(
     xml: &str,
     shape_id: u64,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
 ) -> Result<String, WolfPptError> {
     let Some(end) = xml.rfind("</p:spTree>") else {
         return Err(WolfPptError::InvalidInput(
@@ -316,10 +288,10 @@ fn add_connected_connector_to_slide_xml(
     xml: &str,
     shape_id: u64,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     begin_connection: Option<ConnectorConnectionSpec>,
     end_connection: Option<ConnectorConnectionSpec>,
 ) -> Result<String, WolfPptError> {
@@ -346,22 +318,22 @@ fn add_connected_connector_with_auto_shapes_to_slide_xml(
     xml: &str,
     begin_shape_id: u64,
     begin_preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
     begin_cx_emu: u64,
     begin_cy_emu: u64,
     end_shape_id: u64,
     end_preset_geometry: &str,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     end_cx_emu: u64,
     end_cy_emu: u64,
     connector_shape_id: u64,
     connector_preset_geometry: &str,
-    connector_begin_x_emu: u64,
-    connector_begin_y_emu: u64,
-    connector_end_x_emu: u64,
-    connector_end_y_emu: u64,
+    connector_begin_x_emu: i64,
+    connector_begin_y_emu: i64,
+    connector_end_x_emu: i64,
+    connector_end_y_emu: i64,
     begin_cxn_pt_idx: u64,
     end_cxn_pt_idx: u64,
 ) -> Result<String, WolfPptError> {
@@ -435,10 +407,10 @@ fn connector_preset_geometry(preset_geometry: &str) -> Result<&'static str, Wolf
 fn connector_shape_xml(
     shape_id: u64,
     preset_geometry: &str,
-    begin_x_emu: u64,
-    begin_y_emu: u64,
-    end_x_emu: u64,
-    end_y_emu: u64,
+    begin_x_emu: i64,
+    begin_y_emu: i64,
+    end_x_emu: i64,
+    end_y_emu: i64,
     begin_connection: Option<ConnectorConnectionSpec>,
     end_connection: Option<ConnectorConnectionSpec>,
 ) -> Result<String, WolfPptError> {

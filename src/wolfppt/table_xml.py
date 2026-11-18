@@ -9,13 +9,23 @@ from xml.etree import ElementTree as ET
 
 from .dml_fill import (
     set_shape_gradient_fill as _set_shape_gradient_fill,
+)
+from .dml_fill import (
     set_shape_no_fill as _set_shape_no_fill,
+)
+from .dml_fill import (
     set_shape_pattern_fill as _set_shape_pattern_fill,
+)
+from .dml_fill import (
     set_shape_pattern_fill_color as _set_shape_pattern_fill_color,
+)
+from .dml_fill import (
     set_shape_solid_fill as _set_shape_solid_fill,
 )
 from .package_parts import (
     copy_package_with_replacements as _copy_package_with_replacements,
+)
+from .package_parts import (
     rels_part_for_package_part as _rels_part_for_package_part,
 )
 from .slide_payloads import load_slide_payloads as _load_slide_payloads
@@ -27,10 +37,7 @@ from .table_text_xml import (
     _set_table_cell_text_frame_paragraph_xml,
     _table_cell_body_properties_element,
 )
-from .text_xml import (
-    _clear_text_frame_auto_size_children,
-    _text_frame_auto_size_insert_index,
-)
+from .text_xml import _apply_text_body_auto_size
 from .xml_helpers import xml_local_name as _xml_local_name
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -48,19 +55,13 @@ def _apply_table_cell_property_edits(
         tuple[tuple[int, int, int, int], str | None]
     ],
     text_frame_content_edits: list[tuple[tuple[int, int, int, int], list[str]]],
-    text_frame_word_wrap_edits: list[
-        tuple[tuple[int, int, int, int], bool | None]
-    ],
-    text_frame_auto_size_edits: list[
-        tuple[tuple[int, int, int, int], str | None]
-    ],
+    text_frame_word_wrap_edits: list[tuple[tuple[int, int, int, int], bool | None]],
+    text_frame_auto_size_edits: list[tuple[tuple[int, int, int, int], Any]],
     text_frame_fit_edits: list[tuple[tuple[int, int, int, int], dict[str, Any]]],
     text_frame_paragraph_alignment_edits: list[
         tuple[tuple[int, int, int, int, int], str | None]
     ],
-    text_frame_paragraph_level_edits: list[
-        tuple[tuple[int, int, int, int, int], int]
-    ],
+    text_frame_paragraph_level_edits: list[tuple[tuple[int, int, int, int, int], int]],
     text_frame_paragraph_spacing_edits: list[
         tuple[tuple[int, int, int, int, int], dict[str, int | float | None]]
     ],
@@ -70,9 +71,7 @@ def _apply_table_cell_property_edits(
     text_frame_paragraph_run_edits: list[
         tuple[tuple[int, int, int, int, int], list[str]]
     ],
-    text_frame_paragraph_line_break_edits: list[
-        tuple[int, int, int, int, int, int]
-    ],
+    text_frame_paragraph_line_break_edits: list[tuple[int, int, int, int, int, int]],
     text_frame_paragraph_run_font_edits: list[
         tuple[tuple[int, int, int, int, int, int], dict[str, Any]]
     ],
@@ -104,7 +103,12 @@ def _apply_table_cell_property_edits(
             (table_index, row_index, col_index),
             {},
         ).setdefault("margins", {}).update(margins)
-    for (slide_index, table_index, row_index, col_index), anchor in vertical_anchor_edits:
+    for (
+        slide_index,
+        table_index,
+        row_index,
+        col_index,
+    ), anchor in vertical_anchor_edits:
         edits_by_slide.setdefault(slide_index, {}).setdefault(
             (table_index, row_index, col_index),
             {},
@@ -154,11 +158,11 @@ def _apply_table_cell_property_edits(
         table_index,
         row_index,
         col_index,
-    ), auto_size in text_frame_auto_size_edits:
+    ), payload in text_frame_auto_size_edits:
         edits_by_slide.setdefault(slide_index, {}).setdefault(
             (table_index, row_index, col_index),
             {},
-        )["text_frame_auto_size"] = auto_size
+        )["text_frame_auto_size"] = payload
     for (
         slide_index,
         table_index,
@@ -432,13 +436,14 @@ def _apply_table_cell_property_edits(
                         body_properties.set("wrap", "square" if word_wrap else "none")
                 if "text_frame_auto_size" in edits:
                     body_properties = _table_cell_body_properties_element(cell_element)
-                    _clear_text_frame_auto_size_children(body_properties)
-                    auto_size = edits["text_frame_auto_size"]
-                    if auto_size is not None:
-                        body_properties.insert(
-                            _text_frame_auto_size_insert_index(body_properties),
-                            ET.Element(f"{{{A_NS}}}{auto_size}"),
-                        )
+                    payload = edits["text_frame_auto_size"]
+                    if isinstance(payload, tuple) and len(payload) == 2:
+                        auto_size, autofit_scale = payload
+                    else:
+                        auto_size, autofit_scale = payload, None
+                    _apply_text_body_auto_size(
+                        body_properties, auto_size, autofit_scale
+                    )
                 if "text_frame_fit" in edits:
                     _set_table_cell_text_frame_fit(
                         cell_element,
@@ -661,14 +666,43 @@ def _set_table_cell_merge_attrs(
         cell_element.attrib.pop("vMerge", None)
 
 
+def _apply_table_style_id_to_properties(
+    table_properties: ET.Element,
+    style_id: str | None,
+) -> None:
+    style_elem = table_properties.find(f"{{{A_NS}}}tableStyleId")
+    if style_id is None:
+        if style_elem is not None:
+            table_properties.remove(style_elem)
+        return
+
+    embedded = table_properties.find(f"{{{A_NS}}}tableStyle")
+    if embedded is not None:
+        raise ValueError(
+            "cannot apply tableStyleId: table has an embedded custom tableStyle"
+        )
+
+    if style_elem is not None:
+        style_elem.text = style_id
+    else:
+        new_elem = ET.Element(f"{{{A_NS}}}tableStyleId")
+        new_elem.text = style_id
+        ext_lst = table_properties.find(f"{{{A_NS}}}extLst")
+        if ext_lst is not None:
+            idx = list(table_properties).index(ext_lst)
+            table_properties.insert(idx, new_elem)
+        else:
+            table_properties.append(new_elem)
+
+
 def _apply_table_style_edits(
     input_path: Path,
     output_path: Path,
-    style_edits: list[tuple[tuple[int, int], dict[str, bool]]],
+    style_edits: list[tuple[tuple[int, int], dict[str, Any]]],
 ) -> None:
     slides = _load_slide_payloads(input_path)
     replacements: dict[str, bytes] = {}
-    edits_by_slide: dict[int, dict[int, dict[str, bool]]] = {}
+    edits_by_slide: dict[int, dict[int, dict[str, Any]]] = {}
     for (slide_index, table_index), edits in style_edits:
         edits_by_slide.setdefault(slide_index, {}).setdefault(table_index, {}).update(
             edits
@@ -686,16 +720,34 @@ def _apply_table_style_edits(
                 table_element = _table_xml_element(root, table_index)
                 table_properties = _table_properties_element(table_element)
                 for attr, value in edits.items():
-                    if value:
-                        table_properties.set(attr, "1")
+                    if attr == "tableStyleId":
+                        _apply_table_style_id_to_properties(table_properties, value)
                     else:
-                        table_properties.attrib.pop(attr, None)
+                        if value:
+                            table_properties.set(attr, "1")
+                        else:
+                            table_properties.attrib.pop(attr, None)
             replacements[slide_part] = ET.tostring(
                 root,
                 encoding="utf-8",
                 xml_declaration=True,
             )
     _copy_package_with_replacements(input_path, output_path, replacements)
+
+
+def _apply_table_style_id_edits(
+    input_path: Path,
+    output_path: Path,
+    style_id_edits: list[tuple[tuple[int, int], str | None]]
+    | list[tuple[tuple[int, int], dict[str, Any]]],
+) -> None:
+    formatted_edits: list[tuple[tuple[int, int], dict[str, Any]]] = []
+    for key, val in style_id_edits:
+        if isinstance(val, dict):
+            formatted_edits.append((key, val))
+        else:
+            formatted_edits.append((key, {"tableStyleId": val}))
+    _apply_table_style_edits(input_path, output_path, formatted_edits)
 
 
 def _table_xml_element(root: ET.Element, table_index: int) -> ET.Element:

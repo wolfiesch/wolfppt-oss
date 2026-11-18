@@ -48,6 +48,14 @@ def remove_paragraph_run_edits(
         ) == (shape_index, paragraph_index):
             del queue._text_run_underline_edits[key]
     for key, (queued_shape_index, queued_paragraph_index, _, _) in list(
+        queue._text_run_strike_edits.items()
+    ):
+        if key[0] == slide_index and (
+            queued_shape_index,
+            queued_paragraph_index,
+        ) == (shape_index, paragraph_index):
+            del queue._text_run_strike_edits[key]
+    for key, (queued_shape_index, queued_paragraph_index, _, _) in list(
         queue._text_run_font_size_edits.items()
     ):
         if key[0] == slide_index and (

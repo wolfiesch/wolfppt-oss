@@ -2,27 +2,67 @@
 
 from __future__ import annotations
 
-import zipfile
+import re
+from collections.abc import Sequence
 from numbers import Integral
 from typing import Any
 from xml.etree import ElementTree as ET
 
-from .chart_edits import _chart_part_for_slide_shape
+from .chart_edits import _chart_part_for_slide_shape_in_package
 from .chart_xml import (
     chart_axis_element as _chart_axis_element,
+)
+from .chart_xml import (
     chart_container_element as _chart_container_element,
+)
+from .chart_xml import (
     default_chart_axis_payload as _default_chart_axis_payload,
+)
+from .chart_xml import (
     default_chart_data_labels_payload as _default_chart_data_labels_payload,
+)
+from .chart_xml import (
     parse_chart_root as _parse_chart_root,
 )
-from .dml_fill import (
-    no_fill_element as _no_fill_element,
-    set_shape_pattern_fill as _set_shape_pattern_fill,
-    solid_fill_element as _solid_fill_element,
-)
+from .package_parts import open_package_source
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+# ECMA-376 Part 1 Strict renames these namespaces and keeps the chart vocabulary.
+_STRICT_CHART_NS = "http://purl.oclc.org/ooxml/drawingml/chart"
+_TRANSITIONAL_PREFIXES = {
+    f"{{{_STRICT_CHART_NS}}}": f"{{{C_NS}}}",
+    "{http://purl.oclc.org/ooxml/drawingml/main}": f"{{{A_NS}}}",
+    "{http://purl.oclc.org/ooxml/officeDocument/relationships}": f"{{{R_NS}}}",
+}
+
+
+def _transitional_name(name: str) -> str:
+    if name.startswith("{"):
+        prefix = name[: name.find("}") + 1]
+        replacement = _TRANSITIONAL_PREFIXES.get(prefix)
+        if replacement is not None:
+            return replacement + name[len(prefix) :]
+    return name
+
+
+def transitional_chart_root(root: ET.Element) -> ET.Element:
+    """Rename a Strict chartSpace's chart, DrawingML and relationship names in place.
+
+    Chart facade readers address Transitional names; a Strict root is read as its
+    Transitional equivalent. Transitional roots are returned unchanged.
+    """
+    if not root.tag.startswith(f"{{{_STRICT_CHART_NS}}}"):
+        return root
+    for element in root.iter():
+        if isinstance(element.tag, str):
+            element.tag = _transitional_name(element.tag)
+        if any(name.startswith("{") for name in element.attrib):
+            attributes = {_transitional_name(name): value for name, value in element.attrib.items()}
+            element.attrib.clear()
+            element.attrib.update(attributes)
+    return root
 
 
 def normalize_tick_label_offset(value: Any) -> int:
@@ -45,6 +85,22 @@ def normalize_chart_plot_int(value: Any, *, minimum: int, maximum: int) -> int:
     return normalized
 
 
+def normalize_choice(value: Any, choices: Sequence[str], name: str) -> str:
+    """Normalize a string or enum member (by name) to one of ``choices``.
+
+    Matching ignores case and treats spaces, hyphens and underscores alike, so
+    ``"By Category"`` and an enum member named ``BY_CATEGORY`` both select
+    ``"by_category"``.
+    """
+    raw = getattr(value, "name", value)
+    if isinstance(raw, str):
+        compact = re.sub(r"[\s_-]", "", raw).lower()
+        for choice in choices:
+            if choice.replace("_", "").lower() == compact:
+                return choice
+    raise ValueError(f"unsupported {name} value {value!r}; expected one of {', '.join(choices)}")
+
+
 def chart_payload(shape: Any) -> dict[str, Any]:
     cached = shape._payload.get("_chart_payload")
     if isinstance(cached, dict):
@@ -52,11 +108,11 @@ def chart_payload(shape: Any) -> dict[str, Any]:
     chart_part = shape_chart_part(shape)
     cached_root = shape._payload.get("_chart_root")
     if isinstance(cached_root, ET.Element):
-        root = cached_root
+        root = transitional_chart_root(cached_root)
     else:
-        with zipfile.ZipFile(shape._slide._presentation.path) as package:
+        with open_package_source(shape._slide._presentation._source_path) as package:
             chart_xml = package.read(chart_part)
-        root = ET.fromstring(chart_xml)
+        root = transitional_chart_root(ET.fromstring(chart_xml))
         shape._payload["_chart_root"] = root
     payload = _parse_chart_root(root)
     payload["part"] = chart_part
@@ -121,10 +177,46 @@ def chart_title_proxy_element(shape: Any, *, create: bool = False) -> ET.Element
 def shape_chart_root(shape: Any) -> ET.Element:
     cached = shape._payload.get("_chart_root")
     if isinstance(cached, ET.Element):
-        return cached
+        return transitional_chart_root(cached)
+
+    # Check if this is an unsaved chart (no chart part and no relationship IDs)
+    hinted_part = shape._payload.get("_chart_part")
+    relationship_ids = shape._payload.get("relationship_ids") or []
+
+    if not hinted_part and not relationship_ids:
+        # Chart hasn't been saved yet - generate from staged payload
+        chart_payload = shape._payload.get("_chart_payload")
+        if not chart_payload:
+            raise AttributeError("chart payload is unavailable")
+
+        # Generate chart XML from the payload
+        from .chart_adds import _generated_chart_template
+        from .chart_type_xml import chart_type_value
+        from .chart_xml import replace_chart_xml_data
+
+        chart_type_payload = chart_payload.get("chart_type")
+        if chart_type_payload is None:
+            raise AttributeError("chart type is unavailable in payload")
+
+        chart_type = chart_type_value(chart_type_payload)
+        template = _generated_chart_template(chart_type)
+        chart_data = {
+            "series": chart_payload.get("series", []),
+            "categories": (
+                chart_payload["series"][0].get("categories", [])
+                if chart_payload.get("series")
+                else []
+            ),
+        }
+        chart_xml = replace_chart_xml_data(template["chart_xml"], chart_data)
+        root = ET.fromstring(chart_xml)
+        shape._payload["_chart_root"] = root
+        return root
+
+    # Saved chart - read from package
     chart_part = shape_chart_part(shape)
-    with zipfile.ZipFile(shape._slide._presentation.path) as package:
-        root = ET.fromstring(package.read(chart_part))
+    with open_package_source(shape._slide._presentation._source_path) as package:
+        root = transitional_chart_root(ET.fromstring(package.read(chart_part)))
     shape._payload["_chart_root"] = root
     return root
 
@@ -139,22 +231,22 @@ def chart_axis_proxy_element(shape: Any, axis: str) -> ET.Element:
     return axis_element
 
 
-def chart_axis_major_gridlines_element(
+def chart_axis_gridlines_element(
     shape: Any,
     axis: str,
+    kind: str,
     *,
     create: bool = False,
 ) -> ET.Element:
+    """The axis ``c:majorGridlines`` or ``c:minorGridlines`` (``kind`` major or minor)."""
+    local_name = f"{kind}Gridlines"
     axis_element = chart_axis_proxy_element(shape, axis)
-    gridlines = axis_element.find(f"{{{C_NS}}}majorGridlines")
+    gridlines = axis_element.find(f"{{{C_NS}}}{local_name}")
     if gridlines is not None:
         return gridlines
-    gridlines = ET.Element(f"{{{C_NS}}}majorGridlines")
+    gridlines = ET.Element(f"{{{C_NS}}}{local_name}")
     if create:
-        axis_element.insert(
-            _chart_axis_insert_index(axis_element, "majorGridlines"),
-            gridlines,
-        )
+        axis_element.insert(_chart_axis_insert_index(axis_element, local_name), gridlines)
     return gridlines
 
 
@@ -217,9 +309,7 @@ def chart_text_default_run_properties(
         ET.SubElement(paragraph_properties, f"{{{A_NS}}}defRPr")
         text_properties.append(paragraph)
         root.insert(_chart_space_txpr_insert_index(root), text_properties)
-    return text_properties.find(
-        f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+    return text_properties.find(f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
 
 
 def _chart_space_txpr_insert_index(root: ET.Element) -> int:
@@ -239,9 +329,7 @@ def chart_axis_text_default_run_properties(
     axis: str,
 ) -> ET.Element | None:
     axis_element = chart_axis_proxy_element(shape, axis)
-    return axis_element.find(
-        f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+    return axis_element.find(f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
 
 
 def chart_data_labels_text_default_run_properties(shape: Any) -> ET.Element | None:
@@ -251,9 +339,7 @@ def chart_data_labels_text_default_run_properties(shape: Any) -> ET.Element | No
     data_labels = chart_element.find(f"{{{C_NS}}}dLbls")
     if data_labels is None:
         return None
-    return data_labels.find(
-        f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+    return data_labels.find(f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
 
 
 def chart_legend_text_default_run_properties(
@@ -283,9 +369,7 @@ def chart_legend_text_default_run_properties(
         ET.SubElement(paragraph_properties, f"{{{A_NS}}}defRPr")
         text_properties.append(paragraph)
         legend.insert(_chart_legend_txpr_insert_index(legend), text_properties)
-    return text_properties.find(
-        f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+    return text_properties.find(f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
 
 
 def _chart_legend_insert_index(chart: ET.Element) -> int:
@@ -311,101 +395,6 @@ def _chart_legend_txpr_insert_index(legend: ET.Element) -> int:
     return len(legend)
 
 
-def set_chart_element_solid_fill(element: ET.Element) -> None:
-    shape_properties = chart_element_shape_properties(element)
-    for child in list(shape_properties):
-        if child.tag in {
-            f"{{{A_NS}}}noFill",
-            f"{{{A_NS}}}solidFill",
-            f"{{{A_NS}}}gradFill",
-            f"{{{A_NS}}}blipFill",
-            f"{{{A_NS}}}pattFill",
-            f"{{{A_NS}}}grpFill",
-        }:
-            shape_properties.remove(child)
-    shape_properties.insert(0, ET.Element(f"{{{A_NS}}}solidFill"))
-
-
-def set_chart_element_fill_rgb(element: ET.Element, rgb: str) -> None:
-    shape_properties = chart_element_shape_properties(element)
-    solid_fill = shape_properties.find(f"{{{A_NS}}}solidFill")
-    if solid_fill is None:
-        set_chart_element_solid_fill(element)
-        solid_fill = shape_properties.find(f"{{{A_NS}}}solidFill")
-    assert solid_fill is not None
-    for child in list(solid_fill):
-        solid_fill.remove(child)
-    ET.SubElement(solid_fill, f"{{{A_NS}}}srgbClr", {"val": rgb})
-
-
-def set_chart_element_line_rgb(element: ET.Element, rgb: str) -> None:
-    shape_properties = chart_element_shape_properties(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    solid_fill = line.find(f"{{{A_NS}}}solidFill")
-    if solid_fill is None:
-        solid_fill = ET.Element(f"{{{A_NS}}}solidFill")
-        line.insert(0, solid_fill)
-    for child in list(solid_fill):
-        solid_fill.remove(child)
-    ET.SubElement(solid_fill, f"{{{A_NS}}}srgbClr", {"val": rgb})
-
-
-def set_chart_element_line_width(element: ET.Element, width: int) -> None:
-    shape_properties = chart_element_shape_properties(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    line.set("w", str(width))
-
-
-def set_chart_element_line_dash(element: ET.Element, dash_style: Any) -> None:
-    shape_properties = chart_element_shape_properties(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    preset_dash = line.find(f"{{{A_NS}}}prstDash")
-    if dash_style is None:
-        if preset_dash is not None:
-            line.remove(preset_dash)
-        return
-    if preset_dash is None:
-        preset_dash = ET.Element(f"{{{A_NS}}}prstDash")
-        line.append(preset_dash)
-    preset_dash.set("val", str(dash_style))
-
-
-def set_chart_element_line_fill_type(element: ET.Element, fill_type: str) -> None:
-    shape_properties = chart_element_shape_properties(element)
-    line = shape_properties.find(f"{{{A_NS}}}ln")
-    if line is None:
-        line = ET.Element(f"{{{A_NS}}}ln")
-        shape_properties.append(line)
-    if fill_type == "solid":
-        _solid_fill_element(line)
-        return
-    if fill_type == "background":
-        _no_fill_element(line)
-        return
-    if fill_type == "patterned":
-        _set_shape_pattern_fill(line, None)
-        return
-    raise ValueError(f"unsupported chart line fill type: {fill_type!r}")
-
-
-def chart_element_shape_properties(element: ET.Element) -> ET.Element:
-    shape_properties = element.find(f"{{{C_NS}}}spPr")
-    if shape_properties is not None:
-        return shape_properties
-    shape_properties = ET.Element(f"{{{C_NS}}}spPr")
-    element.insert(chart_series_child_insert_index(element, "spPr"), shape_properties)
-    return shape_properties
-
-
 def chart_series_child_insert_index(series_element: ET.Element, local_name: str) -> int:
     order = {
         "idx": 0,
@@ -413,10 +402,21 @@ def chart_series_child_insert_index(series_element: ET.Element, local_name: str)
         "tx": 2,
         "spPr": 3,
         "invertIfNegative": 4,
-        "dPt": 5,
-        "dLbls": 6,
-        "cat": 7,
-        "val": 8,
+        "pictureOptions": 5,
+        "marker": 6,
+        "dPt": 7,
+        "dLbls": 8,
+        "trendline": 9,
+        "errBars": 10,
+        "cat": 11,
+        "xVal": 12,
+        "val": 13,
+        "yVal": 14,
+        "bubbleSize": 15,
+        "bubble3D": 16,
+        "smooth": 17,
+        "shape": 18,
+        "extLst": 19,
     }
     target_order = order.get(local_name)
     if target_order is None:
@@ -426,6 +426,18 @@ def chart_series_child_insert_index(series_element: ET.Element, local_name: str)
         if child_order is not None and child_order > target_order:
             return index
     return len(series_element)
+
+
+def set_chart_series_invert_if_negative(series_element: ET.Element, value: bool) -> None:
+    child = series_element.find(f"{{{C_NS}}}invertIfNegative")
+    val_str = "1" if value else "0"
+    if child is None:
+        child = ET.Element(f"{{{C_NS}}}invertIfNegative")
+        child.set("val", val_str)
+        insert_idx = chart_series_child_insert_index(series_element, "invertIfNegative")
+        series_element.insert(insert_idx, child)
+    else:
+        child.set("val", val_str)
 
 
 def first_chart_plot_element(shape: Any) -> ET.Element | None:
@@ -444,15 +456,114 @@ def first_chart_plot_element(shape: Any) -> ET.Element | None:
     return chart_element
 
 
+def chart_category_paths(shape: Any) -> tuple[list[list[str]], bool]:
+    """Return each category's label path and whether the labels are strings.
+
+    A path lists the outermost grouping level first and the leaf label last.
+    Multi-level caches store a higher-level label only at the first point of its
+    span, so every later point in the span inherits it.  Numeric and date
+    categories report ``False`` because they cannot carry grouping levels.
+    """
+    plot = first_chart_plot_element(shape)
+    series = None if plot is None else plot.find(f"{{{C_NS}}}ser")
+    category = None if series is None else series.find(f"{{{C_NS}}}cat")
+    if category is None:
+        return [], True
+    cache = category.find(f"{{{C_NS}}}multiLvlStrRef/{{{C_NS}}}multiLvlStrCache")
+    if cache is not None:
+        return _multi_level_category_paths(cache), True
+    for path, is_string in (
+        (f"{{{C_NS}}}strRef/{{{C_NS}}}strCache", True),
+        (f"{{{C_NS}}}numRef/{{{C_NS}}}numCache", False),
+        (f"{{{C_NS}}}strLit", True),
+        (f"{{{C_NS}}}numLit", False),
+    ):
+        cache = category.find(path)
+        if cache is not None:
+            points = _category_cache_points(cache)
+            labels = [""] * _category_point_count(cache, points)
+            for index, text in points:
+                labels[index] = text
+            return [[label] for label in labels], is_string
+    return [], True
+
+
+def _multi_level_category_paths(cache: ET.Element) -> list[list[str]]:
+    levels = cache.findall(f"{{{C_NS}}}lvl")
+    level_points = [_category_cache_points(level) for level in levels]
+    count = _category_point_count(cache, [point for points in level_points for point in points])
+    depth = max(1, len(levels))
+    paths = [[""] * depth for _ in range(count)]
+    for level_position, points in enumerate(level_points):
+        column = depth - 1 - level_position
+        if level_position == 0:
+            for index, text in points:
+                if index < count:
+                    paths[index][column] = text
+            continue
+        for position, (index, text) in enumerate(points):
+            end = points[position + 1][0] if position + 1 < len(points) else count
+            for point_index in range(index, min(end, count)):
+                paths[point_index][column] = text
+    return paths
+
+
+def _category_cache_points(container: ET.Element) -> list[tuple[int, str]]:
+    points: list[tuple[int, str]] = []
+    for point in container.findall(f"{{{C_NS}}}pt"):
+        raw_index = point.get("idx", "")
+        if raw_index.isdigit():
+            points.append((int(raw_index), point.findtext(f"{{{C_NS}}}v") or ""))
+    return sorted(points)
+
+
+def _category_point_count(cache: ET.Element, points: list[tuple[int, str]]) -> int:
+    declared = cache.find(f"{{{C_NS}}}ptCount")
+    raw_count = None if declared is None else declared.get("val", "")
+    if raw_count is not None and raw_count.isdigit():
+        return int(raw_count)
+    return max((index for index, _ in points), default=-1) + 1
+
+
+def prepare_chart_category_levels(
+    root: ET.Element,
+    series_elements: list[ET.Element],
+    depth: int,
+) -> None:
+    """Align series-name formulas and level display with a category depth.
+
+    The embedded workbook places ``depth`` category columns before the series
+    columns, so each series name moves to the column after them.  Category
+    axes that suppress multi-level labels are switched to show every level.
+    """
+    for series_index, series_element in enumerate(series_elements):
+        formula = series_element.find(f"{{{C_NS}}}tx/{{{C_NS}}}strRef/{{{C_NS}}}f")
+        if formula is not None:
+            column = _spreadsheet_column_name(depth + series_index + 1)
+            formula.text = f"Sheet1!${column}$1"
+    if depth < 2:
+        return
+    for suppress in root.iter(f"{{{C_NS}}}noMultiLvlLbl"):
+        suppress.set("val", "0")
+
+
+def _spreadsheet_column_name(index: int) -> str:
+    """Return the spreadsheet column name for a one-based column number."""
+    name = ""
+    while index:
+        index, remainder = divmod(index - 1, 26)
+        name = chr(ord("A") + remainder) + name
+    return name
+
+
 def shape_chart_part(shape: Any) -> str:
     hinted_part = shape._payload.get("_chart_part")
     if hinted_part:
         return str(hinted_part)
-    relationship_ids = [
-        str(rel_id) for rel_id in shape._payload.get("relationship_ids") or []
-    ]
-    return _chart_part_for_slide_shape(
-        shape._slide._presentation.path,
-        shape._slide.partname,
-        relationship_ids,
-    )
+    relationship_ids = [str(rel_id) for rel_id in shape._payload.get("relationship_ids") or []]
+    with open_package_source(shape._slide._presentation._source_path) as package:
+        return _chart_part_for_slide_shape_in_package(
+            package,
+            shape._slide.partname,
+            relationship_ids,
+        )

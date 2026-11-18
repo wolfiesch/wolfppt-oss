@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import zipfile
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from xml.etree import ElementTree as ET
+
+if TYPE_CHECKING:
+    from .table_facade import Table, TableColumn, TableRow
 
 from .facade_values import coerce_emu as _coerce_emu
 from .table_xml import _table_xml_element
 from .xml_helpers import (
     xml_bool_attr as _xml_bool_attr,
+)
+from .xml_helpers import (
     xml_int_attr as _xml_int_attr,
 )
 
@@ -22,6 +27,7 @@ _TABLE_STYLE_FLAG_ATTRS = {
     "last_col": "lastCol",
     "last_row": "lastRow",
     "vert_banding": "bandCol",
+    "right_to_left": "rtl",
 }
 
 
@@ -104,8 +110,7 @@ def _read_table_column_widths(table: Table) -> list[int]:
     if grid is None:
         return fallback
     widths = [
-        _xml_int_attr(column, "w", 0)
-        for column in grid.findall(f"{{{A_NS}}}gridCol")
+        _xml_int_attr(column, "w", 0) for column in grid.findall(f"{{{A_NS}}}gridCol")
     ]
     return widths or fallback
 
@@ -137,22 +142,37 @@ def _table_style_payload(table: Table) -> dict[str, bool]:
 
 def _read_table_style_flags(table: Table) -> dict[str, bool]:
     style = {name: False for name in _TABLE_STYLE_FLAG_ATTRS}
-    slide_part = table._slide.partname
-    if slide_part:
-        try:
-            with zipfile.ZipFile(table._slide._presentation.path) as package:
-                root = ET.fromstring(package.read(slide_part))
-            table_element = _table_xml_element(root, table._table_index)
-            table_properties = table_element.find(f"{{{A_NS}}}tblPr")
-        except (AttributeError, IndexError, KeyError, zipfile.BadZipFile):
-            table_properties = None
-        if table_properties is not None:
-            for name, attr in _TABLE_STYLE_FLAG_ATTRS.items():
-                style[name] = _xml_bool_attr(table_properties, attr)
-    else:
+    if _table_is_unsaved(table):
+        # Mirrors the ``<a:tblPr firstRow="1" bandRow="1">`` that add_table writes.
         style["first_row"] = True
         style["horz_banding"] = True
+        return style
+    try:
+        with zipfile.ZipFile(table._slide._presentation.path) as package:
+            root = ET.fromstring(package.read(table._slide.partname))
+        table_element = _table_xml_element(root, table._table_index)
+        table_properties = table_element.find(f"{{{A_NS}}}tblPr")
+    except (AttributeError, IndexError, KeyError, zipfile.BadZipFile):
+        table_properties = None
+    if table_properties is not None:
+        for name, attr in _TABLE_STYLE_FLAG_ATTRS.items():
+            style[name] = _xml_bool_attr(table_properties, attr)
     return style
+
+
+def _table_is_unsaved(table: Table) -> bool:
+    """Whether the table exists only as a queued add, absent from the saved package.
+
+    A pending table's ``_table_index`` counts live shapes, so it can point past
+    the saved slide XML or at a different saved table; never read it from disk.
+    """
+    slide = table._slide
+    if not slide.partname:
+        return True
+    for shape in getattr(slide, "_shapes", None) or ():
+        if any(payload is table._payload for payload in shape._payload.get("tables", ())):
+            return bool(shape._payload.get("_pending_shape"))
+    return False
 
 
 def _table_style_flag(table: Table, name: str) -> bool:

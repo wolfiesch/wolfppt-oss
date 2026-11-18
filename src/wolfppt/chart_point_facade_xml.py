@@ -7,17 +7,25 @@ from typing import Any
 from xml.etree import ElementTree as ET
 
 from .chart_edits import _chart_part_for_slide_shape
-from .chart_xml import chart_container_element as _chart_container_element
+from .chart_xml import chart_plot_elements as _chart_plot_elements
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 
 
 def chart_series_element(shape: Any, series_index: int) -> ET.Element:
-    chart_element = _first_chart_plot_element(shape)
-    if chart_element is None:
-        return ET.Element(f"{{{C_NS}}}ser")
-    for fallback_index, series in enumerate(chart_element.findall(f"{{{C_NS}}}ser")):
+    for plot_element in _chart_plot_elements(_shape_chart_root(shape)):
+        series_element = _series_element_in_plot(plot_element, series_index)
+        if series_element is not None:
+            return series_element
+    return ET.Element(f"{{{C_NS}}}ser")
+
+
+def _series_element_in_plot(
+    plot_element: ET.Element,
+    series_index: int,
+) -> ET.Element | None:
+    for fallback_index, series in enumerate(plot_element.findall(f"{{{C_NS}}}ser")):
         raw_index = series.find(f"{{{C_NS}}}idx")
         if (
             raw_index is not None
@@ -26,7 +34,7 @@ def chart_series_element(shape: Any, series_index: int) -> ET.Element:
             return series
         if raw_index is None and fallback_index == series_index:
             return series
-    return ET.Element(f"{{{C_NS}}}ser")
+    return None
 
 
 def chart_series_data_labels_text_default_run_properties(
@@ -62,20 +70,6 @@ def _shape_chart_part(shape: Any) -> str:
         shape._slide.partname,
         relationship_ids,
     )
-
-
-def _first_chart_plot_element(shape: Any) -> ET.Element | None:
-    root = _shape_chart_root(shape)
-    chart = _chart_container_element(root)
-    if chart is None:
-        return None
-    plot_area = chart.find(f"{{{C_NS}}}plotArea")
-    if plot_area is None:
-        return None
-    for child in list(plot_area):
-        if child.tag.endswith("Chart"):
-            return child
-    return None
 
 
 def _chart_point_element(

@@ -12,10 +12,11 @@ from .benchmark_adapter_specs_dropin_common import (
 )
 from .benchmark_adapter_specs_table import TABLE_BENCHMARK_ADAPTER_SPECS
 from .benchmark_adapter_specs_dropin_tail import DROPIN_TAIL_BENCHMARK_ADAPTER_SPECS
+from .benchmark_libreoffice_resave import libreoffice_resave_adapter_specs
 from .benchmark_models import BenchmarkAdapter, BenchmarkFn
 
 
-BENCHMARK_ADAPTER_SPECS: tuple[BenchmarkAdapterSpec, ...] = (
+_BASE_BENCHMARK_ADAPTER_SPECS: tuple[BenchmarkAdapterSpec, ...] = (
     *CORE_BENCHMARK_ADAPTER_SPECS,
     *TABLE_BENCHMARK_ADAPTER_SPECS,
     *DROPIN_COMMON_BENCHMARK_ADAPTER_SPECS,
@@ -771,6 +772,11 @@ BENCHMARK_ADAPTER_SPECS: tuple[BenchmarkAdapterSpec, ...] = (
         "native_available",
         "_bench_native_roundtrip",
     ),
+)
+
+BENCHMARK_ADAPTER_SPECS: tuple[BenchmarkAdapterSpec, ...] = (
+    *_BASE_BENCHMARK_ADAPTER_SPECS,
+    *libreoffice_resave_adapter_specs(_BASE_BENCHMARK_ADAPTER_SPECS),
 )
 
 

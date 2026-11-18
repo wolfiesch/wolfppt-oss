@@ -74,7 +74,9 @@ def _bench_python_pptx_summary(
         comparison_scope = "checked-in semantic oracle slide count"
     else:
         expected_slide_count = len(extract_semantics(fixture_path).slides)
-        comparison_scope = "extractor-derived slide count; no checked-in semantic oracle"
+        comparison_scope = (
+            "extractor-derived slide count; no checked-in semantic oracle"
+        )
     return elapsed_ms, {
         "ok": summary.slide_count == expected_slide_count,
         "semantic_pass": summary.slide_count == expected_slide_count,
@@ -93,11 +95,16 @@ def _bench_python_pptx_roundtrip(
     tmp_path: Path,
     validate_openxml: bool,
 ) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"python-pptx-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    out = (
+        tmp_path
+        / f"python-pptx-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    )
     start = perf_counter()
     python_pptx_roundtrip(fixture_path, out)
     elapsed_ms = _elapsed_ms(start)
-    return elapsed_ms, _roundtrip_details(fixture_id, fixture_path, out, validate_openxml)
+    return elapsed_ms, _roundtrip_details(
+        fixture_id, fixture_path, out, validate_openxml
+    )
 
 
 def _bench_openxml_sdk_roundtrip(
@@ -107,7 +114,10 @@ def _bench_openxml_sdk_roundtrip(
     tmp_path: Path,
     validate_openxml: bool,
 ) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"openxml-sdk-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    out = (
+        tmp_path
+        / f"openxml-sdk-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    )
     start = perf_counter()
     result = openxml_sdk_roundtrip(fixture_path, out)
     elapsed_ms = _elapsed_ms(start)
@@ -129,14 +139,21 @@ def _bench_pptxgenjs_generate(
     tmp_path: Path,
     validate_openxml: bool,
 ) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"pptxgenjs-{_output_stem(fixture_id, fixture_path)}-{_stamp()}.pptx"
+    out = (
+        tmp_path / f"pptxgenjs-{_output_stem(fixture_id, fixture_path)}-{_stamp()}.pptx"
+    )
     start = perf_counter()
     result = pptxgenjs_generate(fixture_id, fixture_path, out)
     elapsed_ms = _elapsed_ms(start)
     generated = extract_semantics(out)
     validation = _validate_output(out) if validate_openxml else {"enabled": False}
     openxml_ok = validation.get("valid") is not False
-    ok = Path(result.path).exists() and result.bytes > 0 and len(generated.slides) >= 1 and openxml_ok
+    ok = (
+        Path(result.path).exists()
+        and result.bytes > 0
+        and len(generated.slides) >= 1
+        and openxml_ok
+    )
     return elapsed_ms, {
         "ok": ok,
         "semantic_pass": len(generated.slides) >= 1,
@@ -157,7 +174,10 @@ def _bench_apache_poi_roundtrip(
     tmp_path: Path,
     validate_openxml: bool,
 ) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"apache-poi-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    out = (
+        tmp_path
+        / f"apache-poi-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    )
     start = perf_counter()
     result = apache_poi_roundtrip(fixture_path, out)
     elapsed_ms = _elapsed_ms(start)
@@ -179,7 +199,10 @@ def _bench_external_command_roundtrip(
     tmp_path: Path,
     validate_openxml: bool,
 ) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"external-command-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    out = (
+        tmp_path
+        / f"external-command-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    )
     start = perf_counter()
     result = external_command_roundtrip(fixture_path, out)
     elapsed_ms = _elapsed_ms(start)
@@ -231,11 +254,16 @@ def _bench_rust_core_roundtrip(
     tmp_path: Path,
     validate_openxml: bool,
 ) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"rust-core-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    out = (
+        tmp_path
+        / f"rust-core-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    )
     start = perf_counter()
     rust_roundtrip(fixture_path, out)
     elapsed_ms = _elapsed_ms(start)
-    return elapsed_ms, _roundtrip_details(fixture_id, fixture_path, out, validate_openxml, require_package_clean=True)
+    return elapsed_ms, _roundtrip_details(
+        fixture_id, fixture_path, out, validate_openxml, require_package_clean=True
+    )
 
 
 def _bench_native_package(
@@ -271,7 +299,9 @@ def _bench_native_summary(
     summary = native_summarize(fixture_path)
     elapsed_ms = _elapsed_ms(start)
     if expected_path.exists():
-        expected = normalize_python_oracle(json.loads(expected_path.read_text(encoding="utf-8")))
+        expected = normalize_python_oracle(
+            json.loads(expected_path.read_text(encoding="utf-8"))
+        )
         comparison_scope = "checked-in semantic oracle"
     else:
         expected = normalize_python_oracle(extract_semantics(fixture_path).to_dict())
@@ -299,11 +329,16 @@ def _bench_native_roundtrip(
     tmp_path: Path,
     validate_openxml: bool,
 ) -> tuple[float, dict[str, Any]]:
-    out = tmp_path / f"native-rust-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    out = (
+        tmp_path
+        / f"native-rust-{_output_stem(fixture_id, fixture_path)}-{_stamp()}{fixture_path.suffix}"
+    )
     start = perf_counter()
     native_roundtrip(fixture_path, out)
     elapsed_ms = _elapsed_ms(start)
-    return elapsed_ms, _roundtrip_details(fixture_id, fixture_path, out, validate_openxml, require_package_clean=True)
+    return elapsed_ms, _roundtrip_details(
+        fixture_id, fixture_path, out, validate_openxml, require_package_clean=True
+    )
 
 
 def _output_stem(fixture_id: str, fixture_path: Path) -> str:

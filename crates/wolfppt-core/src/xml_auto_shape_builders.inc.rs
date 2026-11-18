@@ -5,8 +5,8 @@ fn add_auto_shape_to_group_shape_xml(
     shape_id: u64,
     display_name: &str,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: Option<&str>,
@@ -21,12 +21,6 @@ fn add_auto_shape_to_group_shape_xml(
         if tag == "p:grpSp" {
             if current_group_index == group_index {
                 let block = &xml[start..end];
-                let Some(relative_end) = block.rfind("</p:grpSp>") else {
-                    return Err(WolfPptError::InvalidInput(
-                        "group shape XML is missing </p:grpSp>".to_string(),
-                    ));
-                };
-                let insert_at = start + relative_end;
                 let auto_shape = auto_shape_xml(
                     shape_id,
                     display_name,
@@ -38,7 +32,8 @@ fn add_auto_shape_to_group_shape_xml(
                     text,
                     adjustment_guides,
                 )?;
-                return Ok(format!("{}{}{}", &xml[..insert_at], auto_shape, &xml[insert_at..]));
+                let rewritten_group = append_group_children_xml(block, &auto_shape)?;
+                return replace_group_subtree_xml(xml, start, end, &rewritten_group);
             }
             current_group_index += 1;
         }
@@ -58,8 +53,8 @@ fn add_auto_shape_to_nested_group_shape_xml(
     shape_id: u64,
     display_name: &str,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: Option<&str>,
@@ -68,12 +63,6 @@ fn add_auto_shape_to_nested_group_shape_xml(
     let (nested_start, nested_end) =
         nested_group_child_bounds(xml, group_index, nested_group_child_index)?;
     let block = &xml[nested_start..nested_end];
-    let Some(relative_end) = block.rfind("</p:grpSp>") else {
-        return Err(WolfPptError::InvalidInput(
-            "nested group shape XML is missing </p:grpSp>".to_string(),
-        ));
-    };
-    let insert_at = nested_start + relative_end;
     let auto_shape = auto_shape_xml(
         shape_id,
         display_name,
@@ -85,7 +74,8 @@ fn add_auto_shape_to_nested_group_shape_xml(
         text,
         adjustment_guides,
     )?;
-    Ok(format!("{}{}{}", &xml[..insert_at], auto_shape, &xml[insert_at..]))
+    let rewritten_group = append_group_children_xml(block, &auto_shape)?;
+    replace_group_subtree_xml(xml, nested_start, nested_end, &rewritten_group)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -97,8 +87,8 @@ fn add_auto_shape_to_deeper_nested_group_shape_xml(
     shape_id: u64,
     display_name: &str,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: Option<&str>,
@@ -120,12 +110,6 @@ fn add_auto_shape_to_deeper_nested_group_shape_xml(
         )));
     }
     let deeper_block = &nested_block[deeper_start..deeper_end];
-    let Some(relative_end) = deeper_block.rfind("</p:grpSp>") else {
-        return Err(WolfPptError::InvalidInput(
-            "deeper nested group shape XML is missing </p:grpSp>".to_string(),
-        ));
-    };
-    let insert_at = nested_start + deeper_start + relative_end;
     let auto_shape = auto_shape_xml(
         shape_id,
         display_name,
@@ -137,7 +121,10 @@ fn add_auto_shape_to_deeper_nested_group_shape_xml(
         text,
         adjustment_guides,
     )?;
-    Ok(format!("{}{}{}", &xml[..insert_at], auto_shape, &xml[insert_at..]))
+    let rewritten_group = append_group_children_xml(deeper_block, &auto_shape)?;
+    let deeper_absolute_start = nested_start + deeper_start;
+    let deeper_absolute_end = nested_start + deeper_end;
+    replace_group_subtree_xml(xml, deeper_absolute_start, deeper_absolute_end, &rewritten_group)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -146,8 +133,8 @@ fn add_auto_shape_to_slide_xml(
     shape_id: u64,
     display_name: &str,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: Option<&str>,
@@ -260,8 +247,8 @@ fn auto_shape_xml(
     shape_id: u64,
     display_name: &str,
     preset_geometry: &str,
-    x_emu: u64,
-    y_emu: u64,
+    x_emu: i64,
+    y_emu: i64,
     cx_emu: u64,
     cy_emu: u64,
     text: Option<&str>,

@@ -1,6 +1,5 @@
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
 use serde_json::json;
 use wolfppt_core::{
     add_blank_slide_from_existing_layout, add_blank_slide_from_layout_index, add_slide_table,
@@ -8,7 +7,7 @@ use wolfppt_core::{
     replace_slide_text, replace_slide_text_at_index, replace_slide_text_run_at_index,
     replace_table_cell_text, roundtrip_package, set_slide_shape_paragraph_text_at_index,
     set_slide_shape_text_at_index, summarize_presentation, summarize_slide_at_index,
-    WorkbookCellUpdate, WorkbookCellValue,
+    SlideSummaryReader,
 };
 
 #[pyfunction]
@@ -45,6 +44,37 @@ fn summarize_slide_at_index_json(path: &str, slide_index: usize) -> PyResult<Str
     let summary = summarize_slide_at_index(path, slide_index)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     serde_json::to_string_pretty(&summary).map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Slide summaries of one package file that parse its ZIP index and slide
+/// order once; each call reopens and identity-checks the file, then closes it.
+#[pyclass(name = "SlideSummaryReader", module = "wolfppt_native")]
+struct PySlideSummaryReader {
+    inner: SlideSummaryReader,
+}
+
+#[pymethods]
+impl PySlideSummaryReader {
+    #[new]
+    fn new(path: &str) -> Self {
+        Self {
+            inner: SlideSummaryReader::new(path),
+        }
+    }
+
+    /// Compact JSON of the same summary `summarize_slide_at_index_json` returns.
+    fn summarize_slide_json(&mut self, slide_index: usize) -> PyResult<String> {
+        let summary = self
+            .inner
+            .summarize_slide(slide_index)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        serde_json::to_string(&summary).map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+
+    #[getter]
+    fn package_loads(&self) -> usize {
+        self.inner.package_loads()
+    }
 }
 
 #[pyfunction]
@@ -199,6 +229,9 @@ fn replace_table_cell_text_json(
     serde_json::to_string_pretty(&summary).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
+// Preserve the exposed Python table signature: dimensions and unsigned EMU
+// geometry are separate positional/keyword arguments, not a new wrapper object.
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn add_slide_table_json(
     input: &str,
@@ -258,42 +291,10 @@ fn add_slide_table_with_cell_texts_json(
     serde_json::to_string_pretty(&summary).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
-/// Write `[reference, kind, value]` cells into the named sheet of an XLSX
-/// package in place. `kind` is `"n"` for a number, `"s"` for a string, or
-/// `"e"` to clear an existing cell (its value is ignored).
-#[pyfunction]
-fn update_workbook_cells<'py>(
-    py: Python<'py>,
-    xlsx: &[u8],
-    sheet_name: &str,
-    cells_json: &str,
-) -> PyResult<Bound<'py, PyBytes>> {
-    let cells: Vec<(String, String, String)> =
-        serde_json::from_str(cells_json).map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-    let updates = cells
-        .into_iter()
-        .map(|(reference, kind, value)| {
-            let value = match kind.as_str() {
-                "n" => WorkbookCellValue::Number(value),
-                "s" => WorkbookCellValue::Text(value),
-                "e" => WorkbookCellValue::Empty,
-                other => {
-                    return Err(PyRuntimeError::new_err(format!(
-                        "unsupported workbook cell kind: {other}"
-                    )))
-                }
-            };
-            Ok(WorkbookCellUpdate { reference, value })
-        })
-        .collect::<PyResult<Vec<_>>>()?;
-    let updated = wolfppt_core::update_workbook_cells(xlsx, sheet_name, &updates)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-    Ok(PyBytes::new(py, &updated))
-}
-
 pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(build_info_json, module)?)?;
     module.add_function(wrap_pyfunction!(inspect_package_json, module)?)?;
+    module.add_class::<PySlideSummaryReader>()?;
     module.add_function(wrap_pyfunction!(summarize_presentation_json, module)?)?;
     module.add_function(wrap_pyfunction!(summarize_slide_at_index_json, module)?)?;
     module.add_function(wrap_pyfunction!(roundtrip_package_json, module)?)?;
@@ -322,6 +323,5 @@ pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
         add_slide_table_with_cell_texts_json,
         module
     )?)?;
-    module.add_function(wrap_pyfunction!(update_workbook_cells, module)?)?;
     Ok(())
 }

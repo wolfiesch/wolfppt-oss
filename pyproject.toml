@@ -1,6 +1,6 @@
 [project]
 name = "wolfppt"
-version = "0.1.6"
+version = "0.2.0"
 description = "Create, read, and edit PowerPoint .pptx files in Python. A python-pptx alternative with a python-pptx-style API that keeps themes, layouts, charts, and every untouched part byte-for-byte identical. MIT licensed."
 readme = "README.md"
 keywords = [
@@ -21,7 +21,7 @@ keywords = [
 ]
 requires-python = ">=3.11"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.txt"]
 authors = [
   { name = "Wolfgang Schoenberger" },
 ]
@@ -58,13 +58,21 @@ dev = [
 baseline = [
   "python-pptx>=1.0.2",
 ]
+markup = [
+  "markdown-it-py>=4.0,<5",
+]
 render = [
-  "Pillow>=10.0",
+  "Pillow>=13.0.0",
+]
+signatures = [
+  "cryptography>=45.0",
+  "lxml>=6.0",
 ]
 
 [project.scripts]
 wolfppt = "wolfppt.demo:main"
 wolfppt-harness = "wolfppt.cli:main"
+wolfppt-assemble = "wolfppt.editions:assemble_main"
 
 [build-system]
 requires = ["maturin>=1.13,<2"]

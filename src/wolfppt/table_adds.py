@@ -142,6 +142,15 @@ def _add_table_to_slide_xml(
     return f"{slide_xml[:insert_at]}{table_xml}{slide_xml[insert_at:]}"
 
 
+def table_grid_extents(total: int, count: int) -> list[int]:
+    """Split ``total`` EMU like python-pptx ``CT_Table.new_tbl``.
+
+    Every column or row takes the floor share; the last absorbs the remainder.
+    """
+    share = total // count
+    return [share] * (count - 1) + [total - share * (count - 1)]
+
+
 def _table_shape_xml(
     shape_id: int,
     rows: int,
@@ -152,13 +161,12 @@ def _table_shape_xml(
     cy_emu: int,
     cell_texts: list[tuple[int, int, str]],
 ) -> str:
-    col_width = cx_emu // cols
-    row_height = cy_emu // rows
+    col_widths = table_grid_extents(cx_emu, cols)
+    row_heights = table_grid_extents(cy_emu, rows)
     text_by_cell = {
-        (row_index, col_index): text
-        for row_index, col_index, text in cell_texts
+        (row_index, col_index): text for row_index, col_index, text in cell_texts
     }
-    grid_cols = "".join(f'<a:gridCol w="{col_width}"/>' for _ in range(cols))
+    grid_cols = "".join(f'<a:gridCol w="{width}"/>' for width in col_widths)
     table_rows = []
     for row_index in range(rows):
         cells = []
@@ -173,7 +181,7 @@ def _table_shape_xml(
                 "<a:tc><a:txBody><a:bodyPr/><a:lstStyle/>"
                 f"{paragraph_xml}</a:txBody><a:tcPr/></a:tc>"
             )
-        table_rows.append(f'<a:tr h="{row_height}">{"".join(cells)}</a:tr>')
+        table_rows.append(f'<a:tr h="{row_heights[row_index]}">{"".join(cells)}</a:tr>')
     return (
         f'<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="{shape_id}" '
         f'name="Table {shape_id}"/><p:cNvGraphicFramePr>'
@@ -184,7 +192,7 @@ def _table_shape_xml(
         '<a:tbl><a:tblPr firstRow="1" bandRow="1">'
         "<a:tableStyleId>{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}</a:tableStyleId>"
         f"</a:tblPr><a:tblGrid>{grid_cols}</a:tblGrid>"
-        f'{"".join(table_rows)}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>'
+        f"{''.join(table_rows)}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>"
     )
 
 

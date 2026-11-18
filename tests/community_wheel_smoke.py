@@ -14,9 +14,12 @@ from importlib.util import find_spec
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import wolfppt.pptx_alias  # noqa: F401 - the Community wheel ships the import alias
+from wolfppt import CommercialFeatureError
 from wolfppt.demo import run_demo
+from wolfppt.editions import commercial_module
 
-assert version("wolfppt") == "0.1.6"
+assert version("wolfppt") == "0.2.0"
 assert find_spec("wolfppt.wolfppt_native") is not None, "native module missing from wheel"
 
 with TemporaryDirectory() as directory:
@@ -43,5 +46,12 @@ with TemporaryDirectory() as directory:
             names = archive.namelist()
         assert "ppt/presentation.xml" in names, f"{name} is not a presentation package"
         assert any(n.startswith("ppt/slides/slide") for n in names), name
+
+try:
+    commercial_module("odp", "odp-open")
+except CommercialFeatureError as error:
+    assert error.feature == "odp-open"
+else:
+    raise AssertionError("a Community install must refuse Commercial features")
 
 print("community artifact smoke: ok")

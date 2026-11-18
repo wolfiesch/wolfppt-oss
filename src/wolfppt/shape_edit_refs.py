@@ -10,6 +10,9 @@ ShapeEditRef = int | tuple[int, ...]
 def queued_shape_add_weight(add_kind: str) -> int:
     if add_kind.startswith("nested_group_") and add_kind.endswith("_in_new_group"):
         return 2
+    if add_kind in {"placeholder_picture", "placeholder_table"}:
+        # Filling a placeholder replaces it in place; no shape ID is consumed.
+        return 0
     if add_kind in {
         "connected_connector_with_auto_shapes",
         "connected_group_connector_with_auto_shapes",

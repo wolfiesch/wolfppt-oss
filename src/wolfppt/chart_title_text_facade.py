@@ -6,45 +6,138 @@ from collections.abc import Callable, Iterator, Sequence
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from .chart_font_format_facade import (
+    PORTION_FORMAT_SCOPE as _PORTION_FORMAT_SCOPE,
+)
+from .chart_font_format_facade import (
+    ChartParagraphFormat,
+    ChartPortionFormat,
+    ChartTextFormat,
+    chart_text_body,
+)
+from .chart_font_format_facade import (
+    default_run_properties_element as _default_run_properties_element,
+)
 from .chart_title_text_font_facade import (
     ChartTitleParagraphFont,
     ChartTitleRun,
 )
 from .chart_title_text_xml import (
+    _title_insert_index,
+)
+from .chart_title_text_xml import (
     set_title_auto_size as _set_title_auto_size,
+)
+from .chart_title_text_xml import (
     set_title_body_margin as _set_title_body_margin,
+)
+from .chart_title_text_xml import (
     set_title_paragraph_format as _set_title_paragraph_format,
+)
+from .chart_title_text_xml import (
     set_title_paragraph_runs as _set_title_paragraph_runs,
+)
+from .chart_title_text_xml import (
     set_title_paragraphs as _set_title_paragraphs,
+)
+from .chart_title_text_xml import (
     set_title_run_font as _set_title_run_font,
+)
+from .chart_title_text_xml import (
     set_title_text as _set_title_text,
+)
+from .chart_title_text_xml import (
     set_title_text_frame_fit as _set_title_text_frame_fit,
+)
+from .chart_title_text_xml import (
     set_title_vertical_anchor as _set_title_vertical_anchor,
+)
+from .chart_title_text_xml import (
     set_title_word_wrap as _set_title_word_wrap,
+)
+from .chart_title_text_xml import (
     title_body_properties as _title_body_properties,
+)
+from .chart_title_text_xml import (
     title_paragraph_properties as _title_paragraph_properties,
-    title_paragraph_run_texts as _title_paragraph_run_texts,
+)
+from .chart_title_text_xml import (
     title_paragraph_spacing_value as _title_paragraph_spacing_value,
-    title_paragraph_texts as _title_paragraph_texts,
-    title_text as _title_text,
+)
+from .chart_title_text_xml import (
+    title_run_properties as _title_run_properties,
+)
+from .facade_values import (
+    centipoints_to_emu as _centipoints_to_emu,
 )
 from .facade_values import (
     centipoints_value as _centipoints_value,
-    centipoints_to_emu as _centipoints_to_emu,
+)
+from .facade_values import (
     coerce_paragraph_level as _coerce_paragraph_level,
+)
+from .facade_values import (
     emu_to_centipoints as _emu_to_centipoints,
+)
+from .facade_values import (
     normalize_line_spacing as _normalize_line_spacing,
+)
+from .facade_values import (
     normalize_paragraph_alignment as _normalize_paragraph_alignment,
+)
+from .facade_values import (
     normalize_paragraph_spacing_length as _normalize_paragraph_spacing_length,
+)
+from .facade_values import (
     normalize_text_frame_auto_size as _normalize_text_frame_auto_size,
+)
+from .facade_values import (
     normalize_text_frame_vertical_anchor as _normalize_text_frame_vertical_anchor,
+)
+from .facade_values import (
     normalize_text_frame_word_wrap as _normalize_text_frame_word_wrap,
+)
+from .facade_values import (
     paragraph_alignment_value as _paragraph_alignment_value,
+)
+from .facade_values import (
     text_frame_auto_size_value as _text_frame_auto_size_value,
+)
+from .facade_values import (
     text_frame_vertical_anchor_value as _text_frame_vertical_anchor_value,
 )
+from .xml_helpers import STRICT_A_NS, findall_ooxml
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
+C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+
+# Text changes are replayed from the final text-child snapshot. This preserves
+# rich XML and supports the same format keys for chart and axis titles.
+
+
+def _title_paragraph_run_texts(title: ET.Element) -> list[list[str]]:
+    """Read both DrawingML profiles without changing the title XML."""
+    rich = title.find(f"{{{C_NS}}}tx/{{{C_NS}}}rich")
+    if rich is None:
+        return [[]]
+    paragraphs = [
+        [
+            text.text or ""
+            for run in findall_ooxml(paragraph, f"{{{A_NS}}}r")
+            for text in findall_ooxml(run, f"{{{A_NS}}}t")
+        ]
+        for paragraph in rich
+        if paragraph.tag in (f"{{{A_NS}}}p", f"{{{STRICT_A_NS}}}p")
+    ]
+    return paragraphs or [[]]
+
+
+def _title_paragraph_texts(title: ET.Element) -> list[str]:
+    return ["".join(runs) for runs in _title_paragraph_run_texts(title)]
+
+
+def _title_text(title: ET.Element) -> str:
+    return "\n".join(_title_paragraph_texts(title))
 
 
 class ChartTitleTextFrame:
@@ -70,12 +163,22 @@ class ChartTitleTextFrame:
         self._queue({"text": text})
 
     @property
-    def paragraphs(self) -> "ChartTitleParagraphCollection":
+    def paragraphs(self) -> ChartTitleParagraphCollection:
         return ChartTitleParagraphCollection(self)
 
     @property
     def part(self) -> None:
         return None
+
+    @property
+    def text_format(self) -> ChartTextFormat:
+        """Shared portion/paragraph/text-block format of the whole title.
+
+        Rich-text titles format their ``c:rich`` body; titles without
+        overriding text (automatic titles) format ``c:txPr`` so the automatic
+        text is kept.
+        """
+        return ChartTextFormat(self._text_body, self._commit_text_format)
 
     @property
     def auto_size(self) -> Any:
@@ -196,7 +299,7 @@ class ChartTitleTextFrame:
         _set_title_text_frame_fit(title, fit)
         self._queue({"fit": fit})
 
-    def add_paragraph(self) -> "ChartTitleParagraph":
+    def add_paragraph(self) -> ChartTitleParagraph:
         paragraph_runs = _title_paragraph_run_texts(self._title_element(False))
         paragraph_runs.append([])
         self._set_paragraph_runs(paragraph_runs)
@@ -215,7 +318,7 @@ class ChartTitleTextFrame:
         if normalized == _title_paragraph_run_texts(self._title_element(False)):
             return
         title = self._title_element(True)
-        _set_title_paragraph_runs(title, normalized)
+        _set_title_paragraph_runs(title, normalized, preserve_runs=True)
         self._queue({"paragraph_runs": normalized})
 
     def _queue_run_font(
@@ -256,6 +359,49 @@ class ChartTitleTextFrame:
             }
         )
 
+    def _text_body(self, create: bool) -> ET.Element | None:
+        return chart_text_body(self._title_element(create), create, _title_insert_index)
+
+    def _commit_text_format(self, scope: str, delta: dict[str, Any]) -> None:
+        self._queue({"text_format_edits": [{"scope": scope, "delta": dict(delta)}]})
+
+    def _commit_paragraph_text_format(
+        self,
+        paragraph_index: int,
+        scope: str,
+        delta: dict[str, Any],
+    ) -> None:
+        self._queue(
+            {
+                "text_format_edits": [
+                    {
+                        "paragraph_index": paragraph_index,
+                        "scope": scope,
+                        "delta": dict(delta),
+                    }
+                ]
+            }
+        )
+
+    def _commit_run_portion_format(
+        self,
+        paragraph_index: int,
+        run_index: int,
+        delta: dict[str, Any],
+    ) -> None:
+        self._queue(
+            {
+                "text_format_edits": [
+                    {
+                        "paragraph_index": paragraph_index,
+                        "run_index": run_index,
+                        "scope": _PORTION_FORMAT_SCOPE,
+                        "delta": dict(delta),
+                    }
+                ]
+            }
+        )
+
     def _body_pr(self) -> ET.Element | None:
         return _title_body_properties(self._title_element(False), create=False)
 
@@ -289,7 +435,7 @@ class ChartTitleParagraphCollection(Sequence["ChartTitleParagraph"]):
     def __getitem__(
         self,
         index: int | slice,
-    ) -> "ChartTitleParagraph | list[ChartTitleParagraph]":
+    ) -> ChartTitleParagraph | list[ChartTitleParagraph]:
         paragraphs = _title_paragraph_texts(self._text_frame._title_element(False))
         if isinstance(index, slice):
             return [
@@ -302,7 +448,7 @@ class ChartTitleParagraphCollection(Sequence["ChartTitleParagraph"]):
             raise IndexError("paragraph index out of range")
         return ChartTitleParagraph(self._text_frame, index)
 
-    def __iter__(self) -> Iterator["ChartTitleParagraph"]:
+    def __iter__(self) -> Iterator[ChartTitleParagraph]:
         for index in range(len(self)):
             yield ChartTitleParagraph(self._text_frame, index)
 
@@ -317,22 +463,18 @@ class ChartTitleParagraph:
 
     @property
     def text(self) -> str:
-        return _title_paragraph_texts(self._text_frame._title_element(False))[
-            self._index
-        ]
+        return _title_paragraph_texts(self._text_frame._title_element(False))[self._index]
 
     @text.setter
     def text(self, value: str) -> None:
         text = str(value)
         if text == self.text:
             return
-        paragraph_runs = _title_paragraph_run_texts(
-            self._text_frame._title_element(False)
-        )
+        paragraph_runs = _title_paragraph_run_texts(self._text_frame._title_element(False))
         paragraph_runs[self._index] = [text] if text else []
         self._text_frame._set_paragraph_runs(paragraph_runs)
 
-    def clear(self) -> "ChartTitleParagraph":
+    def clear(self) -> ChartTitleParagraph:
         self.text = ""
         return self
 
@@ -341,8 +483,34 @@ class ChartTitleParagraph:
         return None
 
     @property
-    def font(self) -> "ChartTitleParagraphFont":
+    def font(self) -> ChartTitleParagraphFont:
         return ChartTitleParagraphFont(self)
+
+    @property
+    def paragraph_format(self) -> ChartParagraphFormat:
+        """Shared paragraph format (alignment, indent, spacing) of this paragraph."""
+        return ChartParagraphFormat(
+            lambda create: _optional_list(self._paragraph_properties(create)),
+            lambda scope, delta: self._text_frame._commit_paragraph_text_format(
+                self._index, scope, delta
+            ),
+        )
+
+    @property
+    def portion_format(self) -> ChartPortionFormat:
+        """Shared portion format of this paragraph's default run properties."""
+        return ChartPortionFormat(
+            self._default_run_properties,
+            lambda scope, delta: self._text_frame._commit_paragraph_text_format(
+                self._index, scope, delta
+            ),
+        )
+
+    def _default_run_properties(self, create: bool) -> list[ET.Element]:
+        properties = self._paragraph_properties(create)
+        if properties is None:
+            return []
+        return _optional_list(_default_run_properties_element(properties, create))
 
     @property
     def alignment(self) -> Any:
@@ -409,17 +577,15 @@ class ChartTitleParagraph:
         self._set_spacing_value("line_spacing", spacing)
 
     @property
-    def runs(self) -> "ChartTitleRunCollection":
+    def runs(self) -> ChartTitleRunCollection:
         return ChartTitleRunCollection(self._text_frame, self._index)
 
-    def add_run(self) -> "ChartTitleRun":
-        paragraph_runs = _title_paragraph_run_texts(
-            self._text_frame._title_element(False)
-        )
+    def add_run(self) -> ChartTitleTextRun:
+        paragraph_runs = _title_paragraph_run_texts(self._text_frame._title_element(False))
         paragraph_runs[self._index].append("")
         run_index = len(paragraph_runs[self._index]) - 1
         self._text_frame._set_paragraph_runs(paragraph_runs)
-        return ChartTitleRun(self._text_frame, self._index, run_index)
+        return ChartTitleTextRun(self._text_frame, self._index, run_index)
 
     def _paragraph_properties(self, create: bool) -> ET.Element | None:
         return _title_paragraph_properties(
@@ -445,29 +611,62 @@ class ChartTitleParagraph:
         self._text_frame._queue_paragraph_format(self._index, {attr: value})
 
 
-class ChartTitleRunCollection(Sequence["ChartTitleRun"]):
+class ChartTitleTextRun(ChartTitleRun):
+    """A title run that also exposes the shared chart portion format."""
+
+    @ChartTitleRun.text.getter
+    def text(self) -> str:
+        return _title_paragraph_run_texts(self._text_frame._title_element(False))[
+            self._paragraph_index
+        ][self._index]
+
+    @property
+    def portion_format(self) -> ChartPortionFormat:
+        return ChartPortionFormat(
+            self._run_properties,
+            lambda _scope, delta: self._text_frame._commit_run_portion_format(
+                self._paragraph_index, self._index, delta
+            ),
+        )
+
+    def _run_properties(self, create: bool) -> list[ET.Element]:
+        return _optional_list(
+            _title_run_properties(
+                self._text_frame._title_element(create),
+                self._paragraph_index,
+                self._index,
+                create=create,
+            )
+        )
+
+
+def _optional_list(element: ET.Element | None) -> list[ET.Element]:
+    return [] if element is None else [element]
+
+
+class ChartTitleRunCollection(Sequence["ChartTitleTextRun"]):
     def __init__(self, text_frame: ChartTitleTextFrame, paragraph_index: int) -> None:
         self._text_frame = text_frame
         self._paragraph_index = paragraph_index
 
-    def __getitem__(self, index: int | slice) -> "ChartTitleRun | list[ChartTitleRun]":
+    def __getitem__(self, index: int | slice) -> ChartTitleTextRun | list[ChartTitleTextRun]:
         runs = _title_paragraph_run_texts(self._text_frame._title_element(False))[
             self._paragraph_index
         ]
         if isinstance(index, slice):
             return [
-                ChartTitleRun(self._text_frame, self._paragraph_index, run_index)
+                ChartTitleTextRun(self._text_frame, self._paragraph_index, run_index)
                 for run_index in range(*index.indices(len(runs)))
             ]
         if index < 0:
             index += len(runs)
         if index < 0 or index >= len(runs):
             raise IndexError("run index out of range")
-        return ChartTitleRun(self._text_frame, self._paragraph_index, index)
+        return ChartTitleTextRun(self._text_frame, self._paragraph_index, index)
 
-    def __iter__(self) -> Iterator["ChartTitleRun"]:
+    def __iter__(self) -> Iterator[ChartTitleTextRun]:
         for index in range(len(self)):
-            yield ChartTitleRun(self._text_frame, self._paragraph_index, index)
+            yield ChartTitleTextRun(self._text_frame, self._paragraph_index, index)
 
     def __len__(self) -> int:
         return len(

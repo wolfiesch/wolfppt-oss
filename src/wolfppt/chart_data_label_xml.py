@@ -7,19 +7,41 @@ from xml.etree import ElementTree as ET
 
 from .chart_point_xml import (
     set_chart_point_data_label_properties as _set_chart_point_data_label_properties,
+)
+from .chart_point_xml import (
     set_chart_point_format_properties as _set_chart_point_format_properties,
+)
+from .chart_point_xml import (
     set_chart_point_marker_format_properties as _set_chart_point_marker_format_properties,
+)
+from .chart_point_xml import (
     set_chart_series_data_label_properties as _set_chart_series_data_label_properties,
+)
+from .chart_point_xml import (
     set_chart_series_format_properties as _set_chart_series_format_properties,
 )
 from .dml_fill import (
     run_gradient_fill_element as _run_gradient_fill_element,
+)
+from .dml_fill import (
     run_no_fill_element as _run_no_fill_element,
+)
+from .dml_fill import (
     run_pattern_fill_element as _run_pattern_fill_element,
+)
+from .dml_fill import (
     run_solid_fill_element as _run_solid_fill_element,
+)
+from .dml_fill import (
     set_run_gradient_fill as _set_run_gradient_fill,
+)
+from .dml_fill import (
     set_run_pattern_fill as _set_run_pattern_fill,
+)
+from .dml_fill import (
     set_run_pattern_fill_color as _set_run_pattern_fill_color,
+)
+from .dml_fill import (
     set_solid_fill_rgb as _set_solid_fill_rgb,
 )
 
@@ -57,6 +79,9 @@ def default_chart_data_labels_payload() -> dict[str, Any]:
         "show_percentage": False,
         "show_legend_key": False,
         "position": None,
+        "separator": None,
+        "show_bubble_size": False,
+        "show_leader_lines": False,
         "number_format": "General",
         "number_format_is_linked": True,
         "font_bold": None,
@@ -100,10 +125,15 @@ def chart_data_labels_payload(chart_element: ET.Element | None) -> dict[str, Any
                 default=False,
             ),
             "position": _child_val(data_labels, "dLblPos"),
+            "separator": (
+                None
+                if (separator := data_labels.find(f"{{{C_NS}}}separator")) is None
+                else separator.text or ""
+            ),
+            "show_bubble_size": _chart_bool_child(data_labels, "showBubbleSize", default=False),
+            "show_leader_lines": _chart_bool_child(data_labels, "showLeaderLines", default=False),
             "number_format": (
-                "General"
-                if num_fmt is None
-                else num_fmt.attrib.get("formatCode", "General")
+                "General" if num_fmt is None else num_fmt.attrib.get("formatCode", "General")
             ),
             "number_format_is_linked": (
                 True
@@ -123,10 +153,14 @@ def chart_data_labels_payload(chart_element: ET.Element | None) -> dict[str, Any
 
 
 def replace_chart_xml_data_labels(chart_xml: bytes, data_labels: dict[str, Any]) -> bytes:
+    from .chart_font_format_facade import replace_chart_text_xml
+
     root = ET.fromstring(chart_xml)
     chart_element = _first_chart_element(root)
     if chart_element is None:
         raise AttributeError("chart plot element is unavailable")
+    scoped_container = root.find(f".//{{{C_NS}}}plotArea")
+    assert scoped_container is not None
     if data_labels.get("has_data_labels") is False:
         data_labels_element = chart_element.find(f"{{{C_NS}}}dLbls")
         if data_labels_element is not None:
@@ -134,76 +168,110 @@ def replace_chart_xml_data_labels(chart_xml: bytes, data_labels: dict[str, Any])
             return ET.tostring(root, encoding="utf-8", xml_declaration=True)
         return chart_xml
 
+    if "plot_data_labels" in data_labels:
+        plot_area = root.find(f".//{{{C_NS}}}plotArea")
+        assert plot_area is not None
+        plots = [child for child in plot_area if child.tag.endswith("Chart")]
+        plot_labels_changed = False
+        for edit in data_labels["plot_data_labels"]:
+            plot = plots[int(edit["plot_index"])]
+            properties = edit["properties"]
+            if properties.get("has_data_labels") is False:
+                labels = plot.find(f"{{{C_NS}}}dLbls")
+                if labels is not None:
+                    plot.remove(labels)
+                    plot_labels_changed = True
+                continue
+            plot_labels_changed = True
+            labels = _chart_data_labels_element(plot)
+            for attr, value in properties.items():
+                _set_chart_data_label_property(labels, attr, value)
+            if "_text_xml" in properties:
+                replace_chart_text_xml(labels, properties["_text_xml"], _data_label_insert_index)
+        # Removing labels a plot never had leaves the part as authored.
+        if not plot_labels_changed and set(data_labels) <= {
+            "has_data_labels",
+            "plot_data_labels",
+        }:
+            return chart_xml
+
     scoped_keys = {
         "point_labels",
         "point_formats",
         "point_marker_formats",
         "series_data_labels",
         "series_formats",
+        "plot_data_labels",
     }
     if scoped_keys & set(data_labels) and not (
         set(data_labels) - {"has_data_labels", *scoped_keys}
     ):
         if "point_labels" in data_labels:
             _set_chart_point_data_label_properties(
-                chart_element,
+                scoped_container,
                 data_labels["point_labels"],
             )
         if "point_formats" in data_labels:
             _set_chart_point_format_properties(
-                chart_element,
+                scoped_container,
                 data_labels["point_formats"],
             )
         if "point_marker_formats" in data_labels:
             _set_chart_point_marker_format_properties(
-                chart_element,
+                scoped_container,
                 data_labels["point_marker_formats"],
             )
         if "series_formats" in data_labels:
             _set_chart_series_format_properties(
-                chart_element,
+                scoped_container,
                 data_labels["series_formats"],
             )
         if "series_data_labels" in data_labels:
             _set_chart_series_data_label_properties(
-                chart_element,
+                scoped_container,
                 data_labels["series_data_labels"],
             )
         return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
     data_labels_element = _chart_data_labels_element(chart_element)
     for attr, value in data_labels.items():
+        if attr == "plot_data_labels":
+            continue
         if attr == "point_labels":
             _set_chart_point_data_label_properties(
-                chart_element,
+                scoped_container,
                 value,
             )
             continue
         if attr == "point_formats":
             _set_chart_point_format_properties(
-                chart_element,
+                scoped_container,
                 value,
             )
             continue
         if attr == "point_marker_formats":
             _set_chart_point_marker_format_properties(
-                chart_element,
+                scoped_container,
                 value,
             )
             continue
         if attr == "series_formats":
             _set_chart_series_format_properties(
-                chart_element,
+                scoped_container,
                 value,
             )
             continue
         if attr == "series_data_labels":
             _set_chart_series_data_label_properties(
-                chart_element,
+                scoped_container,
                 value,
             )
             continue
         _set_chart_data_label_property(data_labels_element, attr, value)
+    if "_text_xml" in data_labels:
+        replace_chart_text_xml(
+            data_labels_element, data_labels["_text_xml"], _data_label_insert_index
+        )
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
@@ -251,6 +319,34 @@ def _set_chart_data_label_property(
     value: Any,
 ) -> None:
     if attr == "has_data_labels":
+        return
+    if attr == "_text_xml":
+        return
+    if attr == "text_format_edits":
+        from .chart_font_format_facade import apply_chart_text_format, chart_text_body
+
+        body = chart_text_body(data_labels, True, _data_label_insert_index)
+        assert body is not None
+        for edit in value:
+            apply_chart_text_format(body, edit["scope"], edit["delta"])
+        return
+    if attr == "separator":
+        separator = data_labels.find(f"{{{C_NS}}}separator")
+        if value is None:
+            if separator is not None:
+                data_labels.remove(separator)
+        else:
+            if separator is None:
+                separator = ET.Element(f"{{{C_NS}}}separator")
+                data_labels.insert(_data_label_insert_index(data_labels, "separator"), separator)
+            separator.text = str(value)
+        return
+    if attr in {"show_bubble_size", "show_leader_lines"}:
+        _set_chart_data_label_bool_child(
+            data_labels,
+            "showBubbleSize" if attr == "show_bubble_size" else "showLeaderLines",
+            bool(value),
+        )
         return
     if attr == "show_value":
         _set_chart_data_label_bool_child(data_labels, "showVal", bool(value))
@@ -377,9 +473,7 @@ def _set_chart_data_label_number_format_source_linked(
 
 
 def _chart_data_label_font_size(data_labels: ET.Element) -> int | None:
-    run_properties = data_labels.find(
-        f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+    run_properties = data_labels.find(f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
     if run_properties is None:
         return None
     raw = run_properties.attrib.get("sz")
@@ -390,10 +484,10 @@ def _chart_data_label_font_size(data_labels: ET.Element) -> int | None:
     return _centipoints_to_emu(int(raw))
 
 
-def _chart_data_label_default_run_properties(data_labels: ET.Element) -> ET.Element | None:
-    return data_labels.find(
-        f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+def _chart_data_label_default_run_properties(
+    data_labels: ET.Element,
+) -> ET.Element | None:
+    return data_labels.find(f"{{{C_NS}}}txPr/{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
 
 
 def _chart_data_label_font_bool(data_labels: ET.Element, attr: str) -> bool | None:
@@ -440,7 +534,9 @@ def _chart_data_label_font_language_id(data_labels: ET.Element) -> str | None:
     return run_properties.attrib.get("lang")
 
 
-def _chart_data_label_text_default_run_properties(data_labels: ET.Element) -> ET.Element:
+def _chart_data_label_text_default_run_properties(
+    data_labels: ET.Element,
+) -> ET.Element:
     text_properties = data_labels.find(f"{{{C_NS}}}txPr")
     if text_properties is None:
         text_properties = ET.Element(f"{{{C_NS}}}txPr")
@@ -451,9 +547,7 @@ def _chart_data_label_text_default_run_properties(data_labels: ET.Element) -> ET
         ET.SubElement(paragraph_properties, f"{{{A_NS}}}defRPr")
         text_properties.append(paragraph)
         data_labels.insert(_data_label_insert_index(data_labels, "txPr"), text_properties)
-    run_properties = text_properties.find(
-        f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+    run_properties = text_properties.find(f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
     if run_properties is None:
         paragraph = text_properties.find(f"{{{A_NS}}}p")
         if paragraph is None:

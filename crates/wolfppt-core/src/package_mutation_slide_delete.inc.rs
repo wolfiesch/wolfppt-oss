@@ -1,3 +1,12 @@
+/// Check if a relationship is internal (TargetMode is absent or case-insensitively "Internal")
+fn is_internal_relationship(target_mode: &Option<String>) -> bool {
+    target_mode.is_none()
+        || target_mode
+            .as_deref()
+            .map(|mode| mode.eq_ignore_ascii_case("Internal"))
+            .unwrap_or(false)
+}
+
 pub fn delete_slides(
     input_path: impl AsRef<Path>,
     output_path: impl AsRef<Path>,
@@ -113,7 +122,7 @@ pub fn delete_slides(
     // Reachability graph over all parts in the package
     let mut part_rels: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for index in 0..archive.len() {
-        let name = archive.by_index(index)?.name().to_string();
+        let name = archive.by_index(index)?.name()?.into_owned();
         if name.ends_with(".rels") {
             let source_part = if name == "_rels/.rels" {
                 "".to_string()
@@ -138,7 +147,7 @@ pub fn delete_slides(
             let rels = parse_relationships(&rels_xml);
             let mut targets = Vec::new();
             for rel in rels {
-                if rel.target_mode.is_none() && !rel.target.is_empty() {
+                if is_internal_relationship(&rel.target_mode) && !rel.target.is_empty() {
                     let resolved = if source_part.is_empty() {
                         rel.target.trim_start_matches('/').to_string()
                     } else {
@@ -211,7 +220,7 @@ pub fn delete_slides(
     // Only target slides and their unshared descendants in the deleted closure are removed.
     // Pre-existing unreachable or unknown parts are NEVER removed.
     for index in 0..archive.len() {
-        let name = archive.by_index(index)?.name().to_string();
+        let name = archive.by_index(index)?.name()?.into_owned();
         if name.ends_with(".rels") {
             continue;
         }
@@ -261,7 +270,7 @@ pub fn delete_slides(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
 
         if parts_to_remove.contains(&name) {
             continue;
@@ -314,78 +323,81 @@ pub fn delete_slide(
     delete_slides(input_path, output_path, &[target_slide_part], None)
 }
 
+/// Rewrite `ppt/presentation.xml` after deleting slides.
+///
+/// Only the root `p:presentation/p:sldIdLst` names slides by relationship and is
+/// filtered and reordered here. Every other `sldIdLst` (the `p14:section`
+/// membership lists inside `p:extLst`) names slides by presentation slide id;
+/// those keep every section and every surviving member and drop only the ids of
+/// the deleted slides.
 fn rewrite_presentation_xml_for_slide_deletion(
     xml: &[u8],
     deleted_relationship_ids: &std::collections::HashSet<String>,
     ordered_survivor_relationship_ids: Option<&[String]>,
 ) -> Result<Vec<u8>, WolfPptError> {
+    let deleted_slide_ids = deleted_presentation_slide_ids(xml, deleted_relationship_ids)?;
     let mut reader = Reader::from_reader(xml);
     let mut writer = Writer::new(Cursor::new(Vec::with_capacity(xml.len())));
-    let mut in_sld_id_lst = false;
-    let mut sld_id_lst_depth: usize = 0;
+    // Depth of the innermost open element; the document element is depth 1.
+    let mut depth: usize = 0;
+    let mut in_root_list = false;
+    let mut member_list_depth: Option<usize> = None;
     let mut survivor_entries: Vec<(String, Vec<Event<'static>>)> = Vec::new();
     loop {
         match reader.read_event()? {
             Event::Start(start) => {
+                depth += 1;
                 let qname = start.name();
-                let name = local_name(qname.as_ref());
+                let name = local_name(qname.as_ref().as_bytes());
                 if name == b"sldIdLst" {
-                    in_sld_id_lst = true;
-                    sld_id_lst_depth = 1;
-                    writer.write_event(Event::Start(start.into_owned()))?;
-                    continue;
-                }
-                if in_sld_id_lst {
-                    sld_id_lst_depth += 1;
-                    if name == b"sldId" {
-                        let rel_id = extract_rel_id_from_attributes(&start, reader.decoder());
-                        let mut events = vec![Event::Start(start.into_owned())];
-                        let mut depth = 1;
-                        loop {
-                            let ev = reader.read_event()?;
-                            match &ev {
-                                Event::Start(_) => depth += 1,
-                                Event::End(_) => depth -= 1,
-                                Event::Eof => break,
-                                _ => {}
-                            }
-                            events.push(ev.into_owned());
-                            if depth == 0 {
-                                break;
-                            }
-                        }
-                        if !deleted_relationship_ids.contains(&rel_id) {
-                            survivor_entries.push((rel_id, events));
-                        }
-                        sld_id_lst_depth -= 1;
-                        continue;
+                    if depth == 2 {
+                        in_root_list = true;
+                    } else {
+                        member_list_depth = Some(depth);
                     }
+                } else if name == b"sldId" && in_root_list && depth == 3 {
+                    let rel_id = extract_rel_id_from_attributes(&start);
+                    let mut events = vec![Event::Start(start.into_owned())];
+                    read_element_body(&mut reader, Some(&mut events))?;
+                    depth -= 1;
+                    if !deleted_relationship_ids.contains(&rel_id) {
+                        survivor_entries.push((rel_id, events));
+                    }
+                    continue;
+                } else if name == b"sldId"
+                    && member_list_depth == Some(depth - 1)
+                    && is_deleted_member(&start, &deleted_slide_ids)
+                {
+                    read_element_body(&mut reader, None)?;
+                    depth -= 1;
+                    continue;
                 }
                 writer.write_event(Event::Start(start.into_owned()))?;
             }
             Event::Empty(empty) => {
                 let qname = empty.name();
-                let name = local_name(qname.as_ref());
-                if name == b"sldIdLst" {
-                    writer.write_event(Event::Empty(empty.into_owned()))?;
-                    continue;
-                }
-                if in_sld_id_lst && name == b"sldId" {
-                    let rel_id = extract_rel_id_from_attributes(&empty, reader.decoder());
+                let name = local_name(qname.as_ref().as_bytes());
+                if name == b"sldId" && in_root_list && depth == 2 {
+                    let rel_id = extract_rel_id_from_attributes(&empty);
                     if !deleted_relationship_ids.contains(&rel_id) {
                         survivor_entries.push((rel_id, vec![Event::Empty(empty.into_owned())]));
                     }
                     continue;
                 }
+                if name == b"sldId"
+                    && member_list_depth == Some(depth)
+                    && is_deleted_member(&empty, &deleted_slide_ids)
+                {
+                    continue;
+                }
                 writer.write_event(Event::Empty(empty.into_owned()))?;
             }
             Event::End(end) => {
-                let qname = end.name();
-                let name = local_name(qname.as_ref());
-                if in_sld_id_lst && name == b"sldIdLst" && sld_id_lst_depth == 1 {
+                if in_root_list && depth == 2 {
+                    let survivors = std::mem::take(&mut survivor_entries);
                     if let Some(ordered_ids) = ordered_survivor_relationship_ids {
                         let mut entries_by_id: BTreeMap<String, Vec<Event<'static>>> =
-                            std::mem::take(&mut survivor_entries).into_iter().collect();
+                            survivors.into_iter().collect();
                         for id in ordered_ids {
                             if let Some(events) = entries_by_id.remove(id) {
                                 for ev in events {
@@ -394,20 +406,18 @@ fn rewrite_presentation_xml_for_slide_deletion(
                             }
                         }
                     } else {
-                        for (_, events) in std::mem::take(&mut survivor_entries) {
+                        for (_, events) in survivors {
                             for ev in events {
                                 writer.write_event(ev)?;
                             }
                         }
                     }
-                    in_sld_id_lst = false;
-                    sld_id_lst_depth = 0;
-                    writer.write_event(Event::End(end.into_owned()))?;
-                    continue;
+                    in_root_list = false;
                 }
-                if in_sld_id_lst {
-                    sld_id_lst_depth = sld_id_lst_depth.saturating_sub(1);
+                if member_list_depth == Some(depth) {
+                    member_list_depth = None;
                 }
+                depth = depth.saturating_sub(1);
                 writer.write_event(Event::End(end.into_owned()))?;
             }
             Event::Eof => break,
@@ -417,14 +427,97 @@ fn rewrite_presentation_xml_for_slide_deletion(
     Ok(writer.into_inner().into_inner())
 }
 
+/// Presentation slide ids (`p:sldId/@id`) of the slides whose relationships are deleted.
+fn deleted_presentation_slide_ids(
+    xml: &[u8],
+    deleted_relationship_ids: &std::collections::HashSet<String>,
+) -> Result<std::collections::HashSet<String>, WolfPptError> {
+    let mut reader = Reader::from_reader(xml);
+    let mut depth: usize = 0;
+    let mut in_root_list = false;
+    let mut ids = std::collections::HashSet::new();
+    loop {
+        let (start, element_depth, has_children) = match reader.read_event()? {
+            Event::Start(start) => {
+                depth += 1;
+                (start, depth, true)
+            }
+            Event::Empty(empty) => (empty, depth + 1, false),
+            Event::End(_) => {
+                if depth == 2 {
+                    in_root_list = false;
+                }
+                depth = depth.saturating_sub(1);
+                continue;
+            }
+            Event::Eof => break,
+            _ => continue,
+        };
+        let qname = start.name();
+        let name = local_name(qname.as_ref().as_bytes());
+        if name == b"sldIdLst" && element_depth == 2 {
+            in_root_list = has_children;
+        } else if name == b"sldId" && in_root_list && element_depth == 3 {
+            let rel_id = extract_rel_id_from_attributes(&start);
+            if deleted_relationship_ids.contains(&rel_id) {
+                if let Some(id) = slide_id_attribute(&start) {
+                    ids.insert(id);
+                }
+            }
+        }
+    }
+    Ok(ids)
+}
+
+fn slide_id_attribute(
+    event: &quick_xml::events::BytesStart<'_>,
+) -> Option<String> {
+    event
+        .attributes()
+        .flatten()
+        .find(|attr| attr.key.as_ref().as_bytes() == b"id")
+        .and_then(|attr| attr.normalized_value(quick_xml::XmlVersion::Implicit1_0).ok())
+        .map(|value| value.trim().to_string())
+}
+
+fn is_deleted_member(
+    event: &quick_xml::events::BytesStart<'_>,
+    deleted_slide_ids: &std::collections::HashSet<String>,
+) -> bool {
+    slide_id_attribute(event).is_some_and(|id| deleted_slide_ids.contains(&id))
+}
+
+/// Consume the rest of an element whose start tag was just read, optionally
+/// capturing its events (through the matching end tag).
+fn read_element_body(
+    reader: &mut Reader<&[u8]>,
+    mut captured: Option<&mut Vec<Event<'static>>>,
+) -> Result<(), WolfPptError> {
+    let mut depth = 1;
+    loop {
+        let event = reader.read_event()?;
+        match &event {
+            Event::Start(_) => depth += 1,
+            Event::End(_) => depth -= 1,
+            Event::Eof => return Ok(()),
+            _ => {}
+        }
+        if let Some(events) = captured.as_deref_mut() {
+            events.push(event.into_owned());
+        }
+        if depth == 0 {
+            return Ok(());
+        }
+    }
+}
+
 fn extract_rel_id_from_attributes(
     event: &quick_xml::events::BytesStart<'_>,
-    decoder: quick_xml::Decoder,
 ) -> String {
     for attr in event.attributes().flatten() {
-        let key = attr.key.as_ref();
+        let key = attr.key.as_ref().as_bytes();
         if key == b"r:id" || (key.ends_with(b":id") && key != b"id") {
-            if let Ok(val) = attr.decode_and_unescape_value(decoder) {
+            if let Ok(val) = attr.normalized_value(quick_xml::XmlVersion::Implicit1_0) {
                 return val.into_owned();
             }
         }
@@ -460,13 +553,13 @@ fn rewrite_relationships_for_slide_deletion(
         match event {
             Event::Start(start) => {
                 let qname = start.name();
-                let name = local_name(qname.as_ref());
+                let name = local_name(qname.as_ref().as_bytes());
                 if name == b"Relationship" {
                     let mut id = String::new();
                     for attr in start.attributes().flatten() {
-                        if local_name(attr.key.as_ref()) == b"Id" {
+                        if local_name(attr.key.as_ref().as_bytes()) == b"Id" {
                             id = attr
-                                .decode_and_unescape_value(reader.decoder())
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .map(|v| v.into_owned())
                                 .unwrap_or_default();
                             break;
@@ -482,13 +575,13 @@ fn rewrite_relationships_for_slide_deletion(
             }
             Event::Empty(empty) => {
                 let qname = empty.name();
-                let name = local_name(qname.as_ref());
+                let name = local_name(qname.as_ref().as_bytes());
                 if name == b"Relationship" {
                     let mut id = String::new();
                     for attr in empty.attributes().flatten() {
-                        if local_name(attr.key.as_ref()) == b"Id" {
+                        if local_name(attr.key.as_ref().as_bytes()) == b"Id" {
                             id = attr
-                                .decode_and_unescape_value(reader.decoder())
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .map(|v| v.into_owned())
                                 .unwrap_or_default();
                             break;
@@ -529,13 +622,13 @@ fn rewrite_content_types_for_slide_deletion(
         match event {
             Event::Start(start) => {
                 let qname = start.name();
-                let name = local_name(qname.as_ref());
+                let name = local_name(qname.as_ref().as_bytes());
                 if name == b"Override" {
                     let mut part_name = String::new();
                     for attr in start.attributes().flatten() {
-                        if local_name(attr.key.as_ref()) == b"PartName" {
+                        if local_name(attr.key.as_ref().as_bytes()) == b"PartName" {
                             part_name = attr
-                                .decode_and_unescape_value(reader.decoder())
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .map(|v| v.into_owned())
                                 .unwrap_or_default();
                             break;
@@ -550,13 +643,13 @@ fn rewrite_content_types_for_slide_deletion(
             }
             Event::Empty(empty) => {
                 let qname = empty.name();
-                let name = local_name(qname.as_ref());
+                let name = local_name(qname.as_ref().as_bytes());
                 if name == b"Override" {
                     let mut part_name = String::new();
                     for attr in empty.attributes().flatten() {
-                        if local_name(attr.key.as_ref()) == b"PartName" {
+                        if local_name(attr.key.as_ref().as_bytes()) == b"PartName" {
                             part_name = attr
-                                .decode_and_unescape_value(reader.decoder())
+                                .normalized_value(quick_xml::XmlVersion::Implicit1_0)
                                 .map(|v| v.into_owned())
                                 .unwrap_or_default();
                             break;

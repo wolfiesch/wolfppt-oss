@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Iterator, Sequence
 from copy import deepcopy
-from typing import Any
+from typing import Any, overload
 
 from .chart_adds import _normalize_chart_add_data
 from .chart_xml import chart_type_payload_from_value as _chart_type_payload_from_value
@@ -14,6 +15,8 @@ from .shape_core_facade import Shape
 from .shape_edit_refs import queued_shape_add_weight as _queued_shape_add_weight
 from .shape_group_media_adds import (
     add_group_ole_object as _add_group_ole_object,
+)
+from .shape_group_media_adds import (
     add_group_picture as _add_group_picture,
 )
 from .shape_group_payloads import (
@@ -21,7 +24,7 @@ from .shape_group_payloads import (
     _pending_group_child_payload,
 )
 from .shape_inspection import _connector_preset_geometry
-from .shape_payloads import _shape_transform_value
+from .shape_payloads import _shape_transform_value, _update_group_insertion_bounds
 
 
 class GroupShapeCollection(Sequence["Shape"]):
@@ -49,11 +52,19 @@ class GroupShapeCollection(Sequence["Shape"]):
             for index, child in enumerate(group_shape._payload.get("children") or [])
             if isinstance(child, dict)
         ]
+        for child in self._shapes:
+            child._parent_group = group_shape
 
-    def __getitem__(self, index: int | slice) -> "Shape | list[Shape]":
+    @overload
+    def __getitem__(self, index: int) -> Shape: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[Shape]: ...
+
+    def __getitem__(self, index: int | slice) -> Shape | list[Shape]:
         return self._shapes[index]
 
-    def __iter__(self) -> Iterator["Shape"]:
+    def __iter__(self) -> Iterator[Shape]:
         return iter(self._shapes)
 
     def __len__(self) -> int:
@@ -75,7 +86,7 @@ class GroupShapeCollection(Sequence["Shape"]):
         if shape._payload.get("_deleted"):
             raise ValueError(f"{shape!r} is not in this group shape collection")
         if self._group_shape._payload.get("_deleted"):
-            raise ValueError(f"cannot remove shape from deleted group")
+            raise ValueError("cannot remove shape from deleted group")
         if not self._group_shape._slide.partname or shape._payload.get("_pending_shape"):
             raise NotImplementedError("deleting an unsaved shape is not supported yet")
         position = next(
@@ -110,6 +121,7 @@ class GroupShapeCollection(Sequence["Shape"]):
         children = self._group_shape._payload.get("children")
         if isinstance(children, list) and position < len(children):
             children.pop(position)
+
         def _mark_deleted_recursive(s: Any) -> None:
             if hasattr(s, "_payload") and isinstance(s._payload, dict):
                 s._payload["_deleted"] = True
@@ -151,12 +163,10 @@ class GroupShapeCollection(Sequence["Shape"]):
         return _placeholder_basename(ph_type)
 
     def _is_nested_group_target(self) -> bool:
-        if (
+        return bool(
             self._group_shape._payload.get("_group_child")
             and self._group_shape._payload.get("kind") == "group"
-        ):
-            return True
-        return False
+        )
 
     def _is_deeper_nested_group_target(self) -> bool:
         return bool(self._group_shape._payload.get("_deep_nested_group_target"))
@@ -178,10 +188,8 @@ class GroupShapeCollection(Sequence["Shape"]):
                 if payload.get("_pending_shape") or payload.get("_pending_group_child"):
                     return
                 shape_id = payload.get("id")
-                try:
+                with contextlib.suppress(TypeError, ValueError):
                     shape_ids.append(int(shape_id))
-                except (TypeError, ValueError):
-                    pass
                 for child in payload.get("children") or ():
                     if isinstance(child, dict):
                         visit_payload(child)
@@ -198,11 +206,13 @@ class GroupShapeCollection(Sequence["Shape"]):
     def _pending_group_child_identity(self) -> dict[str, Any]:
         return {"id": str(self._next_pending_shape_id()), "_pending_shape": True}
 
-    def _append_pending_shape(self, shape: "Shape") -> None:
+    def _append_pending_shape(self, shape: Shape) -> None:
+        shape._parent_group = self._group_shape
         self._shapes.append(shape)
         children = self._group_shape._payload.setdefault("children", [])
         if isinstance(children, list):
             children.append(shape._payload)
+        _update_group_insertion_bounds(self._group_shape, shape)
 
     def _next_pending_shape_name(self, prefix: str) -> str:
         return f"{prefix} {self._next_pending_shape_id() - 1}"
@@ -227,12 +237,8 @@ class GroupShapeCollection(Sequence["Shape"]):
         deeper_group_child_index: int | None = None
         if self._is_deeper_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_nested_group_child_index"]
-            )
-            deeper_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_nested_group_child_index"])
+            deeper_group_child_index = int(self._group_shape._payload["_group_child_index"])
             self._group_shape._slide._presentation._queue_deeper_nested_group_chart_add(
                 self._group_shape._slide._index,
                 group_index,
@@ -248,9 +254,7 @@ class GroupShapeCollection(Sequence["Shape"]):
             )
         elif self._is_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_group_child_index"])
             self._group_shape._slide._presentation._queue_nested_group_chart_add(
                 self._group_shape._slide._index,
                 group_index,
@@ -350,12 +354,8 @@ class GroupShapeCollection(Sequence["Shape"]):
         deeper_group_child_index: int | None = None
         if self._is_deeper_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_nested_group_child_index"]
-            )
-            deeper_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_nested_group_child_index"])
+            deeper_group_child_index = int(self._group_shape._payload["_group_child_index"])
             self._group_shape._slide._presentation._queue_deeper_nested_group_connector_add(
                 self._group_shape._slide._index,
                 group_index,
@@ -370,9 +370,7 @@ class GroupShapeCollection(Sequence["Shape"]):
             )
         elif self._is_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_group_child_index"])
             self._group_shape._slide._presentation._queue_nested_group_connector_add(
                 self._group_shape._slide._index,
                 group_index,
@@ -439,9 +437,7 @@ class GroupShapeCollection(Sequence["Shape"]):
         deeper_group_child_index: int | None = None
         if self._is_deeper_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_nested_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_nested_group_child_index"])
             deeper_group_child_index = int(
                 self._group_shape._payload.get(
                     "_deeper_group_child_index",
@@ -450,9 +446,7 @@ class GroupShapeCollection(Sequence["Shape"]):
             )
         elif self._is_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_group_child_index"])
         else:
             group_index = self._group_ordinal()
         if not grouped_shapes:
@@ -503,6 +497,7 @@ class GroupShapeCollection(Sequence["Shape"]):
                         "cx": 0,
                         "cy": 0,
                     },
+                    "_group_insertion_frame": (0, 0, 0, 0, 0, 0, 0, 0),
                     "_max_shape_id": self._group_shape._payload.get("_max_shape_id"),
                     "children": [],
                     **group_payload,
@@ -513,6 +508,10 @@ class GroupShapeCollection(Sequence["Shape"]):
 
         child_indices = self._grouped_child_indices(grouped_shapes)
         left, top, width, height = self._grouped_child_bounds(grouped_shapes)
+        from .shape_locks import check_shape_locks
+
+        for member in grouped_shapes:
+            check_shape_locks(member, "grouping", "no_group")
         if deeper_group_child_index is not None:
             self._group_shape._slide._presentation._queue_existing_deeper_nested_group_child_group_add(
                 self._group_shape._slide._index,
@@ -562,15 +561,15 @@ class GroupShapeCollection(Sequence["Shape"]):
                     "cx": width,
                     "cy": height,
                 },
+                "_group_insertion_frame": (left, top, width, height) * 2,
                 "children": [deepcopy(child._payload) for child in grouped_shapes],
                 **group_payload,
             },
         )
+        shape._parent_group = self._group_shape
         selected = set(child_indices)
         remaining = [
-            candidate
-            for index, candidate in enumerate(self._shapes)
-            if index not in selected
+            candidate for index, candidate in enumerate(self._shapes) if index not in selected
         ]
         self._shapes = [*remaining, shape]
         for index, candidate in enumerate(self._shapes):
@@ -665,12 +664,8 @@ class GroupShapeCollection(Sequence["Shape"]):
         deeper_group_child_index: int | None = None
         if self._is_deeper_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_nested_group_child_index"]
-            )
-            deeper_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_nested_group_child_index"])
+            deeper_group_child_index = int(self._group_shape._payload["_group_child_index"])
             self._group_shape._slide._presentation._queue_deeper_nested_group_auto_shape_add(
                 self._group_shape._slide._index,
                 group_index,
@@ -686,9 +681,7 @@ class GroupShapeCollection(Sequence["Shape"]):
             identity = self._pending_group_child_identity()
         elif self._is_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_group_child_index"])
             self._group_shape._slide._presentation._queue_nested_group_auto_shape_add(
                 self._group_shape._slide._index,
                 group_index,
@@ -759,12 +752,8 @@ class GroupShapeCollection(Sequence["Shape"]):
         deeper_group_child_index: int | None = None
         if self._is_deeper_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_nested_group_child_index"]
-            )
-            deeper_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_nested_group_child_index"])
+            deeper_group_child_index = int(self._group_shape._payload["_group_child_index"])
             self._group_shape._slide._presentation._queue_deeper_nested_group_text_box_add(
                 self._group_shape._slide._index,
                 group_index,
@@ -778,9 +767,7 @@ class GroupShapeCollection(Sequence["Shape"]):
             )
         elif self._is_nested_group_target():
             group_index = int(self._group_shape._payload["_group_index"])
-            nested_group_child_index = int(
-                self._group_shape._payload["_group_child_index"]
-            )
+            nested_group_child_index = int(self._group_shape._payload["_group_child_index"])
             self._group_shape._slide._presentation._queue_nested_group_text_box_add(
                 self._group_shape._slide._index,
                 group_index,

@@ -9,41 +9,18 @@ from xml.etree import ElementTree as ET
 
 from .package_parts import (
     copy_package_with_replacements as _copy_package_with_replacements,
+)
+from .package_parts import (
     normalize_package_partname as _normalize_package_partname,
-    rels_part_for_package_part as _rels_part_for_package_part,
 )
-from .shape_xml import (
-    _clear_paragraph_content,
-    _insert_paragraph_line_break,
-    _paragraph_default_run_properties_element,
-    _paragraph_properties_element,
-    _paragraph_xml_element,
-    _run_properties_element,
-    _set_hyperlink_address,
-    _set_paragraph_alignment,
-    _set_paragraph_font_properties,
-    _set_paragraph_level,
-    _set_paragraph_spacing,
-    _set_run_font_color,
-    _set_run_font_fill_type,
-    _set_run_font_language,
-    _set_text_frame_fit,
-    _shape_xml_element,
-    _text_body_properties_element,
-    _text_run_xml_element,
-)
+from .shape_xml import _shape_xml_element
 from .slide_payloads import (
     load_shape_payloads as _load_shape_payloads,
+)
+from .slide_payloads import (
     load_slide_payloads as _load_slide_payloads,
 )
-from .text_xml import (
-    _clear_text_frame_auto_size_children,
-    _set_font_bool_attribute,
-    _set_font_name,
-    _set_font_size,
-    _set_font_underline,
-    _text_frame_auto_size_insert_index,
-)
+from .xml_helpers import ooxml_namespace
 from .xml_helpers import xml_local_name as _xml_local_name
 
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -89,9 +66,8 @@ def _part_shape_text_replacements_from_package(
         normalized = _normalize_package_partname(partname).lstrip("/")
         edits_by_part.setdefault(normalized, []).append((shape_index, text))
     for partname, part_edits in edits_by_part.items():
-        shape_payloads = (
-            (shape_payloads_by_part or {}).get(partname)
-            or _load_shape_payloads(input_path, partname)
+        shape_payloads = (shape_payloads_by_part or {}).get(partname) or _load_shape_payloads(
+            input_path, partname
         )
         root = ET.fromstring(package.read(partname))
         for shape_index, text in part_edits:
@@ -101,9 +77,7 @@ def _part_shape_text_replacements_from_package(
                 raise IndexError("shape index out of range") from exc
             shape_element = _shape_xml_element(root, shape_payload)
             if _xml_local_name(shape_element.tag) != "sp":
-                raise AttributeError(
-                    "shape text editing is only supported for shape elements"
-                )
+                raise AttributeError("shape text editing is only supported for shape elements")
             _set_shape_text(shape_element, text)
         replacements[partname] = ET.tostring(
             root,
@@ -140,9 +114,7 @@ def _nested_group_child_shape_text_replacements(
 ) -> dict[str, bytes]:
     payloads = slide_payloads or _load_slide_payloads(input_path)
     edits_by_slide: dict[int, list[tuple[dict[str, Any], str]]] = {}
-    for (slide_index, group_index, nested_index, child_index), text in (
-        nested_text_edits
-    ):
+    for (slide_index, group_index, nested_index, child_index), text in nested_text_edits:
         target = _nested_group_child_payload(
             payloads,
             slide_index,
@@ -180,9 +152,7 @@ def _nested_group_child_shape_text_replacements(
             for shape_payload, text in slide_edits:
                 shape_element = _shape_xml_element(root, shape_payload)
                 if _xml_local_name(shape_element.tag) != "sp":
-                    raise AttributeError(
-                        "shape text editing is only supported for shape elements"
-                    )
+                    raise AttributeError("shape text editing is only supported for shape elements")
                 _set_shape_text(shape_element, text)
             replacements[partname] = ET.tostring(
                 root,
@@ -228,31 +198,42 @@ def _deeper_group_child_payload(
 
 
 def _set_shape_text(shape_element: ET.Element, text: str) -> None:
-    text_body = shape_element.find(f"{{{P_NS}}}txBody")
+    p_ns = ooxml_namespace(shape_element, P_NS)
+    text_body = shape_element.find(f"{{{p_ns}}}txBody")
     if text_body is None:
-        raise AttributeError("shape text body is unavailable")
+        text_body = ET.Element(f"{{{p_ns}}}txBody")
+        a_ns = ooxml_namespace(shape_element, A_NS)
+        ET.SubElement(text_body, f"{{{a_ns}}}bodyPr")
+        ET.SubElement(text_body, f"{{{a_ns}}}lstStyle")
+        # CT_Shape places the optional text body before its extension list.
+        insert_at = len(shape_element)
+        for index, child in enumerate(shape_element):
+            if child.tag == f"{{{p_ns}}}extLst":
+                insert_at = index
+                break
+        shape_element.insert(insert_at, text_body)
+    a_ns = ooxml_namespace(text_body, A_NS)
     preserved_children = [
-        child
-        for child in list(text_body)
-        if _xml_local_name(child.tag) in {"bodyPr", "lstStyle"}
+        child for child in list(text_body) if _xml_local_name(child.tag) in {"bodyPr", "lstStyle"}
     ]
     text_body.clear()
     for child in preserved_children:
         text_body.append(child)
     for paragraph_text in text.split("\n") if text else [""]:
-        paragraph = ET.SubElement(text_body, f"{{{A_NS}}}p")
+        paragraph = ET.SubElement(text_body, f"{{{a_ns}}}p")
         _append_paragraph_text(paragraph, paragraph_text)
 
 
 def _append_paragraph_text(paragraph: ET.Element, text: str) -> None:
+    a_ns = ooxml_namespace(paragraph, A_NS)
     parts = text.split("\v")
     wrote_child = False
     for index, part in enumerate(parts):
         if part or (not wrote_child and len(parts) == 1):
-            run = ET.SubElement(paragraph, f"{{{A_NS}}}r")
-            text_node = ET.SubElement(run, f"{{{A_NS}}}t")
+            run = ET.SubElement(paragraph, f"{{{a_ns}}}r")
+            text_node = ET.SubElement(run, f"{{{a_ns}}}t")
             text_node.text = part
             wrote_child = True
         if index < len(parts) - 1:
-            ET.SubElement(paragraph, f"{{{A_NS}}}br")
+            ET.SubElement(paragraph, f"{{{a_ns}}}br")
             wrote_child = True

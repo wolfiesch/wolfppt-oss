@@ -2,10 +2,11 @@ use std::env;
 use std::path::PathBuf;
 use wolfppt_core::{
     add_blank_slide_from_existing_layout, add_blank_slide_from_layout_index, add_slide_image,
-    add_slide_table, inspect_package, replace_slide_image, replace_slide_image_at_index,
-    replace_slide_text, replace_slide_text_at_index, replace_slide_text_run_at_index,
-    replace_table_cell_text, roundtrip_package, set_slide_shape_paragraph_text_at_index,
-    set_slide_shape_text_at_index, summarize_presentation,
+    add_slide_table, assemble_deck, inspect_package, replace_slide_image,
+    replace_slide_image_at_index, replace_slide_text, replace_slide_text_at_index,
+    replace_slide_text_run_at_index, replace_table_cell_text, roundtrip_package,
+    set_slide_shape_paragraph_text_at_index, set_slide_shape_text_at_index, summarize_presentation,
+    DeckSlideSelection,
 };
 
 fn main() {
@@ -381,8 +382,8 @@ fn main() {
             let output = PathBuf::from(output);
             let slide_index = parse_usize(&slide_index);
             let image_path = PathBuf::from(image_path);
-            let x_emu = parse_u64(&x_emu);
-            let y_emu = parse_u64(&y_emu);
+            let x_emu = parse_i64(&x_emu);
+            let y_emu = parse_i64(&y_emu);
             let cx_emu = parse_u64(&cx_emu);
             let cy_emu = parse_u64(&cy_emu);
             match add_slide_image(
@@ -513,6 +514,103 @@ fn main() {
                 }
             }
         }
+        "assemble-deck" => {
+            let raw_args: Vec<String> = args.collect();
+            let mut base_path: Option<PathBuf> = None;
+            let mut output_path: Option<PathBuf> = None;
+            let mut selections: Vec<DeckSlideSelection> = Vec::new();
+
+            let mut idx = 0;
+            while idx < raw_args.len() {
+                let arg = &raw_args[idx];
+                match arg.as_str() {
+                    "--base" | "-b" => {
+                        idx += 1;
+                        if idx >= raw_args.len() {
+                            usage_and_exit();
+                        }
+                        base_path = Some(PathBuf::from(&raw_args[idx]));
+                    }
+                    "--output" | "-o" => {
+                        idx += 1;
+                        if idx >= raw_args.len() {
+                            usage_and_exit();
+                        }
+                        output_path = Some(PathBuf::from(&raw_args[idx]));
+                    }
+                    "--select" | "-s" => {
+                        idx += 1;
+                        while idx < raw_args.len() && !raw_args[idx].starts_with('-') {
+                            let spec = &raw_args[idx];
+                            if spec.starts_with('[') {
+                                if let Ok(parsed) =
+                                    serde_json::from_str::<Vec<DeckSlideSelection>>(spec)
+                                {
+                                    selections.extend(parsed);
+                                    idx += 1;
+                                    continue;
+                                }
+                            }
+                            if let Some(colon) = spec.rfind(':') {
+                                selections.push(DeckSlideSelection {
+                                    source_path: PathBuf::from(&spec[..colon]),
+                                    slide_part: spec[colon + 1..].to_string(),
+                                });
+                            } else {
+                                eprintln!(
+                                    "invalid selection spec: {spec}, expected SRC_PATH:SLIDE_PART"
+                                );
+                                std::process::exit(2);
+                            }
+                            idx += 1;
+                        }
+                        continue;
+                    }
+                    "--json" | "--selections-json" => {
+                        idx += 1;
+                        if idx >= raw_args.len() {
+                            usage_and_exit();
+                        }
+                        match serde_json::from_str::<Vec<DeckSlideSelection>>(&raw_args[idx]) {
+                            Ok(parsed) => selections.extend(parsed),
+                            Err(err) => {
+                                eprintln!("invalid selections JSON: {err}");
+                                std::process::exit(2);
+                            }
+                        }
+                    }
+                    other => {
+                        if base_path.is_none() {
+                            base_path = Some(PathBuf::from(other));
+                        } else if output_path.is_none() {
+                            output_path = Some(PathBuf::from(other));
+                        } else if let Some(colon) = other.rfind(':') {
+                            selections.push(DeckSlideSelection {
+                                source_path: PathBuf::from(&other[..colon]),
+                                slide_part: other[colon + 1..].to_string(),
+                            });
+                        } else {
+                            usage_and_exit();
+                        }
+                    }
+                }
+                idx += 1;
+            }
+
+            let (Some(base), Some(output)) = (base_path, output_path) else {
+                usage_and_exit();
+            };
+
+            match assemble_deck(&base, &output, &selections) {
+                Ok(summary) => {
+                    println!("{}", serde_json::to_string_pretty(&summary).unwrap());
+                }
+                Err(err) => {
+                    eprintln!("{err}");
+                    std::process::exit(1);
+                }
+            }
+        }
         _ => usage_and_exit(),
     }
 }
@@ -527,6 +625,13 @@ fn parse_usize(value: &str) -> usize {
 fn parse_u64(value: &str) -> u64 {
     value.parse().unwrap_or_else(|_| {
         eprintln!("expected non-negative integer, got {value}");
+        std::process::exit(2);
+    })
+}
+
+fn parse_i64(value: &str) -> i64 {
+    value.parse().unwrap_or_else(|_| {
+        eprintln!("expected signed 64-bit integer, got {value}");
         std::process::exit(2);
     })
 }
@@ -567,6 +672,9 @@ fn usage_and_exit() -> ! {
     );
     eprintln!(
         "       wolfppt-cli add-table <input.pptx|input.pptm> <output.pptx|output.pptm> <slide-index> <rows> <cols> <x-emu> <y-emu> <cx-emu> <cy-emu>"
+    );
+    eprintln!(
+        "       wolfppt-cli assemble-deck --base BASE --output OUT --select SRC:ppt/slides/slide2.xml ..."
     );
     std::process::exit(2)
 }

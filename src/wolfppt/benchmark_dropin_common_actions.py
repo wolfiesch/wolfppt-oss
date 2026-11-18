@@ -20,6 +20,8 @@ from .benchmark_cases import (
 )
 from .presentation import Presentation as WolfPresentation
 from .shape_core_facade import Shape
+from .shape_facade import ShapeCollection
+from .shape_placeholder_collections import PlaceholderCollection
 from .text_facade_inspection import _shape_run_count_payload
 
 
@@ -332,34 +334,21 @@ def _shape_at(prs: Any, slide_index: int, shape_index: int) -> Any:
     payload = getattr(slide, "_payload", None)
     if isinstance(payload, dict):
         hints = payload.get("shape_shell_hints")
-        if isinstance(hints, list):
-            table_index = 0
-            run_start_index = 0
-            for hint in hints:
-                if not isinstance(hint, dict):
-                    continue
-                hint_index = int(hint.get("_shape_index", -1))
-                if hint_index == shape_index:
-                    return Shape(
-                        slide,
-                        shape_index,
-                        hint,
-                        table_index=int(hint.get("_table_index", table_index)),
-                        run_start_index=run_start_index,
-                    )
-                table_index += len(hint.get("tables") or [])
-                run_start_index += _shape_run_count_payload(hint)
+        if isinstance(hints, list) and hints:
+            for shape in _shape_collection_at(prs, slide_index):
+                if shape._index == shape_index:
+                    return shape
     return slide.shapes[shape_index]
 
 
 def _shape_collection_at(prs: Any, slide_index: int) -> Any:
     slide = prs.slides[slide_index]
+    if isinstance(getattr(slide, "_shapes", None), ShapeCollection):
+        return slide._shapes
     payload = getattr(slide, "_payload", None)
-    if isinstance(prs, WolfPresentation) and isinstance(payload, dict):
+    if isinstance(payload, dict):
         hints = payload.get("shape_shell_hints")
         if isinstance(hints, list):
-            from .shape_facade import ShapeCollection
-
             shapes: list[Shape] = []
             table_index = 0
             run_start_index = 0
@@ -378,7 +367,11 @@ def _shape_collection_at(prs: Any, slide_index: int) -> Any:
                 )
                 table_index += len(hint.get("tables") or [])
                 run_start_index += _shape_run_count_payload(hint)
-            return ShapeCollection(slide, shapes)
+            # Both caches must share these members or Slide.shapes rehydrates
+            # detached copies when checking connector ancestry.
+            slide._shapes = ShapeCollection(slide, shapes)
+            slide._placeholders = PlaceholderCollection(slide, shapes)
+            return slide._shapes
     return slide.shapes
 
 

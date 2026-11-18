@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -13,13 +14,37 @@ from typing import Any
 from .toolchain import dotnet_command, env_with_user_local_tools
 
 
-ROOT = Path(__file__).resolve().parents[3]
+def _validator_repository_root() -> Path:
+    """Locate checkout-only tools for source and installed-wheel use."""
+    source_root = Path(__file__).resolve().parents[3]
+    for root in (source_root, Path.cwd(), *Path.cwd().parents):
+        if (root / "tools" / "openxml-validator" / "WolfPpt.OpenXmlValidator.csproj").is_file():
+            return root
+        engine_root = root / "engines" / "wolfppt"
+        if (
+            engine_root / "tools" / "openxml-validator" / "WolfPpt.OpenXmlValidator.csproj"
+        ).is_file():
+            return engine_root
+    return source_root
+
+
+ROOT = _validator_repository_root()
 VALIDATOR_ROOT = ROOT / "tools" / "openxml-validator"
 VALIDATOR_PROJECT = VALIDATOR_ROOT / "WolfPpt.OpenXmlValidator.csproj"
 VALIDATOR_PROGRAM = VALIDATOR_ROOT / "Program.cs"
-VALIDATOR_DLL = VALIDATOR_ROOT / "bin" / "Debug" / "net9.0" / "WolfPpt.OpenXmlValidator.dll"
+VALIDATOR_DLL = VALIDATOR_ROOT / "bin" / "Debug" / "net10.0" / "WolfPpt.OpenXmlValidator.dll"
 VALIDATOR_LOCK = ROOT / "tools" / "openxml-validator" / ".validator.lock"
 DEFAULT_VALIDATOR_TIMEOUT_SECONDS = 30.0
+
+_TARGET_FRAMEWORK_PATTERN = re.compile(r"<TargetFramework>\s*([^<\s]+)\s*</TargetFramework>")
+_REQUIRED_FRAMEWORK_PATTERN = re.compile(
+    r"Framework:\s*'(?P<name>[^']+)',\s*version\s*'(?P<version>[^']+)'"
+    r"|framework_version=(?P<url_version>[0-9][^&\s]*)"
+)
+
+
+class OpenXmlRuntimeMissingError(RuntimeError):
+    """The .NET runtime required by the validator project is not installed."""
 
 
 @dataclass(frozen=True)
@@ -75,6 +100,8 @@ def validate(path: str | Path) -> OpenXmlValidationResult:
     try:
         payload = json.loads(proc.stdout)
     except json.JSONDecodeError:
+        if _framework_missing(proc):
+            raise _runtime_missing_error(proc) from None
         return OpenXmlValidationResult(
             path=str(source),
             valid=False,
@@ -116,6 +143,41 @@ def _compiled_validator_current() -> bool:
         return all(not path.exists() or path.stat().st_mtime <= dll_mtime for path in inputs)
     except OSError:
         return False
+
+
+def _framework_missing(proc: subprocess.CompletedProcess[str]) -> bool:
+    """Detect the hostfxr "framework not found" launch failure."""
+    if proc.returncode == 0:
+        return False
+    text = f"{proc.stderr}\n{proc.stdout}"
+    return (
+        "You must install or update .NET" in text
+        or "aka.ms/dotnet-core-applaunch" in text
+        or "aka.ms/dotnet/app-launch-failed" in text
+    ) and _REQUIRED_FRAMEWORK_PATTERN.search(text) is not None
+
+
+def _project_target_framework() -> str:
+    try:
+        match = _TARGET_FRAMEWORK_PATTERN.search(VALIDATOR_PROJECT.read_text(encoding="utf-8"))
+    except OSError:
+        return "unknown"
+    return match.group(1) if match else "unknown"
+
+
+def _runtime_missing_error(proc: subprocess.CompletedProcess[str]) -> OpenXmlRuntimeMissingError:
+    text = f"{proc.stderr}\n{proc.stdout}"
+    match = _REQUIRED_FRAMEWORK_PATTERN.search(text)
+    required = ""
+    if match is not None:
+        name = match.group("name") or "Microsoft.NETCore.App"
+        version = match.group("version") or match.group("url_version")
+        required = f" (host requested {name} {version})"
+    return OpenXmlRuntimeMissingError(
+        f"Open XML validator targets {_project_target_framework()} but no matching .NET "
+        f"runtime is installed{required}; install that runtime or retarget "
+        f"{VALIDATOR_PROJECT.name}. Host output: {text.strip()[:1000]}"
+    )
 
 
 def _validator_timeout_seconds() -> float:

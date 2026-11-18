@@ -8,9 +8,12 @@ from xml.etree import ElementTree as ET
 
 from .dml_fill import (
     fill_type_from_xml_children as _fill_type_from_xml_children,
+)
+from .dml_fill import (
     gradient_payload_from_fill_parent as _gradient_payload_from_fill_parent,
 )
 from .shape_xml import _shape_xml_element
+from .xml_helpers import find_ooxml
 from .xml_helpers import xml_local_name as _xml_local_name
 
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -48,11 +51,7 @@ def _shape_style_color_payload(shape: Shape, target: str) -> dict[str, Any] | No
     shape_properties = shape_element.find(f"{{{P_NS}}}spPr")
     if shape_properties is None:
         return None
-    fill_parent = (
-        shape_properties
-        if target == "fill"
-        else shape_properties.find(f"{{{A_NS}}}ln")
-    )
+    fill_parent = shape_properties if target == "fill" else shape_properties.find(f"{{{A_NS}}}ln")
     if fill_parent is None:
         return None
     return _color_payload_from_fill_parent(fill_parent)
@@ -104,9 +103,7 @@ def _shape_pattern_rgb(shape: Shape, target: str, role: str) -> str | None:
         if target != "fill":
             return None
         color_tag = "fgClr" if role == "fore" else "bgClr"
-        color = fill_parent.find(
-            f"{{{A_NS}}}pattFill/{{{A_NS}}}{color_tag}/{{{A_NS}}}srgbClr"
-        )
+        color = fill_parent.find(f"{{{A_NS}}}pattFill/{{{A_NS}}}{color_tag}/{{{A_NS}}}srgbClr")
         if color is None:
             return None
         value = color.attrib.get("val")
@@ -240,9 +237,7 @@ def _shape_line_fill_pattern(shape: Shape) -> str | None:
     with zipfile.ZipFile(shape._slide._presentation.path) as package:
         root = ET.fromstring(package.read(shape._slide.partname))
     shape_element = _shape_xml_element(root, shape._payload)
-    pattern_fill = shape_element.find(
-        f"{{{P_NS}}}spPr/{{{A_NS}}}ln/{{{A_NS}}}pattFill"
-    )
+    pattern_fill = shape_element.find(f"{{{P_NS}}}spPr/{{{A_NS}}}ln/{{{A_NS}}}pattFill")
     if pattern_fill is None:
         return None
     value = pattern_fill.attrib.get("prst")
@@ -306,12 +301,11 @@ def _shape_shadow_inherit(shape: Shape) -> bool:
         zipfile.BadZipFile,
     ):
         return True
-    shape_properties = shape_element.find(f"{{{P_NS}}}spPr")
+    shape_properties = find_ooxml(shape_element, f"{{{P_NS}}}spPr")
     if shape_properties is None:
         return True
     has_effect_override = any(
-        _xml_local_name(child.tag) in {"effectLst", "effectDag"}
-        for child in shape_properties
+        _xml_local_name(child.tag) in {"effectLst", "effectDag"} for child in shape_properties
     )
     return not has_effect_override
 

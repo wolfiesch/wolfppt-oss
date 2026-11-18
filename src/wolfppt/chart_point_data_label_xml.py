@@ -9,12 +9,26 @@ from xml.etree import ElementTree as ET
 from .chart_point_facade_xml import _data_label_insert_index
 from .dml_fill import (
     run_gradient_fill_element as _run_gradient_fill_element,
+)
+from .dml_fill import (
     run_no_fill_element as _run_no_fill_element,
+)
+from .dml_fill import (
     run_pattern_fill_element as _run_pattern_fill_element,
+)
+from .dml_fill import (
     run_solid_fill_element as _run_solid_fill_element,
+)
+from .dml_fill import (
     set_run_gradient_fill as _set_run_gradient_fill,
+)
+from .dml_fill import (
     set_run_pattern_fill as _set_run_pattern_fill,
+)
+from .dml_fill import (
     set_run_pattern_fill_color as _set_run_pattern_fill_color,
+)
+from .dml_fill import (
     set_solid_fill_rgb as _set_solid_fill_rgb,
 )
 from .facade_values import emu_to_centipoints as _emu_to_centipoints
@@ -50,9 +64,7 @@ def point_data_label_text_default_run_properties(label: ET.Element) -> ET.Elemen
         ET.SubElement(paragraph_properties, f"{{{A_NS}}}defRPr")
         text_properties.append(paragraph)
         label.insert(_data_label_insert_index(label, "txPr"), text_properties)
-    run_properties = text_properties.find(
-        f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr"
-    )
+    run_properties = text_properties.find(f"{{{A_NS}}}p/{{{A_NS}}}pPr/{{{A_NS}}}defRPr")
     if run_properties is not None:
         return run_properties
     paragraph = text_properties.find(f"{{{A_NS}}}p")
@@ -170,13 +182,9 @@ def set_point_data_label_paragraph_runs(
         if existing_rich is not None:
             existing_body_properties = existing_rich.find(f"{{{A_NS}}}bodyPr")
             for paragraph in existing_rich.findall(f"{{{A_NS}}}p"):
-                existing_paragraph_properties.append(
-                    paragraph.find(f"{{{A_NS}}}pPr")
-                )
+                existing_paragraph_properties.append(paragraph.find(f"{{{A_NS}}}pPr"))
                 existing_line_break_slots.append(
-                    _paragraph_line_break_slots(paragraph)
-                    if preserve_line_breaks
-                    else []
+                    _paragraph_line_break_slots(paragraph) if preserve_line_breaks else []
                 )
     if text is not None:
         label.remove(text)
@@ -194,9 +202,7 @@ def set_point_data_label_paragraph_runs(
             if paragraph_properties is not None:
                 paragraph.append(deepcopy(paragraph_properties))
         break_slots = (
-            existing_line_break_slots[index]
-            if index < len(existing_line_break_slots)
-            else []
+            existing_line_break_slots[index] if index < len(existing_line_break_slots) else []
         )
         for run_slot, run_text in enumerate(runs):
             for _ in range(break_slots.count(run_slot)):
@@ -398,10 +404,7 @@ def _paragraph_text(paragraph: ET.Element) -> str:
     for child in list(paragraph):
         local_name = child.tag.rsplit("}", 1)[-1]
         if local_name == "r":
-            parts.extend(
-                text_node.text or ""
-                for text_node in child.findall(f"{{{A_NS}}}t")
-            )
+            parts.extend(text_node.text or "" for text_node in child.findall(f"{{{A_NS}}}t"))
         elif local_name == "br":
             parts.append("\v")
     return "".join(parts)
@@ -482,3 +485,69 @@ def rich_text_element() -> ET.Element:
     ET.SubElement(paragraph_properties, f"{{{A_NS}}}defRPr")
     rich.append(paragraph)
     return rich
+
+
+class PointDataLabelLayout:
+    """Public manual/actual geometry of ``chart.data_label_layout(series, point)``.
+
+    Indices address the public series/points collections. This delegate edits the
+    existing point-label XML and queues its full label snapshot, preserving text
+    and formatting. It neither enables hidden labels nor fabricates geometry:
+    labels that are not drawn have no actual rectangle.
+    """
+
+    def __init__(self, chart: Any, series_index: int, point_index: int) -> None:
+        if isinstance(series_index, bool) or not isinstance(series_index, int):
+            raise TypeError("series_index must be an integer")
+        if isinstance(point_index, bool) or not isinstance(point_index, int):
+            raise TypeError("point_index must be an integer")
+        if not 0 <= series_index < len(chart.series):
+            raise IndexError("chart series index out of range")
+        series = chart.series[series_index]
+        if not 0 <= point_index < len(series.points):
+            raise IndexError("chart point index out of range")
+        self._chart = chart
+        self._label = series.points[point_index].data_label
+        self._point_key = f"{series.index}:{point_index}"
+
+    @property
+    def manual_layout(self) -> dict[str, Any]:
+        from .chart_layout_facade import read_element_layout
+
+        return read_element_layout(self._label._element())
+
+    @manual_layout.setter
+    def manual_layout(self, value: dict[str, Any] | None) -> None:
+        from .chart_layout_facade import (
+            layout_queue_identity,
+            normalize_element_layout,
+            queue_layout_xml,
+            write_element_layout,
+        )
+
+        values = normalize_element_layout(value)
+        if values == self.manual_layout:
+            return
+        presentation, slide, shape, _ = layout_queue_identity(self._chart)
+        element = self._label._element(True)
+        write_element_layout(element, values)
+        edit = {
+            "point_labels": [
+                {
+                    "series_index": self._label._point._series.index,
+                    "point_index": self._label._point._index,
+                    "properties": {"_label_xml": ET.tostring(element, encoding="utf-8")},
+                }
+            ],
+        }
+        if self._chart._shape._payload.get("_group_child"):
+            queue_layout_xml(self._chart)
+        else:
+            presentation._queue_chart_data_labels(slide, shape, edit)
+        self._chart._shape._payload.pop("_chart_actual_layout", None)
+
+    @property
+    def actual_layout(self) -> dict[str, int] | None:
+        from .chart_layout_facade import actual_element_layout
+
+        return actual_element_layout(self._chart, "data_labels", self._point_key)

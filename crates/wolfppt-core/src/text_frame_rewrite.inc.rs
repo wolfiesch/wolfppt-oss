@@ -23,7 +23,7 @@ fn set_text_frame_properties_in_slide(
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if name == b"sp" {
                     in_target_shape = shape_index == target_shape_index;
                     shape_index += 1;
@@ -67,7 +67,7 @@ fn set_text_frame_properties_in_slide(
                 writer.write_event(Event::Start(event))?;
             }
             Event::Empty(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_body_properties && patch.set_auto_size && is_text_frame_auto_size_element(&name)
                 {
                     continue;
@@ -92,7 +92,7 @@ fn set_text_frame_properties_in_slide(
                 writer.write_event(Event::Empty(event))?;
             }
             Event::End(event) => {
-                let name = local_name(event.name().as_ref()).to_vec();
+                let name = local_name(event.name().as_ref().as_bytes()).to_vec();
                 if in_body_properties {
                     writer.write_event(Event::End(event))?;
                     body_properties_depth = body_properties_depth.saturating_sub(1);
@@ -163,6 +163,22 @@ fn validate_text_frame_properties_patch(
             }
         }
     }
+    if patch.set_autofit_scale {
+        if let Some(font_scale) = patch.font_scale {
+            if !font_scale.is_finite() || !(0.01..=1.0).contains(&font_scale) {
+                return Err(WolfPptError::InvalidInput(format!(
+                    "unsupported text frame font scale value: {font_scale}"
+                )));
+            }
+        }
+        if let Some(reduction) = patch.line_spacing_reduction {
+            if !reduction.is_finite() || !(0.0..=1.0).contains(&reduction) {
+                return Err(WolfPptError::InvalidInput(format!(
+                    "unsupported text frame line spacing reduction value: {reduction}"
+                )));
+            }
+        }
+    }
     Ok(())
 }
 
@@ -223,7 +239,20 @@ fn write_text_frame_auto_size(
     patch: &TextFramePropertiesPatch,
 ) -> Result<(), WolfPptError> {
     if let Some(tag) = patch.auto_size.as_deref().filter(|_| patch.set_auto_size) {
-        writer.write_event(Event::Empty(BytesStart::new(format!("a:{tag}"))))?;
+        let mut element = BytesStart::new(format!("a:{tag}"));
+        if tag == "normAutofit" && patch.set_autofit_scale {
+            if let Some(font_scale) = patch.font_scale {
+                let fs_val = (font_scale * 100000.0).round() as i64;
+                element.push_attribute(("fontScale", fs_val.to_string().as_str()));
+            }
+            if let Some(reduction) = patch.line_spacing_reduction {
+                if reduction > 0.0 {
+                    let r_val = (reduction * 100000.0).round() as i64;
+                    element.push_attribute(("lnSpcReduction", r_val.to_string().as_str()));
+                }
+            }
+        }
+        writer.write_event(Event::Empty(element))?;
     }
     Ok(())
 }
@@ -234,7 +263,7 @@ fn text_frame_body_property_attributes(
     let mut attributes = Vec::new();
     for (key, value) in &patch.margins {
         if let Some(attribute) = text_frame_margin_attribute(key) {
-            attributes.push((attribute, Some(value.to_string())));
+            attributes.push((attribute, value.map(|value| value.to_string())));
         }
     }
     if patch.set_word_wrap {
@@ -261,6 +290,7 @@ fn text_frame_property_replacement_count(patch: &TextFramePropertiesPatch) -> us
         + usize::from(patch.set_word_wrap)
         + usize::from(patch.set_vertical_anchor)
         + usize::from(patch.set_auto_size)
+        + usize::from(patch.set_autofit_scale)
 }
 
 fn is_text_frame_auto_size_element(name: &[u8]) -> bool {

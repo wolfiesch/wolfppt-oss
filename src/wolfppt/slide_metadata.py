@@ -3,28 +3,33 @@
 from __future__ import annotations
 
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
 from .package_parts import (
+    InMemoryPackageSource,
     natural_key,
+    open_package_source,
     rels_part_for_package_part,
     resolve_package_target,
 )
-
+from .package_read_scope import package_xml
+from .xml_helpers import find_ooxml, findall_ooxml, ooxml_path
 
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+CX_NS = "http://schemas.microsoft.com/office/drawing/2014/chartex"
 PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 
 
-def presentation_partname(path: Path) -> str:
+def presentation_partname(path: Path | InMemoryPackageSource) -> str:
     try:
-        with zipfile.ZipFile(path) as package:
-            root = ET.fromstring(package.read("_rels/.rels"))
+        with open_package_source(path) as package:
+            root = package_xml(package, "_rels/.rels")
     except (
         FileNotFoundError,
         KeyError,
@@ -89,15 +94,15 @@ def part_common_slide_name(package: zipfile.ZipFile, partname: str) -> str:
         root = ET.fromstring(package.read(partname))
     except (KeyError, ET.ParseError):
         return ""
-    common_slide_data = root.find(f"{{{P_NS}}}cSld")
+    common_slide_data = find_ooxml(root, f"{{{P_NS}}}cSld")
     if common_slide_data is None:
         return ""
     return common_slide_data.attrib.get("name", "")
 
 
-def part_common_slide_name_from_path(path: Path, partname: str) -> str:
+def part_common_slide_name_from_path(path: Path | InMemoryPackageSource, partname: str) -> str:
     try:
-        with zipfile.ZipFile(path) as package:
+        with open_package_source(path) as package:
             return part_common_slide_name(package, partname)
     except (FileNotFoundError, zipfile.BadZipFile):
         return ""
@@ -107,9 +112,7 @@ def first_slide_master_partname(path: Path) -> str:
     presentation_part = presentation_partname(path)
     try:
         with zipfile.ZipFile(path) as package:
-            root = ET.fromstring(
-                package.read(rels_part_for_package_part(presentation_part))
-            )
+            root = ET.fromstring(package.read(rels_part_for_package_part(presentation_part)))
             for rel in root.findall(f"{{{PKG_REL_NS}}}Relationship"):
                 if rel.attrib.get("Type", "").endswith("/slideMaster"):
                     return resolve_package_target(
@@ -120,8 +123,7 @@ def first_slide_master_partname(path: Path) -> str:
                 [
                     name
                     for name in package.namelist()
-                    if name.startswith("ppt/slideMasters/slideMaster")
-                    and name.endswith(".xml")
+                    if name.startswith("ppt/slideMasters/slideMaster") and name.endswith(".xml")
                 ],
                 key=natural_key,
             )
@@ -151,8 +153,7 @@ def presentation_notes_master_partname(path: Path) -> str:
                 [
                     name
                     for name in package.namelist()
-                    if name.startswith("ppt/notesMasters/notesMaster")
-                    and name.endswith(".xml")
+                    if name.startswith("ppt/notesMasters/notesMaster") and name.endswith(".xml")
                 ],
                 key=natural_key,
             )
@@ -168,6 +169,54 @@ def presentation_notes_master_partname(path: Path) -> str:
     raise AttributeError("notes master part is unavailable")
 
 
+def presentation_handout_master_partname(path: Path) -> str:
+    presentation_part = presentation_partname(path)
+    try:
+        with zipfile.ZipFile(path) as package:
+            for rel in package_relationships(package, presentation_part).values():
+                if rel.attrib.get("Type", "").endswith("/handoutMaster"):
+                    return resolve_package_target(
+                        presentation_part,
+                        rel.attrib.get("Target", ""),
+                    )
+            handout_masters = sorted(
+                [
+                    name
+                    for name in package.namelist()
+                    if name.startswith("ppt/handoutMasters/handoutMaster") and name.endswith(".xml")
+                ],
+                key=natural_key,
+            )
+    except (
+        FileNotFoundError,
+        KeyError,
+        ET.ParseError,
+        zipfile.BadZipFile,
+    ):
+        handout_masters = []
+    if handout_masters:
+        return handout_masters[0]
+    raise AttributeError("handout master part is unavailable")
+
+
+def next_handout_master_partname(path: Path) -> str:
+    try:
+        with zipfile.ZipFile(path) as package:
+            handout_masters = [
+                name
+                for name in package.namelist()
+                if name.startswith("ppt/handoutMasters/handoutMaster") and name.endswith(".xml")
+            ]
+    except (FileNotFoundError, zipfile.BadZipFile):
+        handout_masters = []
+    highest = 0
+    for partname in handout_masters:
+        suffix = partname.removeprefix("ppt/handoutMasters/handoutMaster").removesuffix(".xml")
+        if suffix.isdigit():
+            highest = max(highest, int(suffix))
+    return f"ppt/handoutMasters/handoutMaster{highest + 1}.xml"
+
+
 def slide_metadata(slide: Any) -> dict[str, Any]:
     partname = slide.partname
     if not partname:
@@ -177,22 +226,28 @@ def slide_metadata(slide: Any) -> dict[str, Any]:
 
 
 def presentation_slide_metadata(presentation: Any) -> dict[str, dict[str, Any]]:
+    if getattr(presentation, "_disposed", False):
+        raise RuntimeError("presentation is disposed")
     if presentation._slide_metadata is not None:
         return presentation._slide_metadata
-    metadata = read_presentation_slide_metadata(presentation.path)
+    metadata = read_presentation_slide_metadata(presentation._source_path)
     presentation._slide_metadata = metadata
     return metadata
 
 
-def read_presentation_slide_metadata(path: Path) -> dict[str, dict[str, Any]]:
+def read_presentation_slide_metadata(
+    path: Path | InMemoryPackageSource,
+    *,
+    include_shape_hints: bool = True,
+) -> dict[str, dict[str, Any]]:
     try:
-        with zipfile.ZipFile(path) as package:
+        with open_package_source(path) as package:
             presentation_part = presentation_partname(path)
-            presentation = ET.fromstring(package.read(presentation_part))
+            presentation = package_xml(package, presentation_part)
             presentation_rels = package_relationships(package, presentation_part)
             metadata: dict[str, dict[str, Any]] = {}
-            for slide_id in presentation.findall(f".//{{{P_NS}}}sldId"):
-                relationship_id = slide_id.attrib.get(f"{{{R_NS}}}id")
+            for slide_id in findall_ooxml(presentation, f".//{{{P_NS}}}sldId"):
+                relationship_id = slide_id.attrib.get(ooxml_path(slide_id, f"{{{R_NS}}}id"))
                 if relationship_id is None:
                     continue
                 relationship = presentation_rels.get(relationship_id)
@@ -208,7 +263,13 @@ def read_presentation_slide_metadata(path: Path) -> dict[str, dict[str, Any]]:
                 if raw_slide_id:
                     payload["slide_id"] = int(raw_slide_id)
             for slide_part, payload in metadata.items():
-                payload.update(read_slide_part_metadata(package, slide_part))
+                payload.update(
+                    read_slide_part_metadata(
+                        package,
+                        slide_part,
+                        include_shape_hints=include_shape_hints,
+                    )
+                )
             return metadata
     except (
         FileNotFoundError,
@@ -222,24 +283,36 @@ def read_presentation_slide_metadata(path: Path) -> dict[str, dict[str, Any]]:
 def read_slide_part_metadata(
     package: zipfile.ZipFile,
     slide_part: str,
+    *,
+    include_shape_hints: bool = True,
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {}
     try:
-        root = ET.fromstring(package.read(slide_part))
+        root = package_xml(package, slide_part)
     except (KeyError, ET.ParseError):
         root = None
     if root is not None:
-        common_slide_data = root.find(f"{{{P_NS}}}cSld")
+        common_slide_data = find_ooxml(root, f"{{{P_NS}}}cSld")
         metadata["name"] = (
-            ""
-            if common_slide_data is None
-            else common_slide_data.attrib.get("name", "")
+            "" if common_slide_data is None else common_slide_data.attrib.get("name", "")
         )
         metadata["follow_master_background"] = (
             True
             if common_slide_data is None
-            else common_slide_data.find(f"{{{P_NS}}}bg") is None
+            else find_ooxml(common_slide_data, f"{{{P_NS}}}bg") is None
         )
+        raw_show = root.attrib.get("show")
+        if raw_show is not None:
+            if raw_show in ("1", "true"):
+                metadata["hidden"] = False
+            elif raw_show in ("0", "false"):
+                metadata["hidden"] = True
+            else:
+                raise ValueError(f"malformed OOXML boolean attribute show={raw_show!r}")
+        else:
+            metadata["hidden"] = False
+    else:
+        metadata["hidden"] = False
     relationships = package_relationships(package, slide_part)
     metadata["has_notes_slide"] = False
     chart_relationship_ids: list[str] = []
@@ -261,7 +334,7 @@ def read_slide_part_metadata(
                 slide_part,
                 relationship.attrib.get("Target", ""),
             )
-        elif relationship_type.endswith("/chart"):
+        elif relationship_type.endswith(("/chart", "/chartEx")):
             relationship_id = str(relationship.attrib.get("Id", ""))
             chart_part = resolve_package_target(
                 slide_part,
@@ -279,7 +352,7 @@ def read_slide_part_metadata(
             image_relationship_ids.append(relationship_id)
             image_relationship_parts.append(image_part)
             image_parts_by_relationship_id[relationship_id] = image_part
-    if root is not None:
+    if include_shape_hints and root is not None:
         chart_shape_hints = _top_level_chart_shape_hints(
             root,
             chart_parts_by_relationship_id,
@@ -320,7 +393,7 @@ def _top_level_chart_shape_hints(
     root: ET.Element,
     chart_parts_by_relationship_id: dict[str, str],
 ) -> list[dict[str, Any]]:
-    shape_tree = root.find(f"{{{P_NS}}}cSld/{{{P_NS}}}spTree")
+    shape_tree = _shape_tree(root)
     if shape_tree is None:
         return []
     hints: list[dict[str, Any]] = []
@@ -332,10 +405,12 @@ def _top_level_chart_shape_hints(
         if local_name != "graphicFrame":
             shape_index += 1
             continue
-        chart = child.find(f".//{{{C_NS}}}chart")
+        chart = _first_descendant(child, f"{{{C_NS}}}chart")
+        if chart is None:
+            chart = _first_descendant(child, f"{{{CX_NS}}}chart")
         relationship_id = None if chart is None else chart.attrib.get(f"{{{R_NS}}}id")
         if relationship_id:
-            non_visual_properties = child.find(f".//{{{P_NS}}}cNvPr")
+            non_visual_properties = _first_descendant(child, f"{{{P_NS}}}cNvPr")
             transform = _shape_transform_payload(child)
             hints.append(
                 {
@@ -371,7 +446,7 @@ def _top_level_picture_shape_hints(
     root: ET.Element,
     image_parts_by_relationship_id: dict[str, str],
 ) -> list[dict[str, Any]]:
-    shape_tree = root.find(f"{{{P_NS}}}cSld/{{{P_NS}}}spTree")
+    shape_tree = _shape_tree(root)
     if shape_tree is None:
         return []
     hints: list[dict[str, Any]] = []
@@ -383,10 +458,10 @@ def _top_level_picture_shape_hints(
         if local_name != "pic":
             shape_index += 1
             continue
-        blip = child.find(f".//{{{A_NS}}}blip")
+        blip = _first_descendant(child, f"{{{A_NS}}}blip")
         relationship_id = None if blip is None else blip.attrib.get(f"{{{R_NS}}}embed")
         if relationship_id:
-            non_visual_properties = child.find(f".//{{{P_NS}}}cNvPr")
+            non_visual_properties = _first_descendant(child, f"{{{P_NS}}}cNvPr")
             transform = _shape_transform_payload(child)
             hints.append(
                 {
@@ -420,7 +495,7 @@ def _top_level_picture_shape_hints(
 
 
 def _top_level_connector_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
-    shape_tree = root.find(f"{{{P_NS}}}cSld/{{{P_NS}}}spTree")
+    shape_tree = _shape_tree(root)
     if shape_tree is None:
         return []
     hints: list[dict[str, Any]] = []
@@ -432,7 +507,7 @@ def _top_level_connector_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
         if local_name != "cxnSp":
             shape_index += 1
             continue
-        non_visual_properties = child.find(f".//{{{P_NS}}}cNvPr")
+        non_visual_properties = _first_descendant(child, f"{{{P_NS}}}cNvPr")
         transform = _shape_transform_payload(child)
         hints.append(
             {
@@ -461,7 +536,7 @@ def _top_level_connector_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
 
 
 def _top_level_table_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
-    shape_tree = root.find(f"{{{P_NS}}}cSld/{{{P_NS}}}spTree")
+    shape_tree = _shape_tree(root)
     if shape_tree is None:
         return []
     hints: list[dict[str, Any]] = []
@@ -474,9 +549,9 @@ def _top_level_table_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
         if local_name != "graphicFrame":
             shape_index += 1
             continue
-        table = child.find(f".//{{{A_NS}}}tbl")
+        table = _first_descendant(child, f"{{{A_NS}}}tbl")
         if table is not None:
-            non_visual_properties = child.find(f".//{{{P_NS}}}cNvPr")
+            non_visual_properties = _first_descendant(child, f"{{{P_NS}}}cNvPr")
             transform = _shape_transform_payload(child)
             table_payload = _table_payload(table)
             hints.append(
@@ -508,7 +583,7 @@ def _top_level_table_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
 
 
 def _top_level_text_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
-    shape_tree = root.find(f"{{{P_NS}}}cSld/{{{P_NS}}}spTree")
+    shape_tree = _shape_tree(root)
     if shape_tree is None:
         return []
     hints: list[dict[str, Any]] = []
@@ -520,15 +595,13 @@ def _top_level_text_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
         if local_name != "sp":
             shape_index += 1
             continue
-        non_visual_properties = child.find(f".//{{{P_NS}}}cNvPr")
-        paragraphs = _text_blocks(child) or [""]
-        paragraph_runs = _text_paragraph_runs(child) or [[] for _ in paragraphs]
-        line_breaks, fields = paragraph_breaks_and_fields(child)
+        non_visual_properties = _first_descendant(child, f"{{{P_NS}}}cNvPr")
+        blocks, runs = _text_blocks_and_runs(child)
+        paragraphs = blocks or [""]
+        paragraph_runs = runs or [[] for _ in paragraphs]
         transform = _shape_transform_payload(child)
         hint = {
-            "id": None
-            if non_visual_properties is None
-            else non_visual_properties.attrib.get("id"),
+            "id": None if non_visual_properties is None else non_visual_properties.attrib.get("id"),
             "name": ""
             if non_visual_properties is None
             else non_visual_properties.attrib.get("name", ""),
@@ -536,8 +609,7 @@ def _top_level_text_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
             "text": "\n".join(paragraphs),
             "paragraphs": paragraphs,
             "paragraph_runs": _fit_text_run_blocks(paragraph_runs, paragraphs),
-            "paragraph_line_breaks": line_breaks,
-            "paragraph_fields": fields,
+            "paragraph_line_breaks": [[] for _ in paragraphs],
             "relationship_ids": [],
             "has_chart": False,
             "has_picture": False,
@@ -547,7 +619,7 @@ def _top_level_text_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
             "_shape_index": shape_index,
             "_shell_shape_hint": True,
         }
-        placeholder = child.find(f".//{{{P_NS}}}ph")
+        placeholder = _first_descendant(child, f"{{{P_NS}}}ph")
         if placeholder is not None:
             hint.update(
                 {
@@ -564,7 +636,7 @@ def _top_level_text_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
 
 
 def _top_level_group_shape_hints(root: ET.Element) -> list[dict[str, Any]]:
-    shape_tree = root.find(f"{{{P_NS}}}cSld/{{{P_NS}}}spTree")
+    shape_tree = _shape_tree(root)
     if shape_tree is None:
         return []
     max_shape_id = _max_shape_id(shape_tree)
@@ -589,16 +661,14 @@ def _group_shape_hint(
     group_index: int,
     max_shape_id: int,
 ) -> dict[str, Any]:
-    non_visual_properties = element.find(f".//{{{P_NS}}}cNvPr")
+    non_visual_properties = _first_descendant(element, f"{{{P_NS}}}cNvPr")
     children = [
         _child_shape_hint(child, child_index)
         for child_index, child in enumerate(_shape_children(element))
     ]
     transform = _shape_transform_payload(element)
     return {
-        "id": None
-        if non_visual_properties is None
-        else non_visual_properties.attrib.get("id"),
+        "id": None if non_visual_properties is None else non_visual_properties.attrib.get("id"),
         "name": ""
         if non_visual_properties is None
         else non_visual_properties.attrib.get("name", ""),
@@ -622,11 +692,11 @@ def _group_shape_hint(
 
 def _child_shape_hint(element: ET.Element, shape_index: int) -> dict[str, Any]:
     local_name = _xml_local_name(element.tag)
-    non_visual_properties = element.find(f".//{{{P_NS}}}cNvPr")
+    non_visual_properties = _first_descendant(element, f"{{{P_NS}}}cNvPr")
     relationship_ids = _shape_relationship_ids(element)
-    paragraphs = _text_blocks(element) or [""]
-    paragraph_runs = _text_paragraph_runs(element) or [[] for _ in paragraphs]
-    line_breaks, fields = paragraph_breaks_and_fields(element)
+    blocks, runs = _text_blocks_and_runs(element)
+    paragraphs = blocks or [""]
+    paragraph_runs = runs or [[] for _ in paragraphs]
     kind = {
         "grpSp": "group",
         "pic": "picture",
@@ -635,9 +705,7 @@ def _child_shape_hint(element: ET.Element, shape_index: int) -> dict[str, Any]:
     }.get(local_name, "shape")
     transform = _shape_transform_payload(element)
     hint: dict[str, Any] = {
-        "id": None
-        if non_visual_properties is None
-        else non_visual_properties.attrib.get("id"),
+        "id": None if non_visual_properties is None else non_visual_properties.attrib.get("id"),
         "name": ""
         if non_visual_properties is None
         else non_visual_properties.attrib.get("name", ""),
@@ -647,8 +715,6 @@ def _child_shape_hint(element: ET.Element, shape_index: int) -> dict[str, Any]:
         "paragraph_runs": _fit_text_run_blocks(paragraph_runs, paragraphs)
         if local_name == "sp"
         else [],
-        "paragraph_line_breaks": line_breaks if local_name == "sp" else [],
-        "paragraph_fields": fields if local_name == "sp" else [],
         "relationship_ids": relationship_ids,
         "has_chart": any(rel_id for rel_id in relationship_ids if rel_id),
         "has_picture": local_name == "pic",
@@ -687,7 +753,7 @@ def _shape_relationship_ids(element: ET.Element) -> list[str]:
 
 def _max_shape_id(element: ET.Element) -> int:
     ids: list[int] = [1]
-    for non_visual_properties in element.findall(f".//{{{P_NS}}}cNvPr"):
+    for non_visual_properties in _descendants(element, f"{{{P_NS}}}cNvPr"):
         try:
             ids.append(int(non_visual_properties.attrib.get("id", "1")))
         except ValueError:
@@ -700,7 +766,7 @@ def _table_payload(table: ET.Element) -> dict[str, Any]:
     for row in table.findall(f"{{{A_NS}}}tr"):
         cells: list[str] = []
         for cell in row.findall(f"{{{A_NS}}}tc"):
-            cells.append("\n".join(_text_blocks(cell)))
+            cells.append("\n".join(_text_blocks_and_runs(cell)[0]))
         rows.append(cells)
     return {
         "rows": rows,
@@ -709,70 +775,27 @@ def _table_payload(table: ET.Element) -> dict[str, Any]:
     }
 
 
-def _text_blocks(root: ET.Element) -> list[str]:
+def _text_blocks_and_runs(root: ET.Element) -> tuple[list[str], list[list[str]]]:
+    """Return paragraph texts and run texts from one walk over ``.//a:p``."""
     paragraphs: list[str] = []
-    for paragraph in root.findall(f".//{{{A_NS}}}p"):
+    paragraph_runs: list[list[str]] = []
+    for paragraph in _descendants(root, f"{{{A_NS}}}p"):
         parts: list[str] = []
+        runs: list[str] = []
         for child in list(paragraph):
-            if _xml_local_name(child.tag) == "br":
+            local_name = _xml_local_name(child.tag)
+            if local_name == "br":
                 parts.append("\v")
             else:
                 parts.append(
-                    "".join(
-                        node.text or ""
-                        for node in child.findall(f".//{{{A_NS}}}t")
-                    )
+                    "".join(node.text or "" for node in _descendants(child, f"{{{A_NS}}}t"))
                 )
-        paragraphs.append("".join(parts))
-    return paragraphs
-
-
-def _text_paragraph_runs(root: ET.Element) -> list[list[str]]:
-    """Text of each `a:r` per paragraph, as python-pptx `paragraph.runs`."""
-    paragraphs: list[list[str]] = []
-    for paragraph in root.findall(f".//{{{A_NS}}}p"):
-        runs: list[str] = []
-        for child in list(paragraph):
-            if _xml_local_name(child.tag) != "r":
-                continue
-            text = child.find(f"{{{A_NS}}}t")
-            runs.append("" if text is None else text.text or "")
-        paragraphs.append(runs)
-    return paragraphs
-
-
-def paragraph_breaks_and_fields(
-    root: ET.Element,
-) -> tuple[list[list[int]], list[list[dict[str, Any]]]]:
-    """Line break run slots and `a:fld` text fields for each paragraph.
-
-    Fields are not runs. Each field records how many runs and line breaks of
-    its paragraph precede it, so paragraph text can be rebuilt in order.
-    """
-    line_breaks: list[list[int]] = []
-    fields: list[list[dict[str, Any]]] = []
-    for paragraph in root.findall(f".//{{{A_NS}}}p"):
-        run_count = 0
-        paragraph_breaks: list[int] = []
-        paragraph_fields: list[dict[str, Any]] = []
-        for child in paragraph:
-            local_name = _xml_local_name(child.tag)
-            if local_name == "r":
-                run_count += 1
-            elif local_name == "br":
-                paragraph_breaks.append(run_count)
-            elif local_name == "fld":
+            if local_name in {"r", "fld"}:
                 text = child.find(f"{{{A_NS}}}t")
-                paragraph_fields.append(
-                    {
-                        "run_slot": run_count,
-                        "line_breaks_before": len(paragraph_breaks),
-                        "text": "" if text is None else text.text or "",
-                    }
-                )
-        line_breaks.append(paragraph_breaks)
-        fields.append(paragraph_fields)
-    return line_breaks, fields
+                runs.append("" if text is None else text.text or "")
+        paragraphs.append("".join(parts))
+        paragraph_runs.append(runs)
+    return paragraphs, paragraph_runs
 
 
 def _fit_text_run_blocks(
@@ -789,9 +812,9 @@ def _fit_text_run_blocks(
 def _shape_transform_payload(element: ET.Element) -> dict[str, int]:
     transform = element.find(f"{{{P_NS}}}xfrm")
     if transform is None:
-        transform = element.find(f"{{{P_NS}}}spPr/{{{A_NS}}}xfrm")
+        transform = _grandchild(element, f"{{{P_NS}}}spPr", f"{{{A_NS}}}xfrm")
     if transform is None:
-        transform = element.find(f"{{{P_NS}}}grpSpPr/{{{A_NS}}}xfrm")
+        transform = _grandchild(element, f"{{{P_NS}}}grpSpPr", f"{{{A_NS}}}xfrm")
     offset = None if transform is None else transform.find(f"{{{A_NS}}}off")
     extents = None if transform is None else transform.find(f"{{{A_NS}}}ext")
     return {
@@ -806,12 +829,36 @@ def _xml_local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+def _descendants(element: ET.Element, tag: str) -> Iterator[ET.Element]:
+    """Yield ``element.findall(".//" + tag)`` matches without ElementPath dispatch."""
+    for node in element.iter(tag):
+        if node is not element:
+            yield node
+
+
+def _first_descendant(element: ET.Element, tag: str) -> ET.Element | None:
+    return next(_descendants(element, tag), None)
+
+
+def _grandchild(element: ET.Element, child_tag: str, tag: str) -> ET.Element | None:
+    """Return ``element.find(child_tag + "/" + tag)`` without ElementPath dispatch."""
+    for child in element.findall(child_tag):
+        match = child.find(tag)
+        if match is not None:
+            return match
+    return None
+
+
+def _shape_tree(root: ET.Element) -> ET.Element | None:
+    return _grandchild(root, f"{{{P_NS}}}cSld", f"{{{P_NS}}}spTree")
+
+
 def package_relationships(
     package: zipfile.ZipFile,
     partname: str,
 ) -> dict[str, ET.Element]:
     try:
-        root = ET.fromstring(package.read(rels_part_for_package_part(partname)))
+        root = package_xml(package, rels_part_for_package_part(partname))
     except (KeyError, ET.ParseError):
         return {}
     return {
@@ -823,6 +870,10 @@ def package_relationships(
 
 def slide_name(slide: Any) -> str:
     return str(slide_metadata(slide).get("name") or "")
+
+
+def slide_hidden(slide: Any) -> bool:
+    return bool(slide_metadata(slide).get("hidden", False))
 
 
 def slide_notes_partname(slide: Any) -> str:

@@ -6,25 +6,51 @@ from copy import deepcopy
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from .chart_font_format_facade import _set_portion_color_element
+from .chart_title_text_xml import (
+    title_paragraph_default_run_properties as _title_paragraph_default_run_properties,
+)
 from .chart_title_text_xml import (
     title_paragraph_run_texts as _title_paragraph_run_texts,
-    title_paragraph_default_run_properties as _title_paragraph_default_run_properties,
+)
+from .chart_title_text_xml import (
     title_run_properties as _title_run_properties,
 )
+from .dml.color import ColorTextAndTransforms, fill_color_element
 from .dml_fill import (
     default_gradient_payload as _default_gradient_payload,
+)
+from .dml_fill import (
     fill_rgb_from_xml_children as _fill_rgb_from_xml_children,
+)
+from .dml_fill import (
     fill_type_from_xml_children as _fill_type_from_xml_children,
+)
+from .dml_fill import (
     gradient_payload_from_fill_parent as _gradient_payload_from_fill_parent,
 )
 from .facade_values import (
     centipoints_value as _centipoints_value,
+)
+from .facade_values import (
     fill_type_value as _fill_type_value,
+)
+from .facade_values import (
     language_id_value as _language_id_value,
+)
+from .facade_values import (
     normalize_language_id as _normalize_language_id,
+)
+from .facade_values import (
     normalize_pattern_type as _normalize_pattern_type,
+)
+from .facade_values import (
     normalize_rgb as _normalize_rgb,
+)
+from .facade_values import (
     pattern_type_value as _pattern_type_value,
+)
+from .facade_values import (
     rgb_value as _rgb_value,
 )
 from .shape_format_facade import GradientStops as _GradientStops
@@ -81,11 +107,11 @@ class ChartTitleParagraphFont:
             self._queue_font({"size": size})
 
     @property
-    def color(self) -> "ChartTitleParagraphColorFormat":
+    def color(self) -> ChartTitleParagraphColorFormat:
         return ChartTitleParagraphColorFormat(self._paragraph)
 
     @property
-    def fill(self) -> "ChartTitleParagraphFontFillFormat":
+    def fill(self) -> ChartTitleParagraphFontFillFormat:
         payload = self._paragraph._text_frame.__dict__.setdefault(
             "_paragraph_font_fill_payloads",
             {},
@@ -108,9 +134,7 @@ class ChartTitleParagraphFont:
 
     @property
     def language_id(self) -> Any:
-        return _language_id_value(
-            _paragraph_font_properties(self._paragraph).get("lang")
-        )
+        return _language_id_value(_paragraph_font_properties(self._paragraph).get("lang"))
 
     @language_id.setter
     def language_id(self, value: Any) -> None:
@@ -147,14 +171,12 @@ class ChartTitleRun:
         text = str(value)
         if text == self.text:
             return
-        paragraph_runs = _title_paragraph_run_texts(
-            self._text_frame._title_element(False)
-        )
+        paragraph_runs = _title_paragraph_run_texts(self._text_frame._title_element(False))
         paragraph_runs[self._paragraph_index][self._index] = text
         self._text_frame._set_paragraph_runs(paragraph_runs)
 
     @property
-    def font(self) -> "ChartTitleRunFont":
+    def font(self) -> ChartTitleRunFont:
         return ChartTitleRunFont(self)
 
     @property
@@ -227,11 +249,11 @@ class ChartTitleRunFont:
             )
 
     @property
-    def color(self) -> "ChartTitleRunColorFormat":
+    def color(self) -> ChartTitleRunColorFormat:
         return ChartTitleRunColorFormat(self._run)
 
     @property
-    def fill(self) -> "ChartTitleRunFontFillFormat":
+    def fill(self) -> ChartTitleRunFontFillFormat:
         payload = self._run._text_frame.__dict__.setdefault(
             "_run_font_fill_payloads",
             {},
@@ -271,9 +293,15 @@ class ChartTitleRunFont:
             )
 
 
-class ChartTitleRunColorFormat:
+class ChartTitleRunColorFormat(ColorTextAndTransforms):
     def __init__(self, run: Any) -> None:
         self._run = run
+
+    def _color_element(self) -> ET.Element | None:
+        return fill_color_element(_run_properties_element(self._run, create=False))
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        _set_portion_color_element(self._run.portion_format, color)
 
     @property
     def rgb(self) -> Any:
@@ -323,20 +351,18 @@ class ChartTitleRunFontFillFormat:
         if _run_fill_type(self._run) == "gradient":
             return
         self._payload["gradient"] = _default_gradient_payload()
-        self._queue_fill(
-            {"fill_type": "gradient", "gradient": self._payload["gradient"]}
-        )
+        self._queue_fill({"fill_type": "gradient", "gradient": self._payload["gradient"]})
 
     @property
     def type(self) -> Any:
         return _fill_type_value(_run_fill_type(self._run) or "solid")
 
     @property
-    def fore_color(self) -> "ChartTitleRunFontFillColorFormat":
+    def fore_color(self) -> ChartTitleRunFontFillColorFormat:
         return ChartTitleRunFontFillColorFormat(self._run, "fore")
 
     @property
-    def back_color(self) -> "ChartTitleRunFontFillColorFormat":
+    def back_color(self) -> ChartTitleRunFontFillColorFormat:
         return ChartTitleRunFontFillColorFormat(self._run, "back")
 
     @property
@@ -400,10 +426,16 @@ class ChartTitleRunFontFillFormat:
         )
 
 
-class ChartTitleRunFontFillColorFormat:
+class ChartTitleRunFontFillColorFormat(ColorTextAndTransforms):
     def __init__(self, run: Any, target: str) -> None:
         self._run = run
         self._target = target
+
+    def _color_element(self) -> ET.Element | None:
+        return fill_color_element(_run_properties_element(self._run, create=False), self._target)
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        _set_portion_color_element(self._run.portion_format, color, self._target)
 
     @property
     def rgb(self) -> Any:
@@ -423,9 +455,7 @@ class ChartTitleRunFontFillColorFormat:
         if _run_fill_type(self._run) == "patterned":
             color_tag = "bgClr" if self._target == "back" else "fgClr"
             if rgb != _run_pattern_rgb(self._run, color_tag):
-                key = (
-                    "pattern_back_rgb" if self._target == "back" else "pattern_fore_rgb"
-                )
+                key = "pattern_back_rgb" if self._target == "back" else "pattern_fore_rgb"
                 self._run._text_frame._queue_run_font(
                     self._run._paragraph_index,
                     self._run._index,
@@ -437,9 +467,15 @@ class ChartTitleRunFontFillColorFormat:
         ChartTitleRunColorFormat(self._run).rgb = rgb
 
 
-class ChartTitleParagraphColorFormat:
+class ChartTitleParagraphColorFormat(ColorTextAndTransforms):
     def __init__(self, paragraph: Any) -> None:
         self._paragraph = paragraph
+
+    def _color_element(self) -> ET.Element | None:
+        return fill_color_element(_paragraph_font_element(self._paragraph, create=False))
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        _set_portion_color_element(self._paragraph.portion_format, color)
 
     @property
     def rgb(self) -> Any:
@@ -490,11 +526,11 @@ class ChartTitleParagraphFontFillFormat:
         return _fill_type_value(_paragraph_font_fill_type(self._paragraph))
 
     @property
-    def fore_color(self) -> "ChartTitleParagraphFontFillColorFormat":
+    def fore_color(self) -> ChartTitleParagraphFontFillColorFormat:
         return ChartTitleParagraphFontFillColorFormat(self._paragraph, "fore")
 
     @property
-    def back_color(self) -> "ChartTitleParagraphFontFillColorFormat":
+    def back_color(self) -> ChartTitleParagraphFontFillColorFormat:
         return ChartTitleParagraphFontFillColorFormat(self._paragraph, "back")
 
     @property
@@ -559,10 +595,18 @@ class ChartTitleParagraphFontFillFormat:
         )
 
 
-class ChartTitleParagraphFontFillColorFormat:
+class ChartTitleParagraphFontFillColorFormat(ColorTextAndTransforms):
     def __init__(self, paragraph: Any, target: str) -> None:
         self._paragraph = paragraph
         self._target = target
+
+    def _color_element(self) -> ET.Element | None:
+        return fill_color_element(
+            _paragraph_font_element(self._paragraph, create=False), self._target
+        )
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        _set_portion_color_element(self._paragraph.portion_format, color, self._target)
 
     @property
     def rgb(self) -> Any:
@@ -582,9 +626,7 @@ class ChartTitleParagraphFontFillColorFormat:
         if _paragraph_font_fill_type(self._paragraph) == "patterned":
             color_tag = "bgClr" if self._target == "back" else "fgClr"
             if rgb != _paragraph_font_pattern_rgb(self._paragraph, color_tag):
-                key = (
-                    "pattern_back_rgb" if self._target == "back" else "pattern_fore_rgb"
-                )
+                key = "pattern_back_rgb" if self._target == "back" else "pattern_fore_rgb"
                 _set_paragraph_font(self._paragraph, {key: rgb})
             return
         if self._target == "back":
@@ -678,9 +720,7 @@ def _run_rgb(run: Any) -> str | None:
 
 def _run_fill_type(run: Any) -> str | None:
     run_properties = _run_properties_element(run, create=False)
-    return (
-        None if run_properties is None else _fill_type_from_xml_children(run_properties)
-    )
+    return None if run_properties is None else _fill_type_from_xml_children(run_properties)
 
 
 def _run_pattern(run: Any) -> str | None:

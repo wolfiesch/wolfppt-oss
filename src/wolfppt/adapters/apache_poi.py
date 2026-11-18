@@ -158,7 +158,7 @@ def _apache_poi_env() -> dict[str, str]:
     java_bin = USER_LOCAL_JAVA_HOME / "bin"
     if java_bin.exists():
         path_entries.append(str(java_bin))
-        env.setdefault("JAVA_HOME", str(USER_LOCAL_JAVA_HOME))
+        env["JAVA_HOME"] = str(USER_LOCAL_JAVA_HOME)
     if USER_LOCAL_MAVEN_BIN.exists():
         path_entries.append(str(USER_LOCAL_MAVEN_BIN))
     if path_entries:

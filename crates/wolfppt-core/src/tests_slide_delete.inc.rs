@@ -356,7 +356,7 @@ fn preserves_unreferenced_unknown_binary_and_xml_parts() {
 
         for i in 0..zip_in.len() {
             let mut file = zip_in.by_index(i).unwrap();
-            let name = file.name().to_string();
+            let name = file.name().unwrap().into_owned();
             let options = SimpleFileOptions::default().compression_method(file.compression());
             if name == "[Content_Types].xml" {
                 let mut ct_text = String::new();

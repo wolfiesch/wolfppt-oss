@@ -37,12 +37,17 @@ fn image_targets_for_relationship<R: Read + std::io::Seek>(
 ) -> Result<Vec<String>, WolfPptError> {
     let mut targets = Vec::new();
     for index in 0..archive.len() {
-        let name = archive.by_index(index)?.name().to_string();
+        let name = archive.by_index(index)?.name()?.into_owned();
         if !is_slide_part(&name) {
             continue;
         }
         for rel in read_relationships(archive, &name)? {
             if rel.id == relationship_id && rel.relationship_type.ends_with("/image") {
+                if rel.target_mode.as_deref() == Some("External") {
+                    return Err(WolfPptError::InvalidInput(
+                        format!("cannot replace externally linked image (relationship {} targets {})", relationship_id, rel.target)
+                    ));
+                }
                 targets.push(resolve_target(&name, &rel.target));
             }
         }
@@ -63,6 +68,11 @@ fn image_targets_for_relationship_at_index<R: Read + std::io::Seek>(
     let mut targets = Vec::new();
     for rel in read_relationships(archive, &slide_part)? {
         if rel.id == relationship_id && rel.relationship_type.ends_with("/image") {
+            if rel.target_mode.as_deref() == Some("External") {
+                return Err(WolfPptError::InvalidInput(
+                    format!("cannot replace externally linked image (relationship {} targets {})", relationship_id, rel.target)
+                ));
+            }
             targets.push(resolve_target(&slide_part, &rel.target));
         }
     }
@@ -84,7 +94,7 @@ fn slide_parts<R: Read + std::io::Seek>(
 ) -> Result<Vec<String>, WolfPptError> {
     let mut slides = Vec::new();
     for index in 0..archive.len() {
-        let name = archive.by_index(index)?.name().to_string();
+        let name = archive.by_index(index)?.name()?.into_owned();
         if is_slide_part(&name) {
             slides.push(name);
         }
@@ -127,14 +137,14 @@ fn slide_relationship_ids_in_presentation(xml: &[u8]) -> Result<Vec<String>, Wol
     loop {
         match reader.read_event()? {
             Event::Start(event) | Event::Empty(event)
-                if local_name(event.name().as_ref()) == b"sldId" =>
+                if local_name(event.name().as_ref().as_bytes()) == b"sldId" =>
             {
                 for attr in event.attributes().flatten() {
-                    if !attr.key.as_ref().ends_with(b":id") {
+                    if !attr.key.as_ref().ends_with(":id") {
                         continue;
                     }
                     relationship_ids.push(
-                        attr.decode_and_unescape_value(reader.decoder())
+                        attr.normalized_value(quick_xml::XmlVersion::Implicit1_0)
                             .map(|value| value.into_owned())
                             .unwrap_or_default(),
                     );
@@ -169,7 +179,7 @@ fn slide_layout_target_at_index<R: Read + std::io::Seek>(
 ) -> Result<String, WolfPptError> {
     let mut layouts = Vec::new();
     for index in 0..archive.len() {
-        let name = archive.by_index(index)?.name().to_string();
+        let name = archive.by_index(index)?.name()?.into_owned();
         if is_slide_layout_part(&name) {
             layouts.push(name);
         }
@@ -317,7 +327,7 @@ fn matching_image_media_part<R: Read + std::io::Seek>(
     let suffix = format!(".{extension}");
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_string();
+        let name = file.name()?.into_owned();
         if !name.starts_with("ppt/media/image") || !name.ends_with(&suffix) {
             continue;
         }
@@ -348,7 +358,7 @@ fn next_numbered_media_part<R: Read + std::io::Seek>(
 ) -> Result<String, WolfPptError> {
     let mut names = Vec::new();
     for index in 0..archive.len() {
-        names.push(archive.by_index(index)?.name().to_string());
+        names.push(archive.by_index(index)?.name()?.into_owned());
     }
     for number in 1.. {
         let candidate = format!("ppt/media/{stem}{number}.{extension}");

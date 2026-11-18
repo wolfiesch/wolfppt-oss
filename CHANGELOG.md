@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] - 2026-11-17
+
+### Added
+- `wolfppt.pptx_alias`: an opt-in import alias. Call `wolfppt.pptx_alias.install()` before importing `pptx` and imports of the implemented python-pptx surface (`pptx.util`, `pptx.enum.*`, `pptx.dml.color`, `pptx.chart.data`, `pptx.opc.packuri`, `pptx.table`, and `pptx.text.text`) resolve to WolfPPT. Namespaces it does not implement fail to import; no python-pptx installation is consulted.
+- Community edition boundary: features that need the Commercial edition (legacy `.ppt` and `.odp` files, native rendering, reporting refresh, and deck assembly) raise `wolfppt.CommercialFeatureError` naming the feature. The `wolfppt-assemble` command is installed in every edition and explains the refusal in a Community install.
+- `markup` and `signatures` optional dependency groups.
+
+### Changed
+- The `render` extra requires Pillow 13.0.0 or newer.
+- The wheel and sdist ship `THIRD_PARTY_NOTICES.txt`.
+- The CI and release smoke test also imports `wolfppt.pptx_alias` and checks the `CommercialFeatureError` refusal.
+
 ## [0.1.6] - 2026-10-29
 
 ### Changed

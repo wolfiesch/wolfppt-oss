@@ -13,14 +13,10 @@ if TYPE_CHECKING:
 
 
 class PresentationAddQueueMixin(PresentationGroupTextBoxAddQueueMixin):
-    def _queue_slide_add(
-        self, slide_layout: "SlideLayout", token: Any = None
-    ) -> None:
+    def _queue_slide_add(self, slide_layout: SlideLayout, token: Any = None) -> None:
         self._slide_creations.append(("blank", slide_layout, token))
 
-    def _queue_slide_duplicate(
-        self, source_partname: str, token: Any = None
-    ) -> None:
+    def _queue_slide_duplicate(self, source_partname: str, token: Any = None) -> None:
         self._slide_creations.append(("duplicate", source_partname, token))
 
     def _queue_slide_layout_remove(self, partname: str) -> None:
@@ -67,6 +63,95 @@ class PresentationAddQueueMixin(PresentationGroupTextBoxAddQueueMixin):
                 (slide_index, chart_type, chart_data, x_emu, y_emu, cx_emu, cy_emu),
             )
         )
+
+    def _queue_smartart_add(
+        self,
+        slide_index: int,
+        shape_index: int,
+        shape_id: int,
+        layout_type: str,
+        x_emu: int,
+        y_emu: int,
+        cx_emu: int,
+        cy_emu: int,
+        nodes: list[dict[str, str | None]],
+    ) -> None:
+        self._shape_adds.append(
+            (
+                "smartart",
+                (
+                    slide_index,
+                    shape_index,
+                    shape_id,
+                    layout_type,
+                    x_emu,
+                    y_emu,
+                    cx_emu,
+                    cy_emu,
+                    [dict(node) for node in nodes],
+                ),
+            )
+        )
+
+    def _queue_smartart_update(
+        self,
+        slide_index: int,
+        shape_id: int,
+        nodes: list[dict[str, str | None]],
+    ) -> None:
+        for index, (kind, args) in enumerate(self._shape_adds):
+            if kind != "smartart":
+                continue
+            (
+                queued_slide_index,
+                shape_index,
+                queued_shape_id,
+                layout_type,
+                x_emu,
+                y_emu,
+                cx_emu,
+                cy_emu,
+                _queued_nodes,
+            ) = args
+            if (queued_slide_index, queued_shape_id) == (slide_index, shape_id):
+                self._shape_adds[index] = (
+                    "smartart",
+                    (
+                        slide_index,
+                        shape_index,
+                        shape_id,
+                        layout_type,
+                        x_emu,
+                        y_emu,
+                        cx_emu,
+                        cy_emu,
+                        [dict(node) for node in nodes],
+                    ),
+                )
+                return
+        self._shape_adds.append(
+            ("smartart_update", (slide_index, shape_id, [dict(node) for node in nodes]))
+        )
+
+    def _queue_smartart_part_update(
+        self, slide_index: int, shape_id: int, kind: str, blob: bytes
+    ) -> None:
+        self._shape_adds.append(("smartart_part_update", (slide_index, shape_id, kind, blob)))
+
+    def _queue_smartart_remove(
+        self,
+        slide_index: int,
+        shape_id: int,
+        removed_ids: tuple[str, ...],
+        nodes: list[dict[str, str | None]],
+    ) -> None:
+        if any(
+            kind == "smartart" and (args[0], args[2]) == (slide_index, shape_id)
+            for kind, args in self._shape_adds
+        ):
+            self._queue_smartart_update(slide_index, shape_id, nodes)
+            return
+        self._shape_adds.append(("smartart_remove", (slide_index, shape_id, removed_ids)))
 
     def _queue_text_box_add(
         self,
@@ -125,14 +210,10 @@ class PresentationAddQueueMixin(PresentationGroupTextBoxAddQueueMixin):
     ) -> None:
         if self._shape_adds:
             previous_kind, previous_args = self._shape_adds[-1]
-            if (
-                previous_kind == "nested_group_shape"
-                and previous_args
-                == (
-                    slide_index,
-                    group_index,
-                    nested_group_child_index,
-                )
+            if previous_kind == "nested_group_shape" and previous_args == (
+                slide_index,
+                group_index,
+                nested_group_child_index,
             ):
                 self._shape_adds[-1] = (
                     "nested_group_chart_in_new_group",
@@ -245,13 +326,10 @@ class PresentationAddQueueMixin(PresentationGroupTextBoxAddQueueMixin):
     ) -> None:
         if self._shape_adds:
             previous_kind, previous_args = self._shape_adds[-1]
-            if (
-                previous_kind == "nested_group_shape"
-                and previous_args == (
-                    slide_index,
-                    group_index,
-                    nested_group_child_index,
-                )
+            if previous_kind == "nested_group_shape" and previous_args == (
+                slide_index,
+                group_index,
+                nested_group_child_index,
             ):
                 self._shape_adds[-1] = (
                     "nested_group_auto_shape_in_new_group",

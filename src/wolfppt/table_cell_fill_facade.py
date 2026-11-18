@@ -2,25 +2,57 @@
 
 from __future__ import annotations
 
+import zipfile
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from .dml.color import ColorTextAndTransforms, fill_color_element
+from .dml_fill import (
+    brightness_from_color_element as _brightness_from_color_element,
+)
+from .dml_fill import (
+    color_element as _color_from_payload,
+)
 from .dml_fill import (
     default_gradient_payload as _default_gradient_payload,
+)
+from .dml_fill import (
     gradient_stop_element as _gradient_stop_element,
+)
+from .dml_fill import (
+    has_brightness_modifiers as _has_brightness_modifiers,
+)
+from .dml_fill import (
+    set_color_brightness as _set_color_brightness,
 )
 from .facade_values import (
     color_type_value as _color_type_value,
+)
+from .facade_values import (
     fill_type_value as _fill_type_value,
+)
+from .facade_values import (
     normalize_pattern_type as _normalize_pattern_type,
+)
+from .facade_values import (
     normalize_rgb as _normalize_rgb,
+)
+from .facade_values import (
     normalize_theme_color as _normalize_theme_color,
+)
+from .facade_values import (
     pattern_type_value as _pattern_type_value,
+)
+from .facade_values import (
     rgb_value as _rgb_value,
+)
+from .facade_values import (
     theme_color_value as _theme_color_value,
 )
 from .shape_format_facade import FillFormat
+from .table_facade_layout_state import _table_is_unsaved
 from .table_facade_state import (
     _table_cell_fill_pattern,
     _table_cell_fill_type,
@@ -31,6 +63,7 @@ from .table_facade_state import (
     _table_cell_solid_rgb,
     _table_cell_solid_theme_color,
 )
+from .table_xml import _table_cell_xml_element
 
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
@@ -122,11 +155,11 @@ class TableCellFillFormat:
         return _fill_type_value(self._fill_type())
 
     @property
-    def fore_color(self) -> "TableCellColorFormat":
+    def fore_color(self) -> TableCellColorFormat:
         return TableCellColorFormat(self._cell, "fore")
 
     @property
-    def back_color(self) -> "TableCellColorFormat":
+    def back_color(self) -> TableCellColorFormat:
         return TableCellColorFormat(self._cell, "back")
 
     @property
@@ -171,7 +204,7 @@ class TableCellFillFormat:
         self._queue_gradient(gradient)
 
     @property
-    def gradient_stops(self) -> "TableCellGradientStops":
+    def gradient_stops(self) -> TableCellGradientStops:
         if self._fill_type() != "gradient":
             raise TypeError("Fill is not of type MSO_FILL_TYPE.GRADIENT")
         return TableCellGradientStops(self)
@@ -193,6 +226,9 @@ class TableCellFillFormat:
         return gradient
 
     def _queue_gradient(self, gradient: dict[str, Any]) -> None:
+        payload = _table_cell_property_payload(self._cell)
+        payload["fill_type"] = "gradient"
+        payload["fill_gradient"] = gradient
         self._cell._table._slide._presentation._queue_table_cell_fill_gradient(
             self._cell._table._slide._index,
             self._cell._table._table_index,
@@ -206,7 +242,7 @@ class TableCellGradientStops(Sequence):
     def __init__(self, fill: TableCellFillFormat) -> None:
         self._fill = fill
 
-    def __getitem__(self, index: int) -> "TableCellGradientStop":
+    def __getitem__(self, index: int) -> TableCellGradientStop:
         stops = self._stops()
         if index < 0:
             index += len(stops)
@@ -227,7 +263,7 @@ class TableCellGradientStop:
         self._index = index
 
     @property
-    def color(self) -> "TableCellGradientStopColorFormat":
+    def color(self) -> TableCellGradientStopColorFormat:
         return TableCellGradientStopColorFormat(self)
 
     @property
@@ -250,18 +286,32 @@ class TableCellGradientStop:
         return self._fill._gradient_payload()["stops"][self._index]
 
 
-class TableCellGradientStopColorFormat:
+class TableCellGradientStopColorFormat(ColorTextAndTransforms):
     def __init__(self, stop: TableCellGradientStop) -> None:
         self._stop = stop
 
+    def _set_color_element(self, color: ET.Element) -> None:
+        gradient = deepcopy(self._stop._fill._gradient_payload())
+        gradient["stops"][self._stop._index]["color"] = deepcopy(color)
+        self._stop._fill._queue_gradient(gradient)
+
     @property
     def brightness(self) -> float:
-        return 0
+        return _brightness_from_color_element(self._color_element())
 
     @brightness.setter
     def brightness(self, value: Any) -> None:
-        if not -1.0 <= float(value) <= 1.0:
+        brightness = float(value)
+        if not -1.0 <= brightness <= 1.0:
             raise ValueError("brightness must be between -1.0 and 1.0")
+        color = self._color_element()
+        if _brightness_from_color_element(color) == brightness and (
+            brightness != 0.0 or not _has_brightness_modifiers(color)
+        ):
+            return
+        _set_color_brightness(color, brightness)
+        self._stop._stop()["color"] = color
+        self._stop._fill._queue_gradient(self._stop._fill._gradient_payload())
 
     @property
     def rgb(self) -> Any:
@@ -293,10 +343,7 @@ class TableCellGradientStopColorFormat:
     def theme_color(self, value: Any) -> None:
         xml_value = _normalize_theme_color(value)
         color = self._color_element()
-        if (
-            color.tag == f"{{{A_NS}}}schemeClr"
-            and color.attrib.get("val") == xml_value
-        ):
+        if color.tag == f"{{{A_NS}}}schemeClr" and color.attrib.get("val") == xml_value:
             return
         color = ET.Element(f"{{{A_NS}}}schemeClr")
         color.set("val", xml_value)
@@ -319,10 +366,83 @@ class TableCellGradientStopColorFormat:
         return ET.Element(f"{{{A_NS}}}schemeClr", {"val": "accent1"})
 
 
-class TableCellColorFormat:
+class TableCellColorFormat(ColorTextAndTransforms):
     def __init__(self, cell: Any, role: str) -> None:
         self._cell = cell
         self._role = role
+
+    def _color_element(self) -> ET.Element | None:
+        table = self._cell._table
+        presentation = table._slide._presentation
+        if _table_cell_fill_type(self._cell) not in {"solid", "patterned"}:
+            return None
+        key = (table._slide._index, table._table_index, self._cell._row_idx, self._cell._col_idx)
+        patterned = _table_cell_fill_type(self._cell) == "patterned"
+        if self._role == "back" and not patterned:
+            raise TypeError("fill is not patterned, call .patterned() first")
+        queue = (
+            presentation._table_cell_fill_pattern_back_color_edits
+            if patterned and self._role == "back"
+            else presentation._table_cell_fill_pattern_fore_color_edits
+            if patterned
+            else presentation._table_cell_fill_color_edits
+        )
+        if key in queue:
+            value = queue[key]
+            return _color_from_payload(
+                {"type": "rgb", "value": value} if isinstance(value, str) else value
+            )
+        if key in presentation._table_cell_fill_solid_edits:
+            return None
+        element = _saved_table_cell_element(self._cell)
+        parent = None if element is None else element.find(f"{{{A_NS}}}tcPr")
+        saved_pattern = None if parent is None else parent.find(f"{{{A_NS}}}pattFill")
+        color = (
+            fill_color_element(parent, self._role)
+            if parent is not None and patterned == (saved_pattern is not None)
+            else None
+        )
+        if color is not None:
+            return color
+        theme = (
+            _table_cell_pattern_theme_color(self._cell, self._role)
+            if patterned
+            else _table_cell_solid_theme_color(self._cell)
+        )
+        rgb = self._rgb_raw()
+        if theme is not None:
+            return _color_from_payload({"type": "scheme", "value": theme})
+        return None if rgb is None else _color_from_payload({"type": "rgb", "value": rgb})
+
+    def _set_color_element(self, color: ET.Element) -> None:
+        value = {"type": "xml", "value": ET.tostring(color, encoding="unicode")}
+        table = self._cell._table
+        presentation = table._slide._presentation
+        patterned = _table_cell_fill_type(self._cell) == "patterned"
+        if self._role == "back" and not patterned:
+            raise TypeError("fill is not patterned, call .patterned() first")
+        queue = (
+            presentation._queue_table_cell_fill_pattern_back_color
+            if patterned and self._role == "back"
+            else presentation._queue_table_cell_fill_pattern_fore_color
+            if patterned
+            else presentation._queue_table_cell_fill_color
+        )
+        queue(
+            table._slide._index,
+            table._table_index,
+            self._cell._row_idx,
+            self._cell._col_idx,
+            value,
+        )
+        payload = _table_cell_property_payload(self._cell)
+        prefix = f"fill_pattern_{self._role}_" if patterned else "fill_"
+        payload[prefix + "rgb"] = color.get("val") if color.tag == f"{{{A_NS}}}srgbClr" else None
+        payload[prefix + "theme_color"] = (
+            color.get("val") if color.tag == f"{{{A_NS}}}schemeClr" else None
+        )
+        if not patterned:
+            payload["fill_type"] = "solid"
 
     @property
     def rgb(self) -> Any:
@@ -419,10 +539,11 @@ class TableCellColorFormat:
             payload = _table_cell_property_payload(self._cell)
             payload[f"fill_pattern_{self._role}_theme_color"] = theme_color
             payload.pop(f"fill_pattern_{self._role}_rgb", None)
+            presentation = self._cell._table._slide._presentation
             queue = (
-                self._cell._table._slide._presentation._queue_table_cell_fill_pattern_back_color
+                presentation._queue_table_cell_fill_pattern_back_color
                 if self._role == "back"
-                else self._cell._table._slide._presentation._queue_table_cell_fill_pattern_fore_color
+                else presentation._queue_table_cell_fill_pattern_fore_color
             )
             queue(
                 self._cell._table._slide._index,
@@ -479,3 +600,16 @@ class TableCellColorFormat:
         if _table_cell_solid_rgb(self._cell) is not None:
             return _color_type_value("rgb")
         return None
+
+
+def _saved_table_cell_element(cell: Any) -> ET.Element | None:
+    """Read the cell's saved owner without creating or modifying queued state."""
+    table = cell._table
+    partname = table._slide.partname
+    if not partname or _table_is_unsaved(table):
+        return None
+    with zipfile.ZipFile(table._slide._presentation.path) as package:
+        if partname.lstrip("/") not in package.namelist():
+            return None
+        root = ET.fromstring(package.read(partname.lstrip("/")))
+    return _table_cell_xml_element(root, table._table_index, cell._row_idx, cell._col_idx)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from .benchmark_profile_dropin_full import build_dropin_full_batches
 from .benchmark_profile_dropin_smoke import build_dropin_smoke_batches
 from .benchmark_profile_models import BenchmarkProfile, BenchmarkProfileBatch
@@ -70,6 +72,17 @@ SDK_PRESERVATION_ADAPTERS = (
     "python-pptx-roundtrip",
     "openxml-sdk-roundtrip",
     "apache-poi-roundtrip",
+    "native-rust-roundtrip",
+)
+
+# The LibreOffice re-save lane rewrites shape ids, rounds geometry, and adds or
+# drops parts, so it fails the round-trip semantic oracle. It lives in its own
+# profile so the claim-grade SDK profiles stay a passing preservation surface.
+OPEN_SOURCE_ROUNDTRIP_ADAPTERS = (
+    "python-pptx-roundtrip",
+    "openxml-sdk-roundtrip",
+    "apache-poi-roundtrip",
+    "libreoffice-resave-roundtrip",
     "native-rust-roundtrip",
 )
 
@@ -158,6 +171,33 @@ RELEASE_SMOKE_BATCHES = (
 )
 
 
+def _with_libreoffice_resave(batch: BenchmarkProfileBatch) -> BenchmarkProfileBatch:
+    workload = batch.adapter_names[0].removeprefix("python-pptx-")
+    return replace(
+        batch,
+        description=f"{batch.description} Adds the python-pptx plus LibreOffice re-save lane.",
+        adapter_names=(*batch.adapter_names, f"libreoffice-resave-{workload}"),
+    )
+
+
+OPEN_SOURCE_COMPARISON_BATCHES = (
+    BenchmarkProfileBatch(
+        name="open-source-roundtrip",
+        description=(
+            "Round-trip comparison across python-pptx, Open XML SDK, Apache POI, "
+            "python-pptx plus LibreOffice re-save, and WolfPPT native."
+        ),
+        adapter_names=OPEN_SOURCE_ROUNDTRIP_ADAPTERS,
+        fixture_ids=REAL_CORPUS_FIXTURES,
+    ),
+    *(
+        _with_libreoffice_resave(batch)
+        for batch in DROPIN_SMOKE_BATCHES
+        if batch.name in RELEASE_SMOKE_DROPIN_BATCH_NAMES
+    ),
+)
+
+
 BENCHMARK_PROFILES = (
     BenchmarkProfile(
         name="dev-smoke",
@@ -238,7 +278,7 @@ BENCHMARK_PROFILES = (
         name="sdk-comparison",
         description=(
             "Explicit third-party SDK comparison lane across real-world corpus fixtures. "
-            "External command adapters may fail or skip; use this profile for "
+            "Optional external-command adapters may skip; use this profile for "
             "claim-boundary evidence, not the default release gate."
         ),
         batches=(
@@ -252,6 +292,17 @@ BENCHMARK_PROFILES = (
                 fixture_ids=REAL_CORPUS_FIXTURES,
             ),
         ),
+    ),
+    BenchmarkProfile(
+        name="open-source-comparison",
+        description=(
+            "Open-source baseline comparison including the common free pipeline "
+            "'edit with python-pptx, normalize with headless LibreOffice'. Covers "
+            "real-corpus round-trips and representative edit workloads. The "
+            "LibreOffice re-save lane is expected to fail semantic preservation, "
+            "so this is comparison evidence, not a passing claim gate."
+        ),
+        batches=OPEN_SOURCE_COMPARISON_BATCHES,
     ),
     BenchmarkProfile(
         name="sdk-smoke",
@@ -277,7 +328,7 @@ BENCHMARK_PROFILES = (
         description=(
             "Claim-grade passing preservation comparison against popular open-source "
             "round-trip baselines that currently produce valid real-corpus outputs. "
-            "External SDK failure evidence stays in sdk-comparison."
+            "Optional SDK lane evidence stays in sdk-comparison."
         ),
         batches=(
             BenchmarkProfileBatch(

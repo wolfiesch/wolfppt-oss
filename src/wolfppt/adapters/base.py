@@ -88,8 +88,11 @@ def available_tools() -> list[ToolInfo]:
         ToolInfo(
             name="libreoffice",
             available=_which_any("soffice", "libreoffice") is not None,
-            role="non-authoritative render smoke",
-            detail="Used for optional headless PDF/image export.",
+            role="non-authoritative render smoke and re-save baseline",
+            detail=(
+                "Used for optional headless PDF/image export and the "
+                "libreoffice-resave-* python-pptx plus LibreOffice re-save benchmark lanes."
+            ),
         ),
         ToolInfo(
             name="microsoft-powerpoint",

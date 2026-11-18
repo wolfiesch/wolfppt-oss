@@ -1,4 +1,4 @@
-"""PPTX semantic extraction.
+"""PPTX semantic and plain-text extraction.
 
 This module intentionally uses only the Python standard library. The harness
 needs to inspect fixtures and candidate outputs before any third-party PPTX
@@ -7,6 +7,7 @@ library is installed.
 
 from __future__ import annotations
 
+import io
 import json
 import re
 import zipfile
@@ -15,11 +16,31 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from .comments_facade import (
+    MODERN_POWERPOINT_NAMESPACES,
+    CommentRefusal,
+    SlideCommentTarget,
+    presentation_partname,
+    presentation_slide_parts,
+    read_package,
+    relationship_elements,
+    slide_comment_targets,
+)
+from .package_parts import rels_part_for_package_part, resolve_package_target
+from .xml_helpers import (
+    STRICT_A_NS,
+    STRICT_P_NS,
+    STRICT_R_NS,
+    ooxml_namespaces,
+)
 
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+MC_SUPPORTED_NAMESPACE_URIS = frozenset({P_NS, A_NS, R_NS, C_NS})
 
 NS = {
     "p": P_NS,
@@ -27,6 +48,14 @@ NS = {
     "r": R_NS,
     "rel": REL_NS,
 }
+
+
+class SemanticExtractionRefusal(ValueError):
+    """Raised when semantic extraction reaches unsupported required markup."""
+
+
+class TextExtractionRefusal(SemanticExtractionRefusal):
+    """Raised when requested plain text cannot be extracted without omission."""
 
 
 @dataclass(frozen=True)
@@ -79,7 +108,7 @@ class Shape:
     has_group: bool = False
     transform: Transform | None = None
     effective_transform: Transform | None = None
-    children: list["Shape"] = field(default_factory=list)
+    children: list[Shape] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -135,16 +164,210 @@ def extract_semantics(path: str | Path) -> PresentationSemantics:
     )
 
 
-def _extract_relationships(
-    zf: zipfile.ZipFile, parts: list[str]
-) -> list[Relationship]:
+def extract_text(
+    path: str | Path, *, include_notes: bool = False, include_comments: bool = False
+) -> str:
+    """Read slide text from a saved PPTX/PPTM package, without writing anything.
+
+    Slides follow presentation order. Within a slide, text bodies follow XML
+    shape order, descending into groups once and visiting table cells row-major.
+    Bodies and paragraphs are separated by ``\\n``; explicit line breaks remain
+    ``\\v``. Empty bodies are omitted, but blank paragraphs inside a nonempty
+    body are preserved. No slide labels, author metadata or trailing separator
+    are added.
+
+    Requested notes follow the slide's shapes. Requested comments follow its
+    notes, in comments-part order, with each modern comment immediately followed
+    by its replies in reply-list order (including resolved/closed entries).
+    Only slide-owned comments are included; orphan parts are not scanned.
+    Transitional and Strict base namespaces are supported. Malformed consumed
+    parts, unsupported required markup and ambiguous or unavailable requested
+    notes/comments raise :class:`TextExtractionRefusal`. Unrequested notes and
+    comments are not parsed. ``extract_semantics`` and its schema are unchanged.
+    """
+    if not isinstance(include_notes, bool) or not isinstance(include_comments, bool):
+        raise TextExtractionRefusal("include_notes and include_comments must be bool")
+    try:
+        parts = read_package(path)
+        presentation_part = presentation_partname(parts)
+        presentation = _parse_text_xml(parts, presentation_part)
+        if presentation.tag != f"{{{P_NS}}}presentation":
+            raise TextExtractionRefusal("the presentation part has an unsupported root")
+        slides = presentation_slide_parts(parts)
+        if len(slides) != len(presentation.findall("./p:sldIdLst/p:sldId", NS)):
+            raise TextExtractionRefusal(
+                "the presentation has an unresolved or external slide relationship"
+            )
+        targets = (
+            {target.slide_part: target for target in slide_comment_targets(parts)}
+            if include_comments
+            else {}
+        )
+        blocks: list[str] = []
+        for _index, _slide_id, slide_part in slides:
+            root = _parse_text_xml(parts, slide_part)
+            if root.tag != f"{{{P_NS}}}sld":
+                raise TextExtractionRefusal(f"{slide_part} has an unsupported slide root")
+            tree = root.find("./p:cSld/p:spTree", NS)
+            if tree is None:
+                raise TextExtractionRefusal(f"{slide_part} has no slide shape tree")
+            blocks.extend(_text_body_blocks(tree))
+            if include_notes:
+                blocks.extend(_slide_notes_text(parts, slide_part))
+            if include_comments:
+                blocks.extend(_slide_comments_text(parts, targets[slide_part]))
+        return "\n".join(blocks)
+    except TextExtractionRefusal:
+        raise
+    except (
+        CommentRefusal,
+        SemanticExtractionRefusal,
+        ET.ParseError,
+        KeyError,
+        OSError,
+        ValueError,
+        zipfile.BadZipFile,
+    ) as exc:
+        raise TextExtractionRefusal(f"cannot extract text: {exc}") from exc
+
+
+def _parse_text_xml(parts: dict[str, bytes], part: str, *, modern: bool = False) -> ET.Element:
+    """Select consumed MC markup and normalize only this private read tree."""
+    if part not in parts:
+        raise TextExtractionRefusal(f"requested part {part!r} is missing")
+    root, scopes = _parse_with_namespace_scopes(parts[part])
+    strict_to_transitional = {
+        STRICT_P_NS: P_NS,
+        STRICT_A_NS: A_NS,
+        STRICT_R_NS: R_NS,
+    }
+    supported = MC_SUPPORTED_NAMESPACE_URIS | frozenset(strict_to_transitional)
+    if modern:
+        supported |= MODERN_POWERPOINT_NAMESPACES
+    _select_effective_mc_children(root, scopes, part, supported_namespaces=supported)
+    # Existing paragraph/shape selectors remain unchanged for semantic snapshots.
+    # Namespace adaptation affects neither package bytes nor discovery identity.
+    for element in root.iter():
+        namespace = _namespace_uri(element.tag)
+        if namespace in strict_to_transitional:
+            element.tag = f"{{{strict_to_transitional[namespace]}}}{_local_name(element.tag)}"
+    return root
+
+
+def _text_body_blocks(root: ET.Element) -> list[str]:
+    """Visit each text body once, including grouped shapes and table cells."""
+    blocks: list[str] = []
+    for body in root.iter():
+        if body.tag not in {f"{{{P_NS}}}txBody", f"{{{A_NS}}}txBody"}:
+            continue
+        paragraphs = _extract_texts(body)
+        if any(paragraphs):
+            blocks.append("\n".join(paragraphs))
+    return blocks
+
+
+def _slide_notes_text(parts: dict[str, bytes], slide_part: str) -> list[str]:
+    rels_part = rels_part_for_package_part(slide_part)
+    if rels_part not in parts:
+        return []
+    relationships = [
+        rel
+        for rel in relationship_elements(parts[rels_part], slide_part)
+        if rel.get("Type", "") in {f"{R_NS}/notesSlide", f"{STRICT_R_NS}/notesSlide"}
+    ]
+    if not relationships:
+        return []
+    if len(relationships) != 1:
+        raise TextExtractionRefusal(f"{slide_part} declares multiple notes relationships")
+    rel = relationships[0]
+    target = rel.get("Target", "")
+    if not target or rel.get("TargetMode") == "External":
+        raise TextExtractionRefusal(f"{slide_part} has an unsupported notes target")
+    notes_part = resolve_package_target(slide_part, target)
+    root = _parse_text_xml(parts, notes_part)
+    if root.tag != f"{{{P_NS}}}notes":
+        raise TextExtractionRefusal(f"{notes_part} has an unsupported notes root")
+    tree = root.find("./p:cSld/p:spTree", NS)
+    if tree is None:
+        raise TextExtractionRefusal(f"{notes_part} has no notes shape tree")
+    return _text_body_blocks(tree)
+
+
+def _slide_comments_text(parts: dict[str, bytes], target: SlideCommentTarget) -> list[str]:
+    if not target.relationship_kind:
+        return []
+    if target.relationship_kind not in {"legacy", "modern"}:
+        raise TextExtractionRefusal(f"{target.slide_part} has an unsupported comments relationship")
+    if target.comments_part is None:
+        raise TextExtractionRefusal(f"{target.slide_part} has no comments target")
+    modern = target.relationship_kind == "modern"
+    root = _parse_text_xml(parts, target.comments_part, modern=modern)
+    namespace = _namespace_uri(root.tag)
+    if (
+        (modern and namespace not in MODERN_POWERPOINT_NAMESPACES)
+        or (not modern and namespace != P_NS)
+        or _local_name(root.tag) != "cmLst"
+    ):
+        raise TextExtractionRefusal(f"{target.comments_part} has an unsupported comments root")
+    elements = root.findall(f"{{{namespace}}}cm")
+    if len(elements) != len(target.comments):
+        raise TextExtractionRefusal(
+            f"{target.comments_part} has comment markup not represented by discovery"
+        )
+    blocks: list[str] = []
+    for comment, element in zip(target.comments, elements, strict=True):
+        actual_id = (
+            element.get("id", f"cm{comment.ordinal + 1}") if modern else element.get("idx", "")
+        )
+        if str(comment.comment_id) != actual_id:
+            raise TextExtractionRefusal(
+                f"{target.comments_part} has comment order not represented by discovery"
+            )
+        if not modern:
+            text = element.find(f"{{{P_NS}}}text")
+            if text is None or len(text):
+                raise TextExtractionRefusal(
+                    f"{target.comments_part} has unsupported legacy comment text"
+                )
+            if text.text:
+                blocks.append(text.text)
+            continue
+        # Discovery owns slide association, identity and reply order. Read the
+        # same bodies as paragraphs so run boundaries do not become line breaks
+        # and Strict DrawingML text and explicit breaks are not silently lost.
+        body = element.find(f"{{{namespace}}}txBody")
+        if body is None:
+            raise TextExtractionRefusal(f"{target.comments_part} has a comment without text body")
+        paragraphs = _extract_texts(body)
+        if any(paragraphs):
+            blocks.append("\n".join(paragraphs))
+        replies = element.findall(f"./{{{namespace}}}replyLst/{{{namespace}}}reply")
+        if len(replies) != len(comment.replies):
+            raise TextExtractionRefusal(
+                f"{target.comments_part} has reply markup not represented by discovery"
+            )
+        for ordinal, (discovered, reply) in enumerate(zip(comment.replies, replies, strict=True)):
+            if reply.get("id", f"reply{ordinal + 1}") != discovered.reply_id:
+                raise TextExtractionRefusal(
+                    f"{target.comments_part} has reply order not represented by discovery"
+                )
+            body = reply.find(f"{{{namespace}}}txBody")
+            if body is None:
+                raise TextExtractionRefusal(f"{target.comments_part} has a reply without text body")
+            paragraphs = _extract_texts(body)
+            if any(paragraphs):
+                blocks.append("\n".join(paragraphs))
+    return blocks
+
+
+def _extract_relationships(zf: zipfile.ZipFile, parts: list[str]) -> list[Relationship]:
     rels: list[Relationship] = []
     for part in parts:
         if not part.endswith(".rels"):
             continue
         source = _rels_source(part)
         try:
-            root = ET.fromstring(zf.read(part))
+            root = _parse_effective_xml(zf.read(part), part)
         except ET.ParseError:
             continue
         for rel in root.findall("rel:Relationship", NS):
@@ -175,7 +398,7 @@ def _ordered_slide_parts(zf: zipfile.ZipFile, parts: list[str]) -> list[str]:
     }
     if "ppt/presentation.xml" in parts and presentation_rels:
         try:
-            root = ET.fromstring(zf.read("ppt/presentation.xml"))
+            root = _parse_effective_xml(zf.read("ppt/presentation.xml"), "ppt/presentation.xml")
             ordered: list[str] = []
             for slide_id in root.findall(".//p:sldId", NS):
                 rel_id = slide_id.attrib.get(f"{{{R_NS}}}id")
@@ -192,15 +415,15 @@ def _ordered_slide_parts(zf: zipfile.ZipFile, parts: list[str]) -> list[str]:
     )
 
 
-def _notes_by_slide(
-    zf: zipfile.ZipFile, relationships: list[Relationship]
-) -> dict[str, list[str]]:
+def _notes_by_slide(zf: zipfile.ZipFile, relationships: list[Relationship]) -> dict[str, list[str]]:
     notes: dict[str, list[str]] = {}
     for rel in relationships:
         if rel.source.startswith("ppt/slides/slide") and rel.type.endswith("/notesSlide"):
             notes_part = _resolve_target(rel.source, rel.target)
             try:
-                notes[rel.source] = _extract_texts(ET.fromstring(zf.read(notes_part)))
+                notes[rel.source] = _extract_texts(
+                    _parse_effective_xml(zf.read(notes_part), notes_part)
+                )
             except (KeyError, ET.ParseError):
                 notes[rel.source] = []
     return notes
@@ -208,7 +431,7 @@ def _notes_by_slide(
 
 def _extract_slide(zf: zipfile.ZipFile, part: str, notes: list[str]) -> Slide:
     try:
-        root = ET.fromstring(zf.read(part))
+        root = _parse_effective_xml(zf.read(part), part)
     except ET.ParseError:
         return Slide(part=part, shape_count=0, texts=[], shapes=[], notes=notes)
 
@@ -223,6 +446,269 @@ def _extract_slide(zf: zipfile.ZipFile, part: str, notes: list[str]) -> Slide:
         has_transition=root.find(".//p:transition", NS) is not None,
         has_timing=root.find(".//p:timing", NS) is not None,
     )
+
+
+def _parse_effective_xml(xml: bytes, part: str = "<XML>") -> ET.Element:
+    """Parse XML and select supported MC branches in consumed markup."""
+    root, namespace_scopes = _parse_with_namespace_scopes(xml)
+    _select_effective_mc_children(root, namespace_scopes, part)
+    return root
+
+
+def _parse_with_namespace_scopes(
+    xml: bytes,
+) -> tuple[ET.Element, dict[int, dict[str, str]]]:
+    """Parse XML, mapping each element's ``id`` to its in-scope prefix bindings."""
+    namespace_scopes: dict[int, dict[str, str]] = {}
+    scope_stack: list[dict[str, str]] = [{}]
+    pending_bindings: list[tuple[str, str]] = []
+    root: ET.Element | None = None
+
+    for event, value in ET.iterparse(
+        io.BytesIO(xml),
+        events=("start", "end", "start-ns"),
+    ):
+        if event == "start-ns":
+            pending_bindings.append(value)
+            continue
+        if event == "start":
+            scope = scope_stack[-1].copy()
+            scope.update(pending_bindings)
+            pending_bindings.clear()
+            namespace_scopes[id(value)] = scope
+            scope_stack.append(scope)
+            if root is None:
+                root = value
+            continue
+        scope_stack.pop()
+
+    if root is None:
+        raise ET.ParseError("XML document has no root element")
+    return root, namespace_scopes
+
+
+def _select_effective_mc_children(
+    parent: ET.Element,
+    namespace_scopes: dict[int, dict[str, str]],
+    part: str,
+    ignored_namespaces: frozenset[str] = frozenset(),
+    process_content_qnames: frozenset[str] = frozenset(),
+    *,
+    validate_current: bool = True,
+    supported_namespaces: frozenset[str] = MC_SUPPORTED_NAMESPACE_URIS,
+) -> None:
+    if validate_current:
+        _refuse_unsupported_must_understand(parent, namespace_scopes, part, supported_namespaces)
+    active_ignored = _active_ignorable_namespaces(
+        parent, namespace_scopes, ignored_namespaces, supported_namespaces
+    )
+    active_process_content = process_content_qnames | _process_content_qnames(
+        parent, namespace_scopes
+    )
+    effective_children: list[ET.Element] = []
+    for child in list(parent):
+        if child.tag == f"{{{MC_NS}}}AlternateContent":
+            effective_children.extend(
+                _effective_mc_children(
+                    child,
+                    namespace_scopes,
+                    part,
+                    active_ignored,
+                    active_process_content,
+                    supported_namespaces,
+                )
+            )
+            continue
+        if _namespace_uri(child.tag) in active_ignored:
+            if child.tag in active_process_content:
+                effective_children.extend(
+                    _process_ignored_content(
+                        child,
+                        namespace_scopes,
+                        part,
+                        active_ignored,
+                        active_process_content,
+                        supported_namespaces,
+                    )
+                )
+            continue
+        _select_effective_mc_children(
+            child,
+            namespace_scopes,
+            part,
+            active_ignored,
+            active_process_content,
+            supported_namespaces=supported_namespaces,
+        )
+        effective_children.append(child)
+    parent[:] = effective_children
+
+
+def _effective_mc_children(
+    alternate: ET.Element,
+    namespace_scopes: dict[int, dict[str, str]],
+    part: str,
+    ignored_namespaces: frozenset[str],
+    process_content_qnames: frozenset[str],
+    supported_namespaces: frozenset[str],
+) -> list[ET.Element]:
+    _refuse_unsupported_must_understand(alternate, namespace_scopes, part, supported_namespaces)
+    wrapper_ignored = _active_ignorable_namespaces(
+        alternate, namespace_scopes, ignored_namespaces, supported_namespaces
+    )
+    wrapper_process_content = process_content_qnames | _process_content_qnames(
+        alternate, namespace_scopes
+    )
+    selected_branch = _selected_mc_branch(alternate, namespace_scopes, supported_namespaces)
+    if selected_branch is None:
+        return []
+
+    _refuse_unsupported_must_understand(
+        selected_branch, namespace_scopes, part, supported_namespaces
+    )
+    active_ignored = _active_ignorable_namespaces(
+        selected_branch, namespace_scopes, wrapper_ignored, supported_namespaces
+    )
+    active_process_content = wrapper_process_content | _process_content_qnames(
+        selected_branch, namespace_scopes
+    )
+    effective_children: list[ET.Element] = []
+    for child in list(selected_branch):
+        if child.tag == f"{{{MC_NS}}}AlternateContent":
+            effective_children.extend(
+                _effective_mc_children(
+                    child,
+                    namespace_scopes,
+                    part,
+                    active_ignored,
+                    active_process_content,
+                    supported_namespaces,
+                )
+            )
+            continue
+        if _namespace_uri(child.tag) in active_ignored:
+            if child.tag in active_process_content:
+                effective_children.extend(
+                    _process_ignored_content(
+                        child,
+                        namespace_scopes,
+                        part,
+                        active_ignored,
+                        active_process_content,
+                        supported_namespaces,
+                    )
+                )
+            continue
+        _select_effective_mc_children(
+            child,
+            namespace_scopes,
+            part,
+            active_ignored,
+            active_process_content,
+            supported_namespaces=supported_namespaces,
+        )
+        effective_children.append(child)
+    return effective_children
+
+
+def _process_ignored_content(
+    element: ET.Element,
+    namespace_scopes: dict[int, dict[str, str]],
+    part: str,
+    ignored_namespaces: frozenset[str],
+    process_content_qnames: frozenset[str],
+    supported_namespaces: frozenset[str],
+) -> list[ET.Element]:
+    _select_effective_mc_children(
+        element,
+        namespace_scopes,
+        part,
+        ignored_namespaces,
+        process_content_qnames,
+        validate_current=False,
+        supported_namespaces=supported_namespaces,
+    )
+    return list(element)
+
+
+def _selected_mc_branch(
+    alternate: ET.Element,
+    namespace_scopes: dict[int, dict[str, str]],
+    supported_namespaces: frozenset[str],
+) -> ET.Element | None:
+    for choice in alternate.findall(f"{{{MC_NS}}}Choice"):
+        requires = choice.get("Requires")
+        if requires is not None and all(
+            namespace_scopes.get(id(choice), {}).get(prefix) in supported_namespaces
+            for prefix in requires.split()
+        ):
+            return choice
+    return alternate.find(f"{{{MC_NS}}}Fallback")
+
+
+def _namespace_uri(tag: str) -> str | None:
+    if not tag.startswith("{"):
+        return None
+    return tag[1:].partition("}")[0]
+
+
+def _active_ignorable_namespaces(
+    element: ET.Element,
+    namespace_scopes: dict[int, dict[str, str]],
+    inherited: frozenset[str],
+    supported_namespaces: frozenset[str],
+) -> frozenset[str]:
+    prefixes = element.get(f"{{{MC_NS}}}Ignorable")
+    if not prefixes:
+        return inherited
+    scope = namespace_scopes.get(id(element), {})
+    return inherited | frozenset(
+        uri
+        for prefix in prefixes.split()
+        if (uri := scope.get(prefix)) is not None and uri not in supported_namespaces
+    )
+
+
+def _process_content_qnames(
+    element: ET.Element, namespace_scopes: dict[int, dict[str, str]]
+) -> frozenset[str]:
+    names = element.get(f"{{{MC_NS}}}ProcessContent")
+    if not names:
+        return frozenset()
+    scope = namespace_scopes.get(id(element), {})
+    qualified: set[str] = set()
+    for name in names.split():
+        prefix, separator, local_name = name.partition(":")
+        if not separator or not local_name:
+            continue
+        uri = scope.get(prefix)
+        if uri is not None:
+            qualified.add(f"{{{uri}}}{local_name}")
+    return frozenset(qualified)
+
+
+def _refuse_unsupported_must_understand(
+    element: ET.Element,
+    namespace_scopes: dict[int, dict[str, str]],
+    part: str,
+    supported_namespaces: frozenset[str],
+) -> None:
+    required = element.get(f"{{{MC_NS}}}MustUnderstand")
+    if not required:
+        return
+    scope = namespace_scopes.get(id(element), {})
+    for prefix in required.split():
+        uri = scope.get(prefix)
+        if uri is None:
+            raise SemanticExtractionRefusal(
+                f"part {part!r} has mc:MustUnderstand prefix {prefix!r} "
+                "without a lexical namespace binding"
+            )
+        if uri not in supported_namespaces:
+            raise SemanticExtractionRefusal(
+                f"part {part!r} has mc:MustUnderstand prefix {prefix!r} "
+                f"for unsupported namespace {uri!r}"
+            )
 
 
 def _shape_elements(root: ET.Element) -> list[ET.Element]:
@@ -268,7 +754,7 @@ def _extract_shape(el: ET.Element, parent_frame: _CoordinateFrame | None = None)
         paragraphs=paragraphs,
         tables=tables,
         relationship_ids=rel_ids,
-        has_chart=el.find(".//c:chart", {"c": "http://schemas.openxmlformats.org/drawingml/2006/chart"}) is not None,
+        has_chart=el.find(".//c:chart", {"c": C_NS}) is not None,
         has_picture=_local_name(el.tag) == "pic",
         has_group=_local_name(el.tag) == "grpSp",
         transform=local_transform,
@@ -287,15 +773,16 @@ def _shape_child_elements(root: ET.Element) -> list[ET.Element]:
 
 
 def _extract_transform(el: ET.Element) -> Transform | None:
-    xfrm = el.find("./p:spPr/a:xfrm", NS)
+    namespaces = ooxml_namespaces(el, NS)
+    xfrm = el.find("./p:spPr/a:xfrm", namespaces)
     if xfrm is None:
-        xfrm = el.find("./p:grpSpPr/a:xfrm", NS)
+        xfrm = el.find("./p:grpSpPr/a:xfrm", namespaces)
     if xfrm is None:
-        xfrm = el.find("./p:xfrm", NS)
+        xfrm = el.find("./p:xfrm", namespaces)
     if xfrm is None:
         return None
-    off = xfrm.find("./a:off", NS)
-    ext = xfrm.find("./a:ext", NS)
+    off = xfrm.find("./a:off", namespaces)
+    ext = xfrm.find("./a:ext", namespaces)
     if off is None or ext is None:
         return None
     return Transform(
@@ -323,8 +810,12 @@ def _group_frame(el: ET.Element, parent_frame: _CoordinateFrame | None) -> _Coor
         cy=effective.cy,
         ch_x=int(ch_off.attrib.get("x", "0")) if ch_off is not None else 0,
         ch_y=int(ch_off.attrib.get("y", "0")) if ch_off is not None else 0,
-        ch_cx=int(ch_ext.attrib.get("cx", str(effective.cx))) if ch_ext is not None else effective.cx,
-        ch_cy=int(ch_ext.attrib.get("cy", str(effective.cy))) if ch_ext is not None else effective.cy,
+        ch_cx=int(ch_ext.attrib.get("cx", str(effective.cx)))
+        if ch_ext is not None
+        else effective.cx,
+        ch_cy=int(ch_ext.attrib.get("cy", str(effective.cy)))
+        if ch_ext is not None
+        else effective.cy,
     )
 
 
@@ -361,16 +852,18 @@ def _scale_child_coordinate(value: int, parent_extent: int, child_extent: int) -
 
 
 def _extract_texts(root: ET.Element) -> list[str]:
-    paragraphs: list[str] = []
-    for paragraph in root.findall(".//a:p", NS):
-        parts: list[str] = []
-        for child in list(paragraph):
-            if _local_name(child.tag) == "br":
-                parts.append("\v")
-            else:
-                parts.append("".join(node.text or "" for node in child.findall(".//a:t", NS)))
-        paragraphs.append("".join(parts))
-    return paragraphs
+    return [_paragraph_text(paragraph) for paragraph in root.findall(".//a:p", NS)]
+
+
+def _paragraph_text(paragraph: ET.Element) -> str:
+    """Return one ``a:p`` paragraph's text, with ``a:br`` line breaks as ``\\v``."""
+    parts: list[str] = []
+    for child in list(paragraph):
+        if _local_name(child.tag) == "br":
+            parts.append("\v")
+        else:
+            parts.append("".join(node.text or "" for node in child.findall(".//a:t", NS)))
+    return "".join(parts)
 
 
 def _extract_table(tbl: ET.Element) -> Table:

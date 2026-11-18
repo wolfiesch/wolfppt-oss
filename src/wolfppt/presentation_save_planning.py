@@ -153,6 +153,7 @@ def has_edits_after_slide_creations(edits: Any) -> bool:
             return True
     return False
 
+
 def has_edits_after_slide_deletions(edits: Any) -> bool:
     for name, value in vars(edits).items():
         if name == "slide_deletions":
@@ -160,6 +161,7 @@ def has_edits_after_slide_deletions(edits: Any) -> bool:
         if value:
             return True
     return False
+
 
 def has_edits_after_native_batch(
     edits: Any,
@@ -184,7 +186,12 @@ def has_edits_after_native_batch(
         edits.deeper_group_child_text_edits,
         edits.nested_group_child_geometry_edits,
         edits.deeper_group_child_geometry_edits,
+        edits.part_geometry_edits,
         edits.part_shape_text_edits,
+        edits.part_paragraph_text_edits,
+        edits.part_paragraph_clear_edits,
+        edits.part_paragraph_line_break_edits,
+        edits.part_run_text_edits,
         edits.part_paragraph_alignment_edits,
         edits.part_paragraph_level_edits,
         edits.part_paragraph_spacing_edits,
@@ -196,6 +203,7 @@ def has_edits_after_native_batch(
         edits.part_text_frame_auto_size_edits,
         edits.table_cell_margin_edits,
         edits.table_cell_vertical_anchor_edits,
+        edits.table_cell_border_edits,
         edits.table_cell_text_frame_margin_edits,
         edits.table_cell_text_frame_vertical_anchor_edits,
         edits.table_cell_text_frame_content_edits,
@@ -243,24 +251,47 @@ def has_edits_after_native_batch(
         edits.line_color_edits,
         edits.line_width_edits,
         edits.line_dash_edits,
+        edits.shape_line_end_edits,
+        edits.shape_z_order_edits,
         edits.connector_connection_edits,
         edits.shadow_inherit_edits,
+        edits.shape_effect_edits,
+        edits.shape_glow_edits,
+        getattr(edits, "shape_lock_edits", None),
         edits.hyperlink_edits,
         edits.target_slide_edits,
         edits.rotation_edits,
         edits.name_edits,
         edits.adjustment_edits,
+        edits.shape_preset_edits,
         edits.line_element_edits,
         edits.picture_crop_edits,
         edits.picture_replace_edits,
+        getattr(edits, "media_playback_edits", None),
+        getattr(edits, "picture_transparency_edits", None),
+        edits.picture_correction_edits,
+        edits.picture_recolor_edits,
         edits.slide_name_edits,
         edits.presentation_size_edits,
+        getattr(edits, "slide_transition_edits", None),
+        getattr(edits, "slide_animation_edits", None),
+        getattr(edits, "chart_trendline_edits", None),
+        getattr(edits, "chart_error_bar_edits", None),
+        getattr(edits, "slide_layout_changes", None),
         edits.slide_layout_removals,
         edits.notes_slide_adds,
     ]
     if any(remaining_edits):
         return True
     if edits.core_properties_edits is not None:
+        return True
+    if getattr(edits, "custom_properties_edits", None) is not None:
+        return True
+    if getattr(edits, "extended_properties_edits", None) is not None:
+        return True
+    if getattr(edits, "section_edits", None) is not None:
+        return True
+    if getattr(edits, "table_style_id_edits", None):
         return True
     if edits.table_cell_merge_edits and not table_cell_merges_in_native_batch:
         return True
@@ -283,6 +314,4 @@ def has_edits_after_native_batch(
         or edits.text_frame_auto_size_edits
     ) and not text_frame_properties_in_native_batch:
         return True
-    if text_run_font_color_xml_edits:
-        return True
-    return False
+    return bool(text_run_font_color_xml_edits)
